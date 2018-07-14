@@ -1,0 +1,99 @@
+CREATE DATABASE Dobby;
+CREATE DATABASE DobbyLog;
+
+CREATE USER 'dobby'@'localhost' IDENTIFIED BY 'HereToServe';
+GRANT ALL PRIVILEGES ON Dobby.* TO 'dobby'@'localhost'
+    WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON DobbyLog.* TO 'dobby'@'localhost'
+    WITH GRANT OPTION;
+
+CREATE USER 'dobby'@'%' IDENTIFIED BY 'HereToServe';
+GRANT ALL PRIVILEGES ON Dobby.* TO 'dobby'@'%'
+    WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON DobbyLog.* TO 'dobby'@'%'
+    WITH GRANT OPTION;
+
+
+CREATE TABLE `Dobby`.`DeviceConfig` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `Device` varchar(25) NOT NULL,
+  `Type` varchar(10) NOT NULL,
+  `Name` varchar(20) NOT NULL,
+  `Value` varchar(200) NOT NULL,
+  `DateModified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+
+
+CREATE TABLE `Dobby`.`DeviceConfigDevices` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `Number` int(4) NOT NULL,
+  `Name` varchar(25) NOT NULL,
+  `ConfigID` int(10) NOT NULL,
+  `DateModified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+
+
+CREATE TABLE `Dobby`.`MonitorAgentConfig` (
+  `id` int(16) NOT NULL AUTO_INCREMENT,
+  `Agent` varchar(25) NOT NULL,
+  `Type` varchar(25) NOT NULL,
+  `Name` varchar(25) NOT NULL,
+  `Value` varchar(200) NOT NULL,
+  `DateModified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='MonitorAgent settings';
+
+
+CREATE TABLE `Dobby`.`MQTTFunctions` (
+  `id` int(16) NOT NULL AUTO_INCREMENT,
+  `CommandNumber` int(2) NOT NULL,
+  `Function` varchar(25) NOT NULL,
+  `Type` varchar(25) NOT NULL,
+  `Command` varchar(200) NOT NULL,
+  `DelayAfter` decimal(10,4) NOT NULL,
+  `DateModified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `Dobby`.`MQTTTargets` (
+  `id` int(16) NOT NULL AUTO_INCREMENT,
+  `Type` varchar(25) NOT NULL,
+  `Name` varchar(25) NOT NULL,
+  `Value` varchar(200) NOT NULL,
+  `DateModified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='Targets for MQTT Config';
+
+
+CREATE TABLE `Dobby`.`SystemConfig` (
+  `id` int(16) NOT NULL AUTO_INCREMENT,
+  `Target` varchar(25) NOT NULL,
+  `Header` varchar(25) NOT NULL,
+  `Name` varchar(25) NOT NULL,
+  `Value` varchar(200) NOT NULL,
+  `DateModified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='Contains settings';
+
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Log", "db", "DobbyLog");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Log", "Length", "250000");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Log", "Level", "Info");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "MQTT", "Broker", "localhost");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "MQTT", "Password", "NoSinking");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "MQTT", "PublishDelay", "0.5");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "MQTT", "Username", "DasBoot");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "MQTT", "Port", "1883");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "System", "Header", "/Test");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Dir", "Root", "/etc/Dobby");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Dir", "Script", "/home/dobby/Dobby");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Dir", "URL", "https://github.com/MBojer/Dobby/blob/master/.pioenvs/d1_mini/firmware.bin?raw=true");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("KeepAliveMonitor", "Log", "Length", "250");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MonitorAgent", "Log", "Length", "25000");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "MQTTKeepAlive", "Interval", "60");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MonitorAgent", "Log", "Level", "Debug");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("KeepAliveMonitor", "Log", "Level", "Info");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MQTTConfig", "Log", "Level", "Info");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MQTTFunctions", "Log", "Level", "Info");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MQTT", "Log", "Level", "Info");

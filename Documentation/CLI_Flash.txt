@@ -1,0 +1,1 @@
+ espota -i 192.168.1.112 -p 8266 --auth=StillNotSinking -f  .pioenvs/d1_mini/firmware.bin
