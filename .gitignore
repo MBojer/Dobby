@@ -1,6 +1,19 @@
-.pioenvs
+
+.remote-sync.json
+
+
+
+.pioenvs/d1_mini/*
+.pioenvs/.sconsign.dblite
+.pioenvs/do-not-modify-files-here.url
+.pioenvs/structure.hash
+
+!.pioenvs/d1_mini/firmware.bin
+
+
 .piolibdeps
 .clang_complete
 .gcc-flags.json
+.pioenvs
+platformio.ini
 
-.remote-sync.json
