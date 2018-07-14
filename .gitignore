@@ -1,17 +1,11 @@
-Script/.pioenvs/d1_mini/*
+/Script/*
 
-Script/!.pioenvs/d1_mini/firmware.bin
+# Firmware file for auto update
+!/Script/.pioenvs/d1_mini/firmware.bin
 
-Script/.piolibdeps
-Script/.clang_complete
-Script/.gcc-flags.json
-Script/.pioenvs
-Script/platformio.ini
-
-
-
-
-
+!/Script/lib
+!/Script/src
 
 
 .remote-sync.json
+
