@@ -1,11 +1,5 @@
+
 /Script/*
-
-# Firmware file for auto update
+/Script/.pioenvs/*
+/Script/.pioenvs/d1_mini/*
 !/Script/.pioenvs/d1_mini/firmware.bin
-
-!/Script/lib
-!/Script/src
-
-
-.remote-sync.json
-
