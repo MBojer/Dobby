@@ -1,5 +1,10 @@
+/Script/.clang_complete
+/Script/.gcc-flags.json
+/Script/.travis.yml
 
-/Script/*
-/Script/.pioenvs/*
+/Script/.pioenvs/.sconsign.dblite
+/Script/.pioenvs/do-not-modify-files-here.url
+/Script/.pioenvs/structure.hash
+
 /Script/.pioenvs/d1_mini/*
 !/Script/.pioenvs/d1_mini/firmware.bin
