@@ -967,12 +967,12 @@ def MonitorAgent(Agent_ID):
                 x = x + 1
 
         # Sleep a little to prevent cpu drain
-        if (Agent_Info[0][3] - datetime.datetime.now()).seconds < 5:
-            while Agent_Info[0][3] < datetime.datetime.now():
-                time.sleep(0.1337)
-
-        else:
-            time.sleep(5)
+        # if (Agent_Info[0][3] - datetime.datetime.now()).seconds < 5:
+        #     while Agent_Info[0][3] < datetime.datetime.now():
+        #         time.sleep(0.1337)
+        #
+        # else:
+        time.sleep(1)
 
 
 def MonitorAgent_init():
