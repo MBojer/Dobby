@@ -663,6 +663,9 @@ def Auto_Update_File_Check():
             print "MARKER DIFF FOUND"
 
         time.sleep(Auto_Update_File_Check_Delay)
+        print "REMOVE BELOW"
+        print Local_SW_Version
+        print Git_SW_Version
 
 
 # ---------------------------------------- Auto Update ----------------------------------------
