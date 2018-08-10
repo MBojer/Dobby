@@ -24,6 +24,9 @@ from subprocess import call
 # json
 import json
 
+# Auto Update
+import urllib
+
 # System variables
 Version = 0.06
 Start_Time = datetime.datetime.now()
@@ -626,6 +629,40 @@ def MQTT_KeepAlive_Show():
     Close_db(db_KAM_Connection, db_KAM_Curser)
 
     MQTT_Client.publish(System_Header + "/System/Dobby/KeepAliveMonitor", payload=Payload, qos=0, retain=False)
+
+
+# ---------------------------------------- Auto Update ----------------------------------------
+def Auto_Update_File_Check():
+    # FIX - Move variables to DB
+    Auto_Update_File_Check_Delay = 300
+
+    Script_ULR = "https://raw.githubusercontent.com/MBojer/Dobby/master/Script/src/main.cpp"
+    Bin_File_Path = "/etc/Dobby/Script/src/main.cpp"
+
+    Search_Text = "#define Version "
+
+    global Local_SW_Version
+    Local_SW_Version = 0.00
+
+    global Git_SW_Version
+    Git_SW_Version = 0.00
+
+    # Get current software version
+    with open(Bin_File_Path) as f:
+        for line in f:
+            if Search_Text in line:
+                Local_SW_Version = line.rstrip()
+
+    # Check for changes online
+    while True:
+        for line in urllib.urlopen(Script_ULR):
+            if Search_Text in line:
+                Git_SW_Version = line.rstrip()
+
+        if Local_SW_Version != Git_SW_Version:
+            print "MARKER DIFF FOUND"
+
+        time.sleep(Auto_Update_File_Check_Delay)
 
 
 # ---------------------------------------- Auto Update ----------------------------------------
