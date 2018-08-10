@@ -631,9 +631,32 @@ def MQTT_KeepAlive_Show():
 # ---------------------------------------- Auto Update ----------------------------------------
 def Auto_Update(Hostname, Current_SW):
 
+    if Hostname == "Dobby":
+        # FIX - Add system software update
+        return
+
+    # Open the config table and read device config
+    db_AU_Connection = Open_db(Log_db)
+    db_AU_Curser = db_AU_Connection.cursor()
+
+    try:
+        db_AU_Curser.execute("SELECT Auto_Update, MQTT_Allow_Flash_Password FROM Dobby.DeviceConfig where Hostname='" + Hostname + "' and Config_Active=1;")
+        Config_AU_Value = db_AU_Curser.fetchone()
+    except (MySQLdb.Error, MySQLdb.Warning) as e:
+        if e[0] == 1146:
+            pass
+            # Log("Warning", "MQTTConfig", "Missing", Payload[0])
+        else:
+            Log("Error", "MQTTConfig", "db error", str(e[0]))
+            Close_db(db_AU_Connection, db_AU_Curser)
+            return
+
     print "MARKER"
+    print Config_AU_Value
     print Hostname
     print Current_SW
+
+    Close_db(db_AU_Connection, db_AU_Curser)
 
 
 # ---------------------------------------- # On message callbacks - Spawns threads ----------------------------------------
