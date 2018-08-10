@@ -527,7 +527,10 @@ def KeepAlive_Monitor(Topic, Payload):
     Log("Debug", "KeepAliveMonitor", "KeepAlive", "From: " + root_KL["Hostname"])
 
     # Spawn thread for Auto Update Check
-    Auto_Update(root_KL["Hostname"], root_KL["Software"])
+    AU_Thread = threading.Thread(target=Auto_Update, kwargs={"Hostname": root_KL["Hostname"], "Current_SW": root_KL["Software"]})
+    AU_Thread.daemon = True
+    AU_Thread.start()
+    # Auto_Update(root_KL["Hostname"], root_KL["Software"])
 
     # Try writing message to log
     try:
