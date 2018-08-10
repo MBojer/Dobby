@@ -7,7 +7,7 @@ extern "C" {
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 1.31
+#define Version 1.30
 
 String Hostname = "NotConfigured";
 String System_Header = "";
