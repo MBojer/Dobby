@@ -644,10 +644,9 @@ def Auto_Update(Hostname, Current_SW):
         Config_AU_Value = db_AU_Curser.fetchone()
     except (MySQLdb.Error, MySQLdb.Warning) as e:
         if e[0] == 1146:
-            pass
-            # Log("Warning", "MQTTConfig", "Missing", Payload[0])
+            Log("Warning", "AutoUpdate", "Missing Config", Hostname)
         else:
-            Log("Error", "MQTTConfig", "db error", str(e[0]))
+            Log("Error", "AutoUpdate", "db error", str(e[0]))
             Close_db(db_AU_Connection, db_AU_Curser)
             return
 
