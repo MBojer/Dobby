@@ -25,7 +25,7 @@ from subprocess import call
 import json
 
 # System variables
-Version = 0.05
+Version = 0.06
 Start_Time = datetime.datetime.now()
 
 # MQTT Client
@@ -526,6 +526,9 @@ def KeepAlive_Monitor(Topic, Payload):
 
     Log("Debug", "KeepAliveMonitor", "KeepAlive", "From: " + root_KL["Hostname"])
 
+    # Spawn thread for Auto Update Check
+    Auto_Update(root_KL["Hostname"], root_KL["Software"])
+
     # Try writing message to log
     try:
         db_KL_Curser.execute("INSERT INTO `KeepAliveMonitor` (Device, UpFor, FreeMemory, SoftwareVersion) VALUES('" + root_KL["Hostname"] + "', '" + str(root_KL["Uptime"]) + "', '" + str(root_KL["FreeMemory"]) + "', '" + str(root_KL["Software"]) + "');")
@@ -620,6 +623,14 @@ def MQTT_KeepAlive_Show():
     Close_db(db_KAM_Connection, db_KAM_Curser)
 
     MQTT_Client.publish(System_Header + "/System/Dobby/KeepAliveMonitor", payload=Payload, qos=0, retain=False)
+
+
+# ---------------------------------------- Auto Update ----------------------------------------
+def Auto_Update(Hostname, Current_SW):
+
+    print "MARKER"
+    print Hostname
+    print Current_SW
 
 
 # ---------------------------------------- # On message callbacks - Spawns threads ----------------------------------------
