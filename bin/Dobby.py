@@ -634,7 +634,7 @@ def MQTT_KeepAlive_Show():
 # ---------------------------------------- Auto Update ----------------------------------------
 def Auto_Update_File_Check():
     # FIX - Move variables to DB
-    Auto_Update_File_Check_Delay = 300
+    Auto_Update_File_Check_Delay = 10
 
     Script_ULR = "https://raw.githubusercontent.com/MBojer/Dobby/master/Script/src/main.cpp"
     Bin_File_Path = "/etc/Dobby/Script/src/main.cpp"
