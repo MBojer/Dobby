@@ -7,7 +7,7 @@ extern "C" {
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 1.31
+#define Version 1.33
 
 String Hostname = "NotConfigured";
 String System_Header = "";
@@ -1417,6 +1417,7 @@ void MQTT_KeepAlive() {
 
   // encode json string
   root_KL.set("Hostname", Hostname);
+  root_KL.set("IP", IPtoString(WiFi.localIP()));
   root_KL.set("Uptime", millis());
   root_KL.set("FreeMemory", system_get_free_heap_size());
   root_KL.set("Software", Version);

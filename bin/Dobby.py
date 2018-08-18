@@ -5,7 +5,6 @@ import MySQLdb
 
 # MQTT
 import paho.mqtt.client as MQTT
-# from subprocess import call
 
 # Threding
 import threading
@@ -531,10 +530,9 @@ def KeepAlive_Monitor(Topic, Payload):
     Log("Debug", "KeepAliveMonitor", "KeepAlive", "From: " + root_KL["Hostname"])
 
     # Spawn thread for Auto Update Check
-    AU_Thread = threading.Thread(target=Auto_Update, kwargs={"Hostname": root_KL["Hostname"], "Current_SW": root_KL["Software"]})
+    AU_Thread = threading.Thread(target=Auto_Update, kwargs={"Hostname": root_KL["Hostname"], "IP": root_KL["IP"], "Current_SW": root_KL["Software"]})
     AU_Thread.daemon = True
     AU_Thread.start()
-    # Auto_Update(root_KL["Hostname"], root_KL["Software"])
 
     # Try writing message to log
     try:
@@ -632,45 +630,8 @@ def MQTT_KeepAlive_Show():
     MQTT_Client.publish(System_Header + "/System/Dobby/KeepAliveMonitor", payload=Payload, qos=0, retain=False)
 
 
-# # ---------------------------------------- Auto Update ----------------------------------------
-# def Auto_Update_File_Check():
-#     # FIX - Move variables to DB
-#     Auto_Update_File_Check_Delay = 10
-#
-#     Script_ULR = "https://raw.githubusercontent.com/MBojer/Dobby/master/Script/src/main.cpp"
-#     Bin_File_Path = "/etc/Dobby/Script/src/main.cpp"
-#
-#     Search_Text = "#define Version "
-#
-#     global Local_SW_Version
-#     Local_SW_Version = 0.00
-#
-#     global Git_SW_Version
-#     Git_SW_Version = 0.00
-#
-#     # Get current software version
-#     with open(Bin_File_Path) as f:
-#         for line in f:
-#             if Search_Text in line:
-#                 Local_SW_Version = line.rstrip()
-#
-#     # Check for changes online
-#     while True:
-#         for line in urllib.urlopen(Script_ULR):
-#             if Search_Text in line:
-#                 Git_SW_Version = line.rstrip()
-#
-#         if Local_SW_Version != Git_SW_Version:
-#             print "MARKER DIFF FOUND"
-#
-#         time.sleep(Auto_Update_File_Check_Delay)
-#         print "REMOVE BELOW"
-#         print Local_SW_Version
-#         print Git_SW_Version
-
-
 # ---------------------------------------- Auto Update ----------------------------------------
-def Auto_Update(Hostname, Current_SW):
+def Auto_Update(Hostname, IP, Current_SW):
 
     if Hostname == "Dobby":
         # FIX - Add system software update
@@ -693,16 +654,35 @@ def Auto_Update(Hostname, Current_SW):
 
     Close_db(db_AU_Connection, db_AU_Curser)
 
-    print "MARKER"
-    print Config_AU_Value
-    print Hostname
-    print Current_SW
+    if Config_AU_Value is None:
+        Log("Warning", "AutoUpdate", "Missing Config", Hostname)
+        return
+
+    if Config_AU_Value[0] is 0:
+        Log("Debug", "AutoUpdate", "Disabled", Hostname)
+        return
 
     # Check FS for firmware versions
-    print "--------------------------"
-    print os.listdir("/etc/Dobby/Firmware/")
+    Firmware_Dir_List = os.listdir("/etc/Dobby/Firmware/")
 
+    Firmware_List = []
 
+    for Firmware_Name in Firmware_Dir_List:
+        if "B-" in Firmware_Name:
+            # FIX - Add support for beta firmware
+            pass
+        else:
+            Firmware_List.append(float(Firmware_Name.replace(".bin", "")))
+
+    if Current_SW < max(Firmware_List):
+        Log("Info", "AutoUpdate", "Updating", Hostname + "From: " + str(Current_SW) + " To:" + str(max(Firmware_List)))
+        call(["python", "../Tools/espota.py", "-i", "192.168.1.107", "-a", "StillNotSinking", "-f", "../Firmware/" + str(max(Firmware_List)) + ".bin"])
+
+    elif Current_SW == max(Firmware_List):
+        Log("Debug", "AutoUpdate", "OK", Hostname + "Up to date")
+
+    else:
+        Log("Debug", "AutoUpdate", "Newer", Hostname + " Running: " + str(Current_SW) + " Newest is:" + str(max(Firmware_List)))
 
 
 # ---------------------------------------- # On message callbacks - Spawns threads ----------------------------------------
