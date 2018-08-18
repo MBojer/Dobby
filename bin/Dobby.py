@@ -26,6 +26,7 @@ import json
 
 # Auto Update
 # import urllib
+import os
 
 # System variables
 Version = 0.06
@@ -529,11 +530,11 @@ def KeepAlive_Monitor(Topic, Payload):
 
     Log("Debug", "KeepAliveMonitor", "KeepAlive", "From: " + root_KL["Hostname"])
 
-    # # Spawn thread for Auto Update Check
-    # AU_Thread = threading.Thread(target=Auto_Update, kwargs={"Hostname": root_KL["Hostname"], "Current_SW": root_KL["Software"]})
-    # AU_Thread.daemon = True
-    # AU_Thread.start()
-    # # Auto_Update(root_KL["Hostname"], root_KL["Software"])
+    # Spawn thread for Auto Update Check
+    AU_Thread = threading.Thread(target=Auto_Update, kwargs={"Hostname": root_KL["Hostname"], "Current_SW": root_KL["Software"]})
+    AU_Thread.daemon = True
+    AU_Thread.start()
+    # Auto_Update(root_KL["Hostname"], root_KL["Software"])
 
     # Try writing message to log
     try:
@@ -666,36 +667,42 @@ def MQTT_KeepAlive_Show():
 #         print "REMOVE BELOW"
 #         print Local_SW_Version
 #         print Git_SW_Version
-#
-#
-# # ---------------------------------------- Auto Update ----------------------------------------
-# def Auto_Update(Hostname, Current_SW):
-#
-#     if Hostname == "Dobby":
-#         # FIX - Add system software update
-#         return
-#
-#     # Open the config table and read device config
-#     db_AU_Connection = Open_db(Log_db)
-#     db_AU_Curser = db_AU_Connection.cursor()
-#
-#     try:
-#         db_AU_Curser.execute("SELECT Auto_Update, MQTT_Allow_Flash_Password FROM Dobby.DeviceConfig where Hostname='" + Hostname + "' and Config_Active=1;")
-#         Config_AU_Value = db_AU_Curser.fetchone()
-#     except (MySQLdb.Error, MySQLdb.Warning) as e:
-#         if e[0] == 1146:
-#             Log("Warning", "AutoUpdate", "Missing Config", Hostname)
-#         else:
-#             Log("Error", "AutoUpdate", "db error", str(e[0]))
-#             Close_db(db_AU_Connection, db_AU_Curser)
-#             return
-#
-#     print "MARKER"
-#     print Config_AU_Value
-#     print Hostname
-#     print Current_SW
-#
-#     Close_db(db_AU_Connection, db_AU_Curser)
+
+
+# ---------------------------------------- Auto Update ----------------------------------------
+def Auto_Update(Hostname, Current_SW):
+
+    if Hostname == "Dobby":
+        # FIX - Add system software update
+        return
+
+    # Open the config table and read device config
+    db_AU_Connection = Open_db(Log_db)
+    db_AU_Curser = db_AU_Connection.cursor()
+
+    try:
+        db_AU_Curser.execute("SELECT Auto_Update, MQTT_Allow_Flash_Password FROM Dobby.DeviceConfig where Hostname='" + Hostname + "' and Config_Active=1;")
+        Config_AU_Value = db_AU_Curser.fetchone()
+    except (MySQLdb.Error, MySQLdb.Warning) as e:
+        if e[0] == 1146:
+            Log("Warning", "AutoUpdate", "Missing Config", Hostname)
+        else:
+            Log("Error", "AutoUpdate", "db error", str(e[0]))
+            Close_db(db_AU_Connection, db_AU_Curser)
+            return
+
+    Close_db(db_AU_Connection, db_AU_Curser)
+
+    print "MARKER"
+    print Config_AU_Value
+    print Hostname
+    print Current_SW
+
+    # Check FS for firmware versions
+    print "--------------------------"
+    print os.listdir("/etc/Dobby/Firmware/")
+
+
 
 
 # ---------------------------------------- # On message callbacks - Spawns threads ----------------------------------------

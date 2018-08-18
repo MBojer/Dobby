@@ -68,17 +68,6 @@ CREATE TABLE `Dobby`.`MonitorAgentConfig` (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
 
 
-CREATE TABLE `Dobby`.`MonitorAgentConfig` (
-  `id` int(16) NOT NULL AUTO_INCREMENT,
-  `Agent` varchar(25) NOT NULL,
-  `Type` varchar(25) NOT NULL,
-  `Name` varchar(25) NOT NULL,
-  `Value` varchar(200) NOT NULL,
-  `DateModified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='MonitorAgent settings';
-
-
 CREATE TABLE `Dobby`.`MQTTFunctions` (
   `id` int(16) NOT NULL AUTO_INCREMENT,
   `CommandNumber` int(2) NOT NULL,
@@ -89,15 +78,6 @@ CREATE TABLE `Dobby`.`MQTTFunctions` (
   `DateModified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE `Dobby`.`MQTTTargets` (
-  `id` int(16) NOT NULL AUTO_INCREMENT,
-  `Type` varchar(25) NOT NULL,
-  `Name` varchar(25) NOT NULL,
-  `Value` varchar(200) NOT NULL,
-  `DateModified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='Targets for MQTT Config';
 
 
 CREATE TABLE `Dobby`.`SystemConfig` (

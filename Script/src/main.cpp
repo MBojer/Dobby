@@ -91,6 +91,7 @@ unsigned long MQTT_KeepAlive_Interval = 60000;
 #define Topic_Dobby 11
 #define Topic_System 12
 #define Topic_Config 13
+#define Topic_LoadCell 14
 
 #define Topic_Settings_Text "/Settings/"
 #define Topic_Config_Text "/Config/"
@@ -106,8 +107,9 @@ unsigned long MQTT_KeepAlive_Interval = 60000;
 #define Topic_Button_Text "/Button/"
 #define Topic_Dobby_Text "/Commands/Dobby/"
 #define Topic_System_Text "/System/"
+#define Topic_LoadCell_Text "/LoadCell/"
 
-const byte MQTT_Topic_Number_Of = 14;
+const byte MQTT_Topic_Number_Of = 15;
 String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + Topic_Settings_Text + Hostname,
   System_Header + Topic_Config_Text + Hostname,
@@ -122,7 +124,8 @@ String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + System_Sub_Header + Topic_Error_Text + Hostname,
   System_Header + System_Sub_Header + Topic_Button_Text + Hostname,
   System_Header + Topic_Dobby_Text,
-  System_Header + Topic_System_Text + Hostname
+  System_Header + Topic_System_Text + Hostname,
+  System_Header + Topic_LoadCell_Text + Hostname
 };
 
 bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
@@ -139,7 +142,8 @@ bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
   false,
   false,
   false,
-  true
+  true,
+  false
 };
 byte MQTT_Topic_Subscribe_Subtopic[MQTT_Topic_Number_Of] = {
   HASH,
@@ -155,10 +159,12 @@ byte MQTT_Topic_Subscribe_Subtopic[MQTT_Topic_Number_Of] = {
   NONE,
   NONE,
   NONE,
-  NONE
+  NONE,
+  PLUS
 };
 
 bool MQTT_Subscribtion_Active[MQTT_Topic_Number_Of] = {
+  false,
   false,
   false,
   false,
@@ -337,6 +343,15 @@ bool CLI_Command_Complate = false;
 #define Serial_CLI_Boot_Message_Timeout 5
 
 
+// ------------------------------------------------------------ Load Cell ------------------------------------------------------------
+#include "HX711.h"
+
+HX711 Load_Cell;
+byte LoadCell_Pins_DT = 255;
+byte LoadCell_Pins_SCK = 255;
+float LoadCell_Calibration;
+
+
 // ############################################################ String_To_IP() ############################################################
 IPAddress String_To_IP(String IP_String) {
 
@@ -392,6 +407,7 @@ void Rebuild_MQTT_Topics() {
   MQTT_Topic[Topic_Button] = System_Header + System_Sub_Header + Topic_Button_Text + Hostname;
   MQTT_Topic[Topic_Dobby] = System_Header + Topic_Dobby_Text;
   MQTT_Topic[Topic_System] = System_Header + Topic_System_Text + Hostname;
+  MQTT_Topic[Topic_LoadCell] = System_Header + Topic_LoadCell_Text + Hostname;
 }
 
 
@@ -876,6 +892,32 @@ bool Dimmer(String Topic, String Payload) {
   }
   return false;
 } // Dimmer()
+
+
+// ############################################################ LoadCell() ############################################################
+bool LoadCell(String Topic, String Payload) {
+
+  if (Topic.indexOf(MQTT_Topic[Topic_LoadCell]) != -1) {
+    if (Payload.indexOf("?") != -1) {
+      Log(MQTT_Topic[Topic_LoadCell] + "/State", String(Load_Cell.get_units(1)));
+    }
+
+    else if (Payload.indexOf("Tare") != -1) {
+      Log(MQTT_Topic[Topic_System] + "/LoadCell", "Tare Started");
+      Load_Cell.tare(25);
+      Log(MQTT_Topic[Topic_System] + "/LoadCell", "Tare Compleate");
+    }
+
+    else if (Payload.indexOf("Calibration") != -1) {
+      Payload = Payload.substring(Payload.indexOf("Calibration "));
+      Log(MQTT_Topic[Topic_System] + "/LoadCell", "Calibration set to: " + Payload);
+      Load_Cell.set_scale(Payload.toFloat());
+    }
+    return true;
+  }
+
+  return false;
+}
 
 
 
@@ -2161,6 +2203,60 @@ bool FS_Config_Load() {
     }
   }
 
+
+  if (root.get<String>("Dimmer_Pins") != "") {
+    MQTT_Subscribe(MQTT_Topic[Topic_Dimmer], true, PLUS);
+    MQTT_Settings_Set(Dimmer_Pins, Dimmer_Max_Number_Of, root.get<String>("Dimmer_Pins"), MQTT_Topic[Topic_System] + "/Dimmer", "Dimmer Pins");
+    // Set pinMode
+    for (byte i = 0; i < Dimmer_Max_Number_Of; i++) {
+      if (Dimmer_Pins[i] != 255) {
+        if (Pin_Monitor(Dimmer_Pins[i]) == true) {
+          pinMode(Dimmer_Pins[i], OUTPUT);
+          analogWrite(Dimmer_Pins[i], 0);
+          Dimmer_State[i] = 0;
+          Dimmer_Configured = true;
+        }
+      }
+    }
+  }
+
+
+  // ############### Load_Cell ###############
+  if (root.get<String>("LoadCell_Pins_DT") != "") {
+    LoadCell_Pins_DT = Pin_To_Number(root.get<String>("LoadCell_Pins_DT"));
+  }
+
+  if (root.get<String>("LoadCell_Pins_SCK") != "") {
+    LoadCell_Pins_SCK = Pin_To_Number(root.get<String>("LoadCell_Pins_SCK"));
+  }
+
+  if (root.get<String>("LoadCell_Calibration") != "") {
+    LoadCell_Calibration = root.get<float>("LoadCell_Calibration");
+    Load_Cell.set_scale(LoadCell_Calibration);                      // this value is obtained by calibrating the scale with known weights; see the README for details
+  }
+
+  // Setup the LoadCell if both pins is configured
+  if (LoadCell_Pins_DT != 255 && LoadCell_Pins_SCK != 255) {
+    MQTT_Subscribe(MQTT_Topic[Topic_LoadCell], true, NONE);
+    Load_Cell.begin(LoadCell_Pins_DT, LoadCell_Pins_SCK);
+    Load_Cell.tare();				        // reset the scale to 0
+  }
+
+  //
+  //   // Set pinMode
+  //   for (byte i = 0; i < Dimmer_Max_Number_Of; i++) {
+  //     if (Dimmer_Pins[i] != 255) {
+  //       if (Pin_Monitor(Dimmer_Pins[i]) == true) {
+  //         pinMode(Dimmer_Pins[i], OUTPUT);
+  //         analogWrite(Dimmer_Pins[i], 0);
+  //         Dimmer_State[i] = 0;
+  //         Dimmer_Configured = true;
+  //       }
+  //     }
+  //   }
+  // }
+  // scale.begin(D1, D0);
+
   // else if (Setting == "Button_Pins") {
   //   MQTT_Settings_Set(Button_Pins, Button_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Button", "Button Pins");
   //
@@ -2193,9 +2289,18 @@ bool FS_Config_Load() {
   // Log value change
   // Log(MQTT_Topic[Topic_System] + "/Dobby", "'" + Setting + "' changed from: " + Old_Value + " to: " + Value);
 
+  if (root.get<String>("Distance_Auto_OFF_Active") != "") {
+    MQTT_Settings_Set(Distance_Auto_OFF_Active, Distance_Max_Number_Of, root.get<String>("Distance_Auto_OFF_Active"), MQTT_Topic[Topic_System] + "/Distance", "Distance Auto OFF Active");
+  }
+
+  if (root.get<String>("Distance_Auto_OFF_Active") != "") {
+    MQTT_Settings_Set(Distance_Auto_OFF_Active, Distance_Max_Number_Of, root.get<String>("Distance_Auto_OFF_Active"), MQTT_Topic[Topic_System] + "/Distance", "Distance Auto OFF Active");
+  }
+
   return true;
 
 }
+
 
 // #################################### FS_Config_Show() ####################################
 void FS_Config_Show() {
@@ -2248,6 +2353,7 @@ void FS_Config_Drop() {
   root.set("MQTT_Username", MQTT_Username);
   root.set("MQTT_Password", MQTT_Password);
   root.set("MQTT_Allow_Flash_Password", MQTT_Allow_Flash_Password);
+  root.set("Config_ID", Config_ID);
 
   File configFile = SPIFFS.open(FS_Confing_File_Name, "w");
   if (!configFile) {
@@ -2512,6 +2618,8 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
   else if (Distance(topic, payload)) return;
 
   else if (Dimmer(topic, payload)) return;
+
+  else if (LoadCell(topic, payload)) return;
 
   else if (FS_Config_Set(topic, payload)) return;
 
