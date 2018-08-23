@@ -8,3 +8,5 @@
 
 /Script/.pioenvs/d1_mini/*
 !/Script/.pioenvs/d1_mini/firmware.bin
+
+.remote-sync.json

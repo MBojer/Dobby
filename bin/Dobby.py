@@ -28,7 +28,7 @@ import json
 import os
 
 # System variables
-Version = 0.06
+Version = 0.07
 Start_Time = datetime.datetime.now()
 
 # MQTT Client
@@ -637,6 +637,8 @@ def Auto_Update(Hostname, IP, Current_SW):
         # FIX - Add system software update
         return
 
+    # FIX CHECK IP AND RETURN IF NOT VALID
+
     # Open the config table and read device config
     db_AU_Connection = Open_db(Log_db)
     db_AU_Curser = db_AU_Connection.cursor()
@@ -676,7 +678,9 @@ def Auto_Update(Hostname, IP, Current_SW):
 
     if Current_SW < max(Firmware_List):
         Log("Info", "AutoUpdate", "Updating", Hostname + "From: " + str(Current_SW) + " To:" + str(max(Firmware_List)))
-        call(["python", "../Tools/espota.py", "-i", "192.168.1.107", "-a", "StillNotSinking", "-f", "../Firmware/" + str(max(Firmware_List)) + ".bin"])
+
+        # FIX ADD FOLDER ROOT PATH BELOW
+        call(["python", "/etc/Dobby/Tools/espota.py", "-i", IP, "-a", "StillNotSinking", "-f", "/etc/Dobby/Firmware/" + str(max(Firmware_List)) + ".bin"])
 
     elif Current_SW == max(Firmware_List):
         Log("Debug", "AutoUpdate", "OK", Hostname + "Up to date")
