@@ -46,6 +46,12 @@ CREATE TABLE `Dobby`.`DeviceConfig` (
   `Dimmer_Pins` varchar(25) DEFAULT NULL,
   `Button_Pins` varchar(25) DEFAULT NULL,
   `Button_Target` varchar(250) DEFAULT NULL,
+  `Scale_Pins_DT` varchar(25) DEFAULT NULL,
+  `Scale_Pins_SCK` varchar(25) DEFAULT NULL,
+  `Scale_Calibration` double(5,2) DEFAULT NULL,
+  `Ammeter_Pins` varchar(25) DEFAULT NULL,
+  `Voltmeter_DC_Pins` varchar(25) DEFAULT NULL,
+  `Voltmeter_AC_Pins` varchar(25) DEFAULT NULL,
   `Date_Modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
@@ -105,7 +111,7 @@ INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby",
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("KeepAliveMonitor", "Log", "Length", "250");
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MonitorAgent", "Log", "Length", "25000");
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "MQTTKeepAlive", "Interval", "60");
-INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MonitorAgent", "Log", "Level", "Debug");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MonitorAgent", "Log", "Level", "Info");
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("KeepAliveMonitor", "Log", "Level", "Info");
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MQTTConfig", "Log", "Level", "Info");
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MQTTFunctions", "Log", "Level", "Info");

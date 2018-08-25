@@ -1,13 +1,19 @@
 
 // Releaed under The GNU General Public License v3.0
 
+// Change log:
+//
+// -------------------- 1.35 --------------------
+// Added RSSI to keepalive and WiFi Signal to show signal strength
+
+
 #include <Arduino.h>
 extern "C" {
   #include "user_interface.h"
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 1.34
+#define Version 1.35
 
 String Hostname = "NotConfigured";
 String System_Header = "";
@@ -473,6 +479,15 @@ void IP_Show() {
 
   Log(MQTT_Topic[Topic_System] + "/IP", IP_String);
 } // IP_Show()
+
+
+// ############################################################ WiFi_Signal() ############################################################
+// Post the devices WiFi Signal Strength
+void WiFi_Signal() {
+
+  Log(MQTT_Topic[Topic_System] + "/WiFi", "Signal Strength: " + String(WiFi.RSSI()));
+
+} // WiFi_Signal()
 
 
 // ############################################################ Setting_String() ############################################################
@@ -1128,7 +1143,6 @@ void Relay_Auto_OFF_Check(byte Selected_Relay) {
 bool Relay(String Topic, String Payload) {
 
   if (Relay_Configured == false) {
-    Serial.println("MARKER222");
     return false;
   }
 
@@ -1421,6 +1435,7 @@ void MQTT_KeepAlive() {
   root_KL.set("Uptime", millis());
   root_KL.set("FreeMemory", system_get_free_heap_size());
   root_KL.set("Software", Version);
+  root_KL.set("RSSI", WiFi.RSSI());
 
   String KeepAlive_String;
 
@@ -2375,7 +2390,6 @@ void FS_Config_Drop() {
 bool FS_Config_Set(String Topic, String Payload) {
 
   if (Topic != MQTT_Topic[Topic_Config]) {
-    Serial.println("RETURN MARKER");
     return false;
   }
 
@@ -2523,18 +2537,23 @@ bool MQTT_Commands(String Topic, String Payload) {
     return true;
   }
 
+
+  else if (Topic == "WiFi") {
+    if (Payload == "Signal") WiFi_Signal();
+    return true;
+  }
+
+
   else if (Topic == "Test") {
 
     Serial.println("MARKER TEST");
-    Log("/ts", "MARKER");
+    Log("/test", "MARKER");
 
     String publish_String;
 
-    for (byte i = 0; i < Relay_Max_Number_Of; i++) {
+    long rssi = WiFi.RSSI();
+    publish_String = "RSSI: " + String(rssi);
 
-      publish_String = publish_String + " - " + String(Relay_Pins[i]);
-
-    }
 
     Log("/ts", publish_String);
 
@@ -2604,12 +2623,6 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
 
   if (ArduinoOTA_Active == true) return;
 
-  else if (MQTT_Settings(topic, payload)) return;
-
-  else if (MQTT_Commands(topic, payload)) return;
-
-  else if (MQTT_All(topic, payload)) return;
-
   else if (Buzzer(topic, payload)) return;
 
   else if (DHT(topic, payload)) return;
@@ -2623,6 +2636,12 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
   else if (LoadCell(topic, payload)) return;
 
   else if (FS_Config_Set(topic, payload)) return;
+
+  else if (MQTT_Settings(topic, payload)) return;
+
+  else if (MQTT_Commands(topic, payload)) return;
+
+  else if (MQTT_All(topic, payload)) return;
 
 } // MQTT_Settings
 
