@@ -529,20 +529,26 @@ def KeepAlive_Monitor(Topic, Payload):
 
     Log("Debug", "KeepAliveMonitor", "KeepAlive", "From: " + root_KL["Hostname"])
 
-    # Spawn thread for Auto Update Check
-    AU_Thread = threading.Thread(target=Auto_Update, kwargs={"Hostname": root_KL["Hostname"], "IP": root_KL["IP"], "Current_SW": root_KL["Software"]})
-    AU_Thread.daemon = True
-    AU_Thread.start()
+    if root_KL["Hostname"] != "Dobby":
+        # Spawn thread for Auto Update Check
+        AU_Thread = threading.Thread(target=Auto_Update, kwargs={"Hostname": root_KL["Hostname"], "IP": root_KL["IP"], "Current_SW": root_KL["Software"]})
+        AU_Thread.daemon = True
+        AU_Thread.start()
+
+    # It is Dobby, so set ip and 0 RSSI
+    else:
+        root_KL["IP"] = "127.0.0.1"
+        root_KL["RSSI"] = "0"
 
     # Try writing message to log
     try:
-        db_KL_Curser.execute("INSERT INTO `KeepAliveMonitor` (Device, UpFor, FreeMemory, SoftwareVersion) VALUES('" + root_KL["Hostname"] + "', '" + str(root_KL["Uptime"]) + "', '" + str(root_KL["FreeMemory"]) + "', '" + str(root_KL["Software"]) + "');")
+        db_KL_Curser.execute("INSERT INTO `KeepAliveMonitor` (Device, UpFor, FreeMemory, SoftwareVersion, IP, RSSI) VALUES('" + root_KL["Hostname"] + "', '" + str(root_KL["Uptime"]) + "', '" + str(root_KL["FreeMemory"]) + "', '" + str(root_KL["Software"]) + "', '" + str(root_KL["IP"]) + "', '" + str(root_KL["RSSI"]) + "');")
     except (MySQLdb.Error, MySQLdb.Warning) as e:
         # Table missing, create it
         if e[0] == 1146:
             Log("Debug", "KeepAliveMonitor", "db", "Log table missing, creating it")
             try:
-                db_KL_Curser.execute("CREATE TABLE `KeepAliveMonitor` (`id` INTEGER PRIMARY KEY AUTO_INCREMENT NOT NULL, `Device` VARCHAR(25) NOT NULL, `LastKeepAlive` timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL, `UpFor` int(11) unsigned NOT NULL, `FreeMemory` DECIMAL(13,0) NOT NULL, `SoftwareVersion` FLOAT(4,2) NOT NULL)")
+                db_KL_Curser.execute("CREATE TABLE `KeepAliveMonitor` (`id` INTEGER PRIMARY KEY AUTO_INCREMENT NOT NULL, `Device` VARCHAR(25) NOT NULL, `LastKeepAlive` timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL, `UpFor` int(11) unsigned NOT NULL, `FreeMemory` DECIMAL(13,0) NOT NULL, `SoftwareVersion` FLOAT(4,2) NOT NULL, `IP` VARCHAR(16) NOT NULL, `RSSI` INT(5) NOT NULL);")
             except (MySQLdb.Error, MySQLdb.Warning) as e:
                 # Error 1050 = Table already exists
                 if e[0] != 1050:
@@ -552,7 +558,7 @@ def KeepAlive_Monitor(Topic, Payload):
                     return
 
         # Try to write log again
-        db_KL_Curser.execute("INSERT INTO `KeepAliveMonitor` (Device, UpFor, FreeMemory, SoftwareVersion) VALUES('" + root_KL["Hostname"] + "', '" + str(root_KL["Uptime"]) + "', '" + str(root_KL["FreeMemory"]) + "', '" + str(root_KL["Software"]) + "');")
+        db_KL_Curser.execute("INSERT INTO `KeepAliveMonitor` (Device, UpFor, FreeMemory, SoftwareVersion, IP, RSSI) VALUES('" + root_KL["Hostname"] + "', '" + str(root_KL["Uptime"]) + "', '" + str(root_KL["FreeMemory"]) + "', '" + str(root_KL["Software"]) + "', '" + str(root_KL["IP"]) + "', '" + str(root_KL["RSSI"]) + "');")
 
     # Check log length
     db_KL_Curser.execute("SELECT COUNT(*) FROM `" + Log_db + "`.`KeepAliveMonitor` WHERE Device='" + root_KL["Hostname"] + "';")

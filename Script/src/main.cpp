@@ -3,6 +3,12 @@
 
 // Change log:
 //
+// -------------------- 1.37 --------------------
+// Added IP to KeepAlive
+//
+// -------------------- 1.36 --------------------
+// Added DC Voltmeter
+//
 // -------------------- 1.35 --------------------
 // Added RSSI to keepalive and WiFi Signal to show signal strength
 
@@ -13,7 +19,7 @@ extern "C" {
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 1.35
+#define Version 1.37
 
 String Hostname = "NotConfigured";
 String System_Header = "";
@@ -98,6 +104,8 @@ unsigned long MQTT_KeepAlive_Interval = 60000;
 #define Topic_System 12
 #define Topic_Config 13
 #define Topic_LoadCell 14
+#define Topic_DC_Voltmeter 15
+#define Topic_Ammeter 16
 
 #define Topic_Settings_Text "/Settings/"
 #define Topic_Config_Text "/Config/"
@@ -114,8 +122,10 @@ unsigned long MQTT_KeepAlive_Interval = 60000;
 #define Topic_Dobby_Text "/Commands/Dobby/"
 #define Topic_System_Text "/System/"
 #define Topic_LoadCell_Text "/LoadCell/"
+#define Topic_DC_Voltmeter_Text "/DC_Voltmeter/"
+#define Topic_Ammeter_Text "/Ammeter/"
 
-const byte MQTT_Topic_Number_Of = 15;
+const byte MQTT_Topic_Number_Of = 17;
 String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + Topic_Settings_Text + Hostname,
   System_Header + Topic_Config_Text + Hostname,
@@ -131,7 +141,9 @@ String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + System_Sub_Header + Topic_Button_Text + Hostname,
   System_Header + Topic_Dobby_Text,
   System_Header + Topic_System_Text + Hostname,
-  System_Header + Topic_LoadCell_Text + Hostname
+  System_Header + Topic_LoadCell_Text + Hostname,
+  System_Header + Topic_DC_Voltmeter_Text + Hostname,
+  System_Header + Topic_Ammeter_Text + Hostname
 };
 
 bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
@@ -149,6 +161,8 @@ bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
   false,
   false,
   true,
+  false,
+  false,
   false
 };
 byte MQTT_Topic_Subscribe_Subtopic[MQTT_Topic_Number_Of] = {
@@ -166,10 +180,14 @@ byte MQTT_Topic_Subscribe_Subtopic[MQTT_Topic_Number_Of] = {
   NONE,
   NONE,
   NONE,
-  PLUS
+  PLUS,
+  NONE,
+  NONE
 };
 
 bool MQTT_Subscribtion_Active[MQTT_Topic_Number_Of] = {
+  false,
+  false,
   false,
   false,
   false,
@@ -358,6 +376,14 @@ byte LoadCell_Pins_SCK = 255;
 float LoadCell_Calibration;
 
 
+// ------------------------------------------------------------ DC Voltmeter ------------------------------------------------------------
+byte DC_Voltmeter_Pins = 255;
+float DC_Voltmeter_R1 = 0.0; // 30000.0
+float DC_Voltmeter_R2 = 0.0; // 7500.0
+float DC_Voltmeter_Curcit_Voltage = 0.0; // 3.3
+float DC_Voltmeter_Offset = 0.0;
+
+
 // ############################################################ String_To_IP() ############################################################
 IPAddress String_To_IP(String IP_String) {
 
@@ -414,6 +440,8 @@ void Rebuild_MQTT_Topics() {
   MQTT_Topic[Topic_Dobby] = System_Header + Topic_Dobby_Text;
   MQTT_Topic[Topic_System] = System_Header + Topic_System_Text + Hostname;
   MQTT_Topic[Topic_LoadCell] = System_Header + Topic_LoadCell_Text + Hostname;
+  MQTT_Topic[Topic_DC_Voltmeter] = System_Header + Topic_DC_Voltmeter_Text + Hostname;
+  MQTT_Topic[Topic_Ammeter] = System_Header + Topic_Ammeter_Text + Hostname;
 }
 
 
@@ -619,8 +647,6 @@ bool Button_Loop() {
 // ############################################################ Pin_Monitor_String() ############################################################
 // Will return false if pin is in use or invalid
 String Number_To_Pin(byte Pin_Number) {
-
-  Serial.println("Pin_Number: " + String(Pin_Number));
 
   if (Pin_Number == 16) return "D0";
   else if (Pin_Number == 5) return "D1";
@@ -934,6 +960,24 @@ bool LoadCell(String Topic, String Payload) {
   return false;
 }
 
+
+// ############################################################ DC_Voltmeter() ############################################################
+bool DC_Voltmeter(String Topic, String Payload) {
+
+  if (Payload.indexOf("?") != -1) {
+
+    // read the value at analog input
+    int value = analogRead(DC_Voltmeter_Pins);
+    float vout = (value * DC_Voltmeter_Curcit_Voltage) / 1023.0;
+    float vin = vout / (DC_Voltmeter_R2 / (DC_Voltmeter_R1 + DC_Voltmeter_R2));
+    vin = vin + DC_Voltmeter_Offset;
+
+    Log(MQTT_Topic[Topic_DC_Voltmeter] + "/State", String(vin));
+    return true;
+  }
+
+  return false;
+}
 
 
 // ############################################################ Echo() ############################################################
@@ -1435,6 +1479,7 @@ void MQTT_KeepAlive() {
   root_KL.set("Uptime", millis());
   root_KL.set("FreeMemory", system_get_free_heap_size());
   root_KL.set("Software", Version);
+  root_KL.set("IP", IPtoString(WiFi.localIP()));
   root_KL.set("RSSI", WiFi.RSSI());
 
   String KeepAlive_String;
@@ -2219,24 +2264,6 @@ bool FS_Config_Load() {
     }
   }
 
-
-  if (root.get<String>("Dimmer_Pins") != "") {
-    MQTT_Subscribe(MQTT_Topic[Topic_Dimmer], true, PLUS);
-    MQTT_Settings_Set(Dimmer_Pins, Dimmer_Max_Number_Of, root.get<String>("Dimmer_Pins"), MQTT_Topic[Topic_System] + "/Dimmer", "Dimmer Pins");
-    // Set pinMode
-    for (byte i = 0; i < Dimmer_Max_Number_Of; i++) {
-      if (Dimmer_Pins[i] != 255) {
-        if (Pin_Monitor(Dimmer_Pins[i]) == true) {
-          pinMode(Dimmer_Pins[i], OUTPUT);
-          analogWrite(Dimmer_Pins[i], 0);
-          Dimmer_State[i] = 0;
-          Dimmer_Configured = true;
-        }
-      }
-    }
-  }
-
-
   // ############### Load_Cell ###############
   if (root.get<String>("LoadCell_Pins_DT") != "") {
     LoadCell_Pins_DT = Pin_To_Number(root.get<String>("LoadCell_Pins_DT"));
@@ -2258,20 +2285,32 @@ bool FS_Config_Load() {
     Load_Cell.tare();				        // reset the scale to 0
   }
 
-  //
-  //   // Set pinMode
-  //   for (byte i = 0; i < Dimmer_Max_Number_Of; i++) {
-  //     if (Dimmer_Pins[i] != 255) {
-  //       if (Pin_Monitor(Dimmer_Pins[i]) == true) {
-  //         pinMode(Dimmer_Pins[i], OUTPUT);
-  //         analogWrite(Dimmer_Pins[i], 0);
-  //         Dimmer_State[i] = 0;
-  //         Dimmer_Configured = true;
-  //       }
-  //     }
-  //   }
-  // }
-  // scale.begin(D1, D0);
+  // ############### DC_Voltmeter ###############
+  if (root.get<String>("DC_Voltmeter_Pins") != "") {
+    DC_Voltmeter_Pins = Pin_To_Number(root.get<String>("DC_Voltmeter_Pins"));
+
+    // Check to see if pin is free
+    if (Pin_Monitor(DC_Voltmeter_Pins) == true) {
+      pinMode(DC_Voltmeter_Pins, INPUT);
+      MQTT_Subscribe(MQTT_Topic[Topic_DC_Voltmeter], true, NONE);
+    }
+  }
+
+  if (root.get<String>("DC_Voltmeter_R1") != "") {
+    DC_Voltmeter_R1 = root.get<float>("DC_Voltmeter_R1");
+  }
+
+  if (root.get<String>("DC_Voltmeter_R2") != "") {
+    DC_Voltmeter_R2 = root.get<float>("DC_Voltmeter_R2");
+  }
+
+  if (root.get<String>("DC_Voltmeter_Curcit_Voltage") != "") {
+    DC_Voltmeter_Curcit_Voltage = root.get<float>("DC_Voltmeter_Curcit_Voltage");
+  }
+
+  if (root.get<String>("DC_Voltmeter_Offset") != "") {
+    DC_Voltmeter_Offset = root.get<float>("DC_Voltmeter_Offset");
+  }
 
   // else if (Setting == "Button_Pins") {
   //   MQTT_Settings_Set(Button_Pins, Button_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Button", "Button Pins");
@@ -2304,14 +2343,6 @@ bool FS_Config_Load() {
 
   // Log value change
   // Log(MQTT_Topic[Topic_System] + "/Dobby", "'" + Setting + "' changed from: " + Old_Value + " to: " + Value);
-
-  if (root.get<String>("Distance_Auto_OFF_Active") != "") {
-    MQTT_Settings_Set(Distance_Auto_OFF_Active, Distance_Max_Number_Of, root.get<String>("Distance_Auto_OFF_Active"), MQTT_Topic[Topic_System] + "/Distance", "Distance Auto OFF Active");
-  }
-
-  if (root.get<String>("Distance_Auto_OFF_Active") != "") {
-    MQTT_Settings_Set(Distance_Auto_OFF_Active, Distance_Max_Number_Of, root.get<String>("Distance_Auto_OFF_Active"), MQTT_Topic[Topic_System] + "/Distance", "Distance Auto OFF Active");
-  }
 
   return true;
 
@@ -2551,8 +2582,7 @@ bool MQTT_Commands(String Topic, String Payload) {
 
     String publish_String;
 
-    long rssi = WiFi.RSSI();
-    publish_String = "RSSI: " + String(rssi);
+    publish_String = String(DC_Voltmeter_Pins);
 
 
     Log("/ts", publish_String);
@@ -2634,6 +2664,8 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
   else if (Dimmer(topic, payload)) return;
 
   else if (LoadCell(topic, payload)) return;
+
+  else if (DC_Voltmeter(topic, payload)) return;
 
   else if (FS_Config_Set(topic, payload)) return;
 
