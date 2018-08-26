@@ -3,6 +3,11 @@
 
 // Change log:
 //
+// -------------------- 1.38 --------------------
+// Added Button support
+// Added Switch support
+// Removed Device_Config() - Moved to json so its no longer needed
+//
 // -------------------- 1.37 --------------------
 // Added IP to KeepAlive
 //
@@ -19,7 +24,7 @@ extern "C" {
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 1.37
+#define Version 1.38
 
 String Hostname = "NotConfigured";
 String System_Header = "";
@@ -106,6 +111,7 @@ unsigned long MQTT_KeepAlive_Interval = 60000;
 #define Topic_LoadCell 14
 #define Topic_DC_Voltmeter 15
 #define Topic_Ammeter 16
+#define Topic_Switch 17
 
 #define Topic_Settings_Text "/Settings/"
 #define Topic_Config_Text "/Config/"
@@ -124,8 +130,9 @@ unsigned long MQTT_KeepAlive_Interval = 60000;
 #define Topic_LoadCell_Text "/LoadCell/"
 #define Topic_DC_Voltmeter_Text "/DC_Voltmeter/"
 #define Topic_Ammeter_Text "/Ammeter/"
+#define Topic_Switch_Text "/Switch/"
 
-const byte MQTT_Topic_Number_Of = 17;
+const byte MQTT_Topic_Number_Of = 18;
 String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + Topic_Settings_Text + Hostname,
   System_Header + Topic_Config_Text + Hostname,
@@ -143,7 +150,8 @@ String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + Topic_System_Text + Hostname,
   System_Header + Topic_LoadCell_Text + Hostname,
   System_Header + Topic_DC_Voltmeter_Text + Hostname,
-  System_Header + Topic_Ammeter_Text + Hostname
+  System_Header + Topic_Ammeter_Text + Hostname,
+  System_Header + Topic_Switch_Text + Hostname
 };
 
 bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
@@ -161,6 +169,7 @@ bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
   false,
   false,
   true,
+  false,
   false,
   false,
   false
@@ -182,10 +191,12 @@ byte MQTT_Topic_Subscribe_Subtopic[MQTT_Topic_Number_Of] = {
   NONE,
   PLUS,
   NONE,
-  NONE
+  NONE,
+  PLUS
 };
 
 bool MQTT_Subscribtion_Active[MQTT_Topic_Number_Of] = {
+  false,
   false,
   false,
   false,
@@ -384,6 +395,21 @@ float DC_Voltmeter_Curcit_Voltage = 0.0; // 3.3
 float DC_Voltmeter_Offset = 0.0;
 
 
+// ------------------------------------------------------------ Switch ------------------------------------------------------------
+#define Switch_Max_Number_Of 6
+bool Switch_Configured = false;
+byte Switch_Pins[Switch_Max_Number_Of] = {255, 255, 255, 255, 255, 255};
+
+unsigned long Switch_Ignore_Input_Untill;
+unsigned long Switch_Refresh_Rate = 250; // ms between checking switch state
+
+bool Switch_Last_State[Switch_Max_Number_Of];
+
+String Switch_Target_ON[Switch_Max_Number_Of];
+String Switch_Target_OFF[Switch_Max_Number_Of];
+
+
+
 // ############################################################ String_To_IP() ############################################################
 IPAddress String_To_IP(String IP_String) {
 
@@ -423,7 +449,6 @@ IPAddress String_To_IP(String IP_String) {
 
 
 // ############################################################ High_Low_String() ############################################################
-// Returns "HIGH" of 1 and "LOW" if 0
 void Rebuild_MQTT_Topics() {
   MQTT_Topic[Topic_Settings] = System_Header + Topic_Settings_Text + Hostname;
   MQTT_Topic[Topic_Config] = System_Header + Topic_Config_Text + Hostname;
@@ -442,6 +467,7 @@ void Rebuild_MQTT_Topics() {
   MQTT_Topic[Topic_LoadCell] = System_Header + Topic_LoadCell_Text + Hostname;
   MQTT_Topic[Topic_DC_Voltmeter] = System_Header + Topic_DC_Voltmeter_Text + Hostname;
   MQTT_Topic[Topic_Ammeter] = System_Header + Topic_Ammeter_Text + Hostname;
+  MQTT_Topic[Topic_Switch] = System_Header + Topic_Switch_Text + Hostname;
 }
 
 
@@ -636,12 +662,108 @@ bool Button_Loop() {
 
       MQTT_Client.publish(Topic.c_str(), 0, false, Payload.c_str());
 
+      return true;
     }
   }
 
   return false;
 
 } // Button_Loop
+
+
+
+// ############################################################ Switch() ############################################################
+bool Switch(String Topic, String Payload) {
+
+  if (Switch_Configured == false) {
+    return false;
+  }
+
+  // Check topic
+  else if (Topic.indexOf(MQTT_Topic[Topic_Switch]) != -1) {
+
+
+    if (Payload.length() > 1) Payload = Payload.substring(0, 1); // "Trim" length to avoid some wird error
+
+    String Switch_String = Topic;
+    Switch_String.replace(MQTT_Topic[Topic_Switch] + "/", "");
+
+    byte Selected_Switch = Switch_String.toInt();
+
+    // Ignore all requests thats larger then _Switch_Max_Number_Of
+    if (Selected_Switch < Switch_Max_Number_Of) {
+      // State request
+      if (Payload == "?") {
+        String State_String;
+        // 0 = ON
+        if (digitalRead(Switch_Pins[Selected_Switch - 1]) == 0) State_String += "1";
+        else State_String += "0";
+        Log(MQTT_Topic[Topic_Switch] + "/" + String(Selected_Switch) + "/State", State_String);
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+// ############################################################ Switch_Loop() ############################################################
+bool Switch_Loop() {
+
+  // Check if switches is configured
+  if (Switch_Configured == false) {
+    return false;
+  }
+
+  // Check if its time to refresh
+  if (Switch_Ignore_Input_Untill < millis()) {
+
+    // The Wemos seems to reset if hammered during boot so dont read for the fist 7500 sec
+    if (millis() < 7500) {
+      return false;
+    }
+
+    bool Switch_State;
+
+    for (byte i = 0; i < Switch_Max_Number_Of; i++) {
+      // If pin in use
+      if (Switch_Pins[i] != 255) {
+        // Check if state chenged
+        Switch_State = digitalRead(Switch_Pins[i]);
+
+        if (Switch_State != Switch_Last_State[i]) {
+
+          // Set last state
+          Switch_Last_State[i] = Switch_State;
+
+          String Topic;
+          String Payload;
+
+          // Publish switch state - Flipping output to make it add up tp 1 = ON
+          Log(MQTT_Topic[Topic_Switch] + "/" + String(i + 1) + "/State", !Switch_State);
+
+          // OFF
+          if (Switch_State == 1) {
+            Topic = Switch_Target_OFF[i].substring(0, Switch_Target_OFF[i].indexOf("&"));
+            Payload = Switch_Target_OFF[i].substring(Switch_Target_OFF[i].indexOf("&") + 1, Switch_Target_OFF[i].length());
+
+          }
+          // ON
+          else {
+            Topic = Switch_Target_ON[i].substring(0, Switch_Target_ON[i].indexOf("&"));
+            Payload = Switch_Target_ON[i].substring(Switch_Target_ON[i].indexOf("&") + 1, Switch_Target_ON[i].length());
+          }
+          // Publish target message
+          MQTT_Client.publish(Topic.c_str(), 0, false, Payload.c_str());
+
+        }
+      }
+    }
+    Switch_Ignore_Input_Untill = millis() + Switch_Refresh_Rate;
+  }
+
+  return true;
+} // Switch_Loop()
 
 
 // ############################################################ Pin_Monitor_String() ############################################################
@@ -964,16 +1086,18 @@ bool LoadCell(String Topic, String Payload) {
 // ############################################################ DC_Voltmeter() ############################################################
 bool DC_Voltmeter(String Topic, String Payload) {
 
-  if (Payload.indexOf("?") != -1) {
+  if (Topic.indexOf(MQTT_Topic[Topic_DC_Voltmeter]) != -1) {
+    if (Payload.indexOf("?") != -1) {
 
-    // read the value at analog input
-    int value = analogRead(DC_Voltmeter_Pins);
-    float vout = (value * DC_Voltmeter_Curcit_Voltage) / 1023.0;
-    float vin = vout / (DC_Voltmeter_R2 / (DC_Voltmeter_R1 + DC_Voltmeter_R2));
-    vin = vin + DC_Voltmeter_Offset;
+      // read the value at analog input
+      int value = analogRead(DC_Voltmeter_Pins);
+      float vout = (value * DC_Voltmeter_Curcit_Voltage) / 1023.0;
+      float vin = vout / (DC_Voltmeter_R2 / (DC_Voltmeter_R1 + DC_Voltmeter_R2));
+      vin = vin + DC_Voltmeter_Offset;
 
-    Log(MQTT_Topic[Topic_DC_Voltmeter] + "/State", String(vin));
-    return true;
+      Log(MQTT_Topic[Topic_DC_Voltmeter] + "/State", String(vin));
+      return true;
+    }
   }
 
   return false;
@@ -1890,226 +2014,228 @@ bool FS_Config_Save() {
 
 
 
-// ############################################################ Device_Config() ############################################################
-void Device_Config(String Setting, String Value) {
-
-  String Old_Value;
-
-  // Value = "" = no reason to continue
-  if (Value == "") return;
-
-  // ############### System ###############
-  if (Setting == "Hostname") {
-    if (Value == Hostname) return;
-    Old_Value = Hostname;
-    Hostname = Value;
-    Rebuild_MQTT_Topics();
-  }
-
-  else if (Setting == "System_Header") {
-    if (Value == System_Header) return;
-    Old_Value = System_Header;
-    System_Header = Value;
-    Rebuild_MQTT_Topics();
-  }
-
-  else if (Setting == "System_Sub_Header") {
-    if (Value == System_Sub_Header) return;
-    Old_Value = System_Sub_Header;
-    System_Sub_Header = Value;
-    Rebuild_MQTT_Topics();
-  }
-
-  else if (Setting == "WiFi_SSID") {
-    if (Value == WiFi_SSID) return;
-    Old_Value = WiFi_SSID;
-    WiFi_SSID = Value;
-  }
-  else if (Setting == "WiFi_Password") {
-    if (Value == WiFi_Password) return;
-    Old_Value = WiFi_Password;
-    WiFi_Password = Value;
-  }
-  else if (Setting == "MQTT_Broker") {
-    if (Value == MQTT_Broker) return;
-    Old_Value = MQTT_Broker;
-    MQTT_Broker = Value;
-  }
-  else if (Setting == "MQTT_Port") {
-    if (Value == MQTT_Port) return;
-    Old_Value = MQTT_Port;
-    MQTT_Port = Value;
-  }
-  else if (Setting == "MQTT_Username") {
-    if (Value == MQTT_Username) return;
-    Old_Value = MQTT_Username;
-    MQTT_Username = Value;
-  }
-  else if (Setting == "MQTT_Password") {
-    if (Value == MQTT_Password) return;
-    Old_Value = MQTT_Password;
-    MQTT_Password = Value;
-  }
-  else if (Setting == "MQTT_Allow_Flash_Password") {
-    Old_Value = MQTT_Allow_Flash_Password;
-    MQTT_Allow_Flash_Password = Value;
-  }
-
-  else if (Setting == "MQTT_KeepAlive_Interval") {
-    if ((unsigned long)Value.toInt() * 1000 == MQTT_KeepAlive_Interval) return;
-    Old_Value = MQTT_KeepAlive_Interval;
-    MQTT_KeepAlive_Ticker.detach();
-    MQTT_KeepAlive_Interval = Value.toInt() * 1000;
-    MQTT_KeepAlive_Ticker.attach_ms(MQTT_KeepAlive_Interval, MQTT_KeepAlive);
-  }
-
-  // ############### Byzzer ###############
-  else if (Setting == "Buzzer_Pins") {
-    // FIX add check if old value = new calue then ignore
-    Old_Value = Buzzer_Pins;
-    Buzzer_Pins = Value.toInt();
-    if (Pin_Monitor(Buzzer_Pins) == true) {
-      pinMode(Buzzer_Pins, OUTPUT);
-      MQTT_Subscribe(MQTT_Topic[Topic_Buzzer], true, NONE);
-      Buzzer_Configured = true;
-    }
-  }
-
-  // ############### DHT ###############
-  else if (Setting == "DHT_Pins") {
-    Old_Value = Byte_ArrayToString(DHT_Pins);
-    MQTT_Settings_Set(DHT_Pins, DHT_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/DHT", "DHT Pins");
-    MQTT_Subscribe(MQTT_Topic[Topic_DHT], true, PLUS);
-    DHT_Configured = true;
-  }
-
-
-  // ############### Relay ###############
-  else if (Setting == "Relay_On_State") {
-    Old_Value = Relay_On_State;
-    Relay_On_State = Value.toInt();
-    MQTT_Subscribe(MQTT_Topic[Topic_Relay], true, PLUS);
-  }
-
-  else if (Setting == "Relay_Pins") {
-    Old_Value = Byte_ArrayToString(Relay_Pins);
-    MQTT_Settings_Set(Relay_Pins, Relay_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Relay", "Relay Pins");
-    // Set pinMode
-    for (byte i = 0; i < Relay_Max_Number_Of; i++) {
-      if (Relay_Pins[i] != 255 && Pin_Monitor(Relay_Pins[i]) == true) {
-          pinMode(Relay_Pins[i], OUTPUT);
-          digitalWrite(Relay_Pins[i], !Relay_On_State);
-          Relay_Configured = true;
-      }
-    }
-  }
-  else if (Setting == "Relay_Pin_Auto_Off") {
-    Old_Value = Bool_ArrayToString(Relay_Pin_Auto_Off);
-    MQTT_Settings_Set(Relay_Pin_Auto_Off, Relay_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Relay", "Relay Pins Auto Off");
-  }
-  else if (Setting == "Relay_Pin_Auto_Off_Delay") {
-    Old_Value = ul_ArrayToString(Relay_Pin_Auto_Off_Delay);
-    MQTT_Settings_Set(Relay_Pin_Auto_Off_Delay, Relay_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Relay", "Relay Pins Auto Off Delay");
-  }
-
-
-  // ############### Distance ###############
-  else if (Setting == "Distance_Pins_Trigger") {
-    Old_Value = Byte_ArrayToString(Distance_Pins_Trigger);
-    MQTT_Subscribe(MQTT_Topic[Topic_Distance], true, PLUS);
-    MQTT_Settings_Set(Distance_Pins_Trigger, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Pins Trigger");
-    // Set pinMode
-    for (byte i = 0; i < Distance_Max_Number_Of; i++) {
-      if (Distance_Pins_Trigger[i] != 255 && Pin_Monitor(Distance_Pins_Trigger[i]) == true) {
-        pinMode(Distance_Pins_Trigger[i], OUTPUT);
-      }
-    }
-  }
-
-  else if (Setting == "Distance_Pins_Echo") {
-    Old_Value = Byte_ArrayToString(Distance_Pins_Echo);
-    MQTT_Settings_Set(Distance_Pins_Echo, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Pins Echo");
-    // Set pinMode
-    for (byte i = 0; i < Distance_Max_Number_Of; i++) {
-      if (Distance_Pins_Echo[i] != 255 && Pin_Monitor(Distance_Pins_Echo[i]) == true) {
-        pinMode(Distance_Pins_Echo[i], INPUT);
-      }
-    }
-  }
-
-  else if (Setting == "Distance_Trigger_At") {
-    Old_Value = int_ArrayToString(Distance_Trigger_At);
-    MQTT_Settings_Set(Distance_Trigger_At, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Trigger At");
-  }
-  else if (Setting == "Distance_Target_ON") {
-    Old_Value = String_ArrayToString(Distance_Target_ON);
-    MQTT_Settings_Set(Distance_Target_ON, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Target ON");
-  }
-  else if (Setting == "Distance_Target_OFF") {
-    Old_Value = String_ArrayToString(Distance_Target_OFF);
-    MQTT_Settings_Set(Distance_Target_OFF, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Target OFF");
-  }
-  else if (Setting == "Distance_Refresh_Rate") {
-    Old_Value = ul_ArrayToString(Distance_Refresh_Rate);
-    MQTT_Settings_Set(Distance_Refresh_Rate, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Refresh Rate");
-  }
-  else if (Setting == "Distance_Auto_OFF_Delay") {
-    Old_Value = ul_ArrayToString(Distance_Auto_OFF_Delay);
-    MQTT_Settings_Set(Distance_Auto_OFF_Delay, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Auto OFF Delay");
-  }
-  else if (Setting == "Distance_Auto_OFF_Active") {
-    Old_Value = Bool_ArrayToString(Distance_Auto_OFF_Active);
-    MQTT_Settings_Set(Distance_Auto_OFF_Active, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Auto OFF Active");
-  }
-  else if (Setting == "Dimmer_Pins") {
-    MQTT_Subscribe(MQTT_Topic[Topic_Dimmer], true, PLUS);
-    MQTT_Settings_Set(Dimmer_Pins, Dimmer_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Dimmer", "Dimmer Pins");
-    // Set pinMode
-    for (byte i = 0; i < Dimmer_Max_Number_Of; i++) {
-      if (Dimmer_Pins[i] != 255) {
-        if (Pin_Monitor(Dimmer_Pins[i]) == true) {
-          pinMode(Dimmer_Pins[i], OUTPUT);
-          analogWrite(Dimmer_Pins[i], 0);
-          Dimmer_State[i] = 0;
-        }
-      }
-    }
-  }
-
-  else if (Setting == "Button_Pins") {
-    MQTT_Settings_Set(Button_Pins, Button_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Button", "Button Pins");
-
-    // Set pinMode
-    for (byte i = 0; i < Button_Max_Number_Of; i++) {
-      if (Button_Pins[i] != 255) {
-        if (Pin_Monitor(Button_Pins[i]) == true) {
-          pinMode(Button_Pins[i], INPUT_PULLUP);
-        }
-      }
-    }
-  }
-  else if (Setting == "Button_Target") MQTT_Settings_Set(Button_Target, Button_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Button", "Button Target");
-
-  // Config_ID is last config so will reboot if needed and save config
-  else if (Setting == "Config_ID") {
-    if (Value == "") {
-      Value = "0";
-    }
-    Config_ID = Value;
-    // Only save if triggered after config is loaded
-    if (Config_json_Loaded == true) FS_Config_Save();
-  }
-
-  else {
-    Log(MQTT_Topic[Topic_Error] + "/DeviceConfig", "Unknown configuration: " + Setting);
-    return;
-  }
-
-  // Log value change
-  Log(MQTT_Topic[Topic_System] + "/Dobby", "'" + Setting + "' changed from: " + Old_Value + " to: " + Value);
-
-
-} // Device_Config()
+// // ############################################################ Device_Config() ############################################################
+// void Device_Config(String Setting, String Value) {
+//
+//   String Old_Value;
+//
+//   // Value = "" = no reason to continue
+//   if (Value == "") return;
+//
+//   // ############### System ###############
+//   if (Setting == "Hostname") {
+//     if (Value == Hostname) return;
+//     Old_Value = Hostname;
+//     Hostname = Value;
+//     Rebuild_MQTT_Topics();
+//   }
+//
+//   else if (Setting == "System_Header") {
+//     if (Value == System_Header) return;
+//     Old_Value = System_Header;
+//     System_Header = Value;
+//     Rebuild_MQTT_Topics();
+//   }
+//
+//   else if (Setting == "System_Sub_Header") {
+//     if (Value == System_Sub_Header) return;
+//     Old_Value = System_Sub_Header;
+//     System_Sub_Header = Value;
+//     Rebuild_MQTT_Topics();
+//   }
+//
+//   else if (Setting == "WiFi_SSID") {
+//     if (Value == WiFi_SSID) return;
+//     Old_Value = WiFi_SSID;
+//     WiFi_SSID = Value;
+//   }
+//   else if (Setting == "WiFi_Password") {
+//     if (Value == WiFi_Password) return;
+//     Old_Value = WiFi_Password;
+//     WiFi_Password = Value;
+//   }
+//   else if (Setting == "MQTT_Broker") {
+//     if (Value == MQTT_Broker) return;
+//     Old_Value = MQTT_Broker;
+//     MQTT_Broker = Value;
+//   }
+//   else if (Setting == "MQTT_Port") {
+//     if (Value == MQTT_Port) return;
+//     Old_Value = MQTT_Port;
+//     MQTT_Port = Value;
+//   }
+//   else if (Setting == "MQTT_Username") {
+//     if (Value == MQTT_Username) return;
+//     Old_Value = MQTT_Username;
+//     MQTT_Username = Value;
+//   }
+//   else if (Setting == "MQTT_Password") {
+//     if (Value == MQTT_Password) return;
+//     Old_Value = MQTT_Password;
+//     MQTT_Password = Value;
+//   }
+//   else if (Setting == "MQTT_Allow_Flash_Password") {
+//     Old_Value = MQTT_Allow_Flash_Password;
+//     MQTT_Allow_Flash_Password = Value;
+//   }
+//
+//   else if (Setting == "MQTT_KeepAlive_Interval") {
+//     if ((unsigned long)Value.toInt() * 1000 == MQTT_KeepAlive_Interval) return;
+//     Old_Value = MQTT_KeepAlive_Interval;
+//     MQTT_KeepAlive_Ticker.detach();
+//     MQTT_KeepAlive_Interval = Value.toInt() * 1000;
+//     MQTT_KeepAlive_Ticker.attach_ms(MQTT_KeepAlive_Interval, MQTT_KeepAlive);
+//   }
+//
+//   // ############### Byzzer ###############
+//   else if (Setting == "Buzzer_Pins") {
+//     // FIX add check if old value = new calue then ignore
+//     Old_Value = Buzzer_Pins;
+//     Buzzer_Pins = Value.toInt();
+//     if (Pin_Monitor(Buzzer_Pins) == true) {
+//       pinMode(Buzzer_Pins, OUTPUT);
+//       MQTT_Subscribe(MQTT_Topic[Topic_Buzzer], true, NONE);
+//       Buzzer_Configured = true;
+//     }
+//   }
+//
+//   // ############### DHT ###############
+//   else if (Setting == "DHT_Pins") {
+//     Old_Value = Byte_ArrayToString(DHT_Pins);
+//     MQTT_Settings_Set(DHT_Pins, DHT_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/DHT", "DHT Pins");
+//     MQTT_Subscribe(MQTT_Topic[Topic_DHT], true, PLUS);
+//     DHT_Configured = true;
+//   }
+//
+//
+//   // ############### Relay ###############
+//   else if (Setting == "Relay_On_State") {
+//     Old_Value = Relay_On_State;
+//     Relay_On_State = Value.toInt();
+//     MQTT_Subscribe(MQTT_Topic[Topic_Relay], true, PLUS);
+//   }
+//
+//   else if (Setting == "Relay_Pins") {
+//     Old_Value = Byte_ArrayToString(Relay_Pins);
+//     MQTT_Settings_Set(Relay_Pins, Relay_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Relay", "Relay Pins");
+//     // Set pinMode
+//     for (byte i = 0; i < Relay_Max_Number_Of; i++) {
+//       if (Relay_Pins[i] != 255 && Pin_Monitor(Relay_Pins[i]) == true) {
+//           pinMode(Relay_Pins[i], OUTPUT);
+//           digitalWrite(Relay_Pins[i], !Relay_On_State);
+//           Relay_Configured = true;
+//       }
+//     }
+//   }
+//   else if (Setting == "Relay_Pin_Auto_Off") {
+//     Old_Value = Bool_ArrayToString(Relay_Pin_Auto_Off);
+//     MQTT_Settings_Set(Relay_Pin_Auto_Off, Relay_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Relay", "Relay Pins Auto Off");
+//   }
+//   else if (Setting == "Relay_Pin_Auto_Off_Delay") {
+//     Old_Value = ul_ArrayToString(Relay_Pin_Auto_Off_Delay);
+//     MQTT_Settings_Set(Relay_Pin_Auto_Off_Delay, Relay_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Relay", "Relay Pins Auto Off Delay");
+//   }
+//
+//
+//   // ############### Distance ###############
+//   else if (Setting == "Distance_Pins_Trigger") {
+//     Old_Value = Byte_ArrayToString(Distance_Pins_Trigger);
+//     MQTT_Subscribe(MQTT_Topic[Topic_Distance], true, PLUS);
+//     MQTT_Settings_Set(Distance_Pins_Trigger, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Pins Trigger");
+//     // Set pinMode
+//     for (byte i = 0; i < Distance_Max_Number_Of; i++) {
+//       if (Distance_Pins_Trigger[i] != 255 && Pin_Monitor(Distance_Pins_Trigger[i]) == true) {
+//         pinMode(Distance_Pins_Trigger[i], OUTPUT);
+//       }
+//     }
+//   }
+//
+//   else if (Setting == "Distance_Pins_Echo") {
+//     Old_Value = Byte_ArrayToString(Distance_Pins_Echo);
+//     MQTT_Settings_Set(Distance_Pins_Echo, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Pins Echo");
+//     // Set pinMode
+//     for (byte i = 0; i < Distance_Max_Number_Of; i++) {
+//       if (Distance_Pins_Echo[i] != 255 && Pin_Monitor(Distance_Pins_Echo[i]) == true) {
+//         pinMode(Distance_Pins_Echo[i], INPUT);
+//       }
+//     }
+//   }
+//
+//   else if (Setting == "Distance_Trigger_At") {
+//     Old_Value = int_ArrayToString(Distance_Trigger_At);
+//     MQTT_Settings_Set(Distance_Trigger_At, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Trigger At");
+//   }
+//   else if (Setting == "Distance_Target_ON") {
+//     Old_Value = String_ArrayToString(Distance_Target_ON);
+//     MQTT_Settings_Set(Distance_Target_ON, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Target ON");
+//   }
+//   else if (Setting == "Distance_Target_OFF") {
+//     Old_Value = String_ArrayToString(Distance_Target_OFF);
+//     MQTT_Settings_Set(Distance_Target_OFF, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Target OFF");
+//   }
+//   else if (Setting == "Distance_Refresh_Rate") {
+//     Old_Value = ul_ArrayToString(Distance_Refresh_Rate);
+//     MQTT_Settings_Set(Distance_Refresh_Rate, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Refresh Rate");
+//   }
+//   else if (Setting == "Distance_Auto_OFF_Delay") {
+//     Old_Value = ul_ArrayToString(Distance_Auto_OFF_Delay);
+//     MQTT_Settings_Set(Distance_Auto_OFF_Delay, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Auto OFF Delay");
+//   }
+//   else if (Setting == "Distance_Auto_OFF_Active") {
+//     Old_Value = Bool_ArrayToString(Distance_Auto_OFF_Active);
+//     MQTT_Settings_Set(Distance_Auto_OFF_Active, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Auto OFF Active");
+//   }
+//   else if (Setting == "Dimmer_Pins") {
+//     MQTT_Subscribe(MQTT_Topic[Topic_Dimmer], true, PLUS);
+//     MQTT_Settings_Set(Dimmer_Pins, Dimmer_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Dimmer", "Dimmer Pins");
+//     // Set pinMode
+//     for (byte i = 0; i < Dimmer_Max_Number_Of; i++) {
+//       if (Dimmer_Pins[i] != 255) {
+//         if (Pin_Monitor(Dimmer_Pins[i]) == true) {
+//           pinMode(Dimmer_Pins[i], OUTPUT);
+//           analogWrite(Dimmer_Pins[i], 0);
+//           Dimmer_State[i] = 0;
+//         }
+//       }
+//     }
+//   }
+//
+//   else if (Setting == "Button_Pins") {
+//     MQTT_Settings_Set(Button_Pins, Button_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Button", "Button Pins");
+//
+//     // Set pinMode
+//     for (byte i = 0; i < Button_Max_Number_Of; i++) {
+//       if (Button_Pins[i] != 255) {
+//         if (Pin_Monitor(Button_Pins[i]) == true) {
+//           pinMode(Button_Pins[i], INPUT_PULLUP);
+//         }
+//       }
+//     }
+//   }
+//   else if (Setting == "Button_Target") {
+//     MQTT_Settings_Set(Button_Target, Button_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Button", "Button Target");
+//   }
+//
+//   // Config_ID is last config so will reboot if needed and save config
+//   else if (Setting == "Config_ID") {
+//     if (Value == "") {
+//       Value = "0";
+//     }
+//     Config_ID = Value;
+//     // Only save if triggered after config is loaded
+//     if (Config_json_Loaded == true) FS_Config_Save();
+//   }
+//
+//   else {
+//     Log(MQTT_Topic[Topic_Error] + "/DeviceConfig", "Unknown configuration: " + Setting);
+//     return;
+//   }
+//
+//   // Log value change
+//   Log(MQTT_Topic[Topic_System] + "/Dobby", "'" + Setting + "' changed from: " + Old_Value + " to: " + Value);
+//
+//
+// } // Device_Config()
 
 
 // ############################################################ FS_Config() ############################################################
@@ -2312,40 +2438,54 @@ bool FS_Config_Load() {
     DC_Voltmeter_Offset = root.get<float>("DC_Voltmeter_Offset");
   }
 
-  // else if (Setting == "Button_Pins") {
-  //   MQTT_Settings_Set(Button_Pins, Button_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Button", "Button Pins");
-  //
-  //   // Set pinMode
-  //   for (byte i = 0; i < Button_Max_Number_Of; i++) {
-  //     if (Button_Pins[i] != 255) {
-  //       if (Pin_Monitor(Button_Pins[i]) == true) {
-  //         pinMode(Button_Pins[i], INPUT_PULLUP);
-  //       }
-  //     }
-  //   }
-  // }
-  // else if (Setting == "Button_Target") MQTT_Settings_Set(Button_Target, Button_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Button", "Button Target");
-  //
-  // // Config_ID is last config so will reboot if needed and save config
-  // else if (Setting == "Config_ID") {
-  //   if (Value == "") {
-  //     Value = "0";
-  //   }
-  //   Config_ID = Value;
-  //   // Only save if triggered after config is loaded
-  //   if (Config_json_Loaded == true) FS_Config_Save();
-  // }
 
-  // else {
-  //   Log(MQTT_Topic[Topic_Error] + "/DeviceConfig", "Unknown configuration: " + Setting);
-  //   return;
-  // }
+  // ############### Button ###############
+  if (root.get<String>("Button_Pins") != "") {
+    // MQTT_Subscribe(MQTT_Topic[Topic_Button], true, PLUS);
+    MQTT_Settings_Set(Button_Pins, Button_Max_Number_Of, root.get<String>("Button_Pins"), MQTT_Topic[Topic_System] + "/Button", "Button Pins");
+    Button_Configured = true;
+    // Set pinMode
+    for (byte i = 0; i < Button_Max_Number_Of; i++) {
+      if (Button_Pins[i] != 255) {
+        if (Pin_Monitor(Button_Pins[i]) == true) {
+          pinMode(Button_Pins[i], INPUT_PULLUP);
+        }
+      }
+    }
+  }
 
-  // Log value change
-  // Log(MQTT_Topic[Topic_System] + "/Dobby", "'" + Setting + "' changed from: " + Old_Value + " to: " + Value);
+  if (root.get<String>("Button_Target") != "") {
+    MQTT_Settings_Set(Button_Target, Button_Max_Number_Of, root.get<String>("Button_Target"), MQTT_Topic[Topic_System] + "/Button", "Button Target");
+  }
+
+
+  // ############### Switch ###############
+  if (root.get<String>("Switch_Pins") != "") {
+    MQTT_Subscribe(MQTT_Topic[Topic_Switch], true, PLUS);
+    MQTT_Settings_Set(Switch_Pins, Switch_Max_Number_Of, root.get<String>("Switch_Pins"), MQTT_Topic[Topic_System] + "/Switch", "Switch Pins");
+
+    Switch_Configured = true;
+    // Set pinMode
+    for (byte i = 0; i < Switch_Max_Number_Of; i++) {
+      if (Switch_Pins[i] != 255) {
+        if (Pin_Monitor(Switch_Pins[i]) == true) {
+          pinMode(Switch_Pins[i], INPUT_PULLUP);
+          // Read current state
+          Switch_Last_State[i] = digitalRead(Switch_Pins[i]);
+        }
+      }
+    }
+  }
+
+  if (root.get<String>("Switch_Target_ON") != "") {
+    MQTT_Settings_Set(Switch_Target_ON, Switch_Max_Number_Of, root.get<String>("Switch_Target_ON"), MQTT_Topic[Topic_System] + "/Switch", "Switch Target ON");
+  }
+
+  if (root.get<String>("Switch_Target_OFF") != "") {
+    MQTT_Settings_Set(Switch_Target_OFF, Switch_Max_Number_Of, root.get<String>("Switch_Target_OFF"), MQTT_Topic[Topic_System] + "/Switch", "Switch Target OFF");
+  }
 
   return true;
-
 }
 
 
@@ -2459,7 +2599,7 @@ bool MQTT_Settings(String Topic, String Payload) {
 
   Topic.replace(MQTT_Topic[Topic_Settings] + "/", "");
 
-  Device_Config(Topic, Payload);
+  // Device_Config(Topic, Payload);
 
   return true;
 
@@ -2666,6 +2806,8 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
   else if (LoadCell(topic, payload)) return;
 
   else if (DC_Voltmeter(topic, payload)) return;
+
+  else if (Switch(topic, payload)) return;
 
   else if (FS_Config_Set(topic, payload)) return;
 
@@ -3151,5 +3293,7 @@ void loop() {
   Distance_Sensor_Auto_OFF();
 
   Button_Loop();
+
+  Switch_Loop();
 
 } // loop()
