@@ -13,7 +13,7 @@ GRANT ALL PRIVILEGES ON Dobby.* TO 'dobby'@'%'
 GRANT ALL PRIVILEGES ON DobbyLog.* TO 'dobby'@'%'
     WITH GRANT OPTION;
 
-CREATE TABLE `Dobby`.`DeviceConfig` (
+CREATE TABLE `DeviceConfig` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `Hostname` varchar(25) NOT NULL,
   `Config_Active` tinyint(1) unsigned NOT NULL,
@@ -46,12 +46,18 @@ CREATE TABLE `Dobby`.`DeviceConfig` (
   `Dimmer_Pins` varchar(25) DEFAULT NULL,
   `Button_Pins` varchar(25) DEFAULT NULL,
   `Button_Target` varchar(250) DEFAULT NULL,
-  `Scale_Pins_DT` varchar(25) DEFAULT NULL,
-  `Scale_Pins_SCK` varchar(25) DEFAULT NULL,
-  `Scale_Calibration` double(5,2) DEFAULT NULL,
+  `Switch_Pins` varchar(25) DEFAULT NULL,
+  `Switch_Target_ON` varchar(250) DEFAULT NULL,
+  `Switch_Target_OFF` varchar(250) DEFAULT NULL,
+  `LoadCell_Pins_DT` varchar(25) DEFAULT NULL,
+  `LoadCell_Pins_SCK` varchar(25) DEFAULT NULL,
+  `LoadCell_Calibration` decimal(5,2) DEFAULT NULL,
   `Ammeter_Pins` varchar(25) DEFAULT NULL,
-  `Voltmeter_DC_Pins` varchar(25) DEFAULT NULL,
-  `Voltmeter_AC_Pins` varchar(25) DEFAULT NULL,
+  `DC_Voltmeter_Pins` varchar(250) DEFAULT NULL,
+  `DC_Voltmeter_R1` varchar(25) DEFAULT NULL,
+  `DC_Voltmeter_R2` varchar(25) DEFAULT NULL,
+  `DC_Voltmeter_Curcit_Voltage` varchar(25) DEFAULT NULL,
+  `DC_Voltmeter_Offset` varchar(25) DEFAULT NULL,
   `Date_Modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;

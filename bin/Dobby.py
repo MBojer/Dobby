@@ -529,16 +529,17 @@ def KeepAlive_Monitor(Topic, Payload):
 
     Log("Debug", "KeepAliveMonitor", "KeepAlive", "From: " + root_KL["Hostname"])
 
+    if root_KL["IP"] == "":
+        root_KL["IP"] = "0.0.0.0"
+
+    if root_KL["RSSI"] == "":
+        root_KL["RSSI"] = "0"
+
     if root_KL["Hostname"] != "Dobby":
         # Spawn thread for Auto Update Check
         AU_Thread = threading.Thread(target=Auto_Update, kwargs={"Hostname": root_KL["Hostname"], "IP": root_KL["IP"], "Current_SW": root_KL["Software"]})
         AU_Thread.daemon = True
         AU_Thread.start()
-
-    # It is Dobby, so set ip and 0 RSSI
-    else:
-        root_KL["IP"] = "127.0.0.1"
-        root_KL["RSSI"] = "0"
 
     # Try writing message to log
     try:

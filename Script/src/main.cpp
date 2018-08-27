@@ -3,6 +3,15 @@
 
 // Change log:
 //
+// -------------------- 1.40 --------------------
+// Added support for pasting JSON string in CLI
+// Moved Serial CLI before FS_Config_Load
+//
+// -------------------- 1.39 --------------------
+// Disabled KeepAlive during OTA updates
+// Commented out "MQTT_Settings" - No longer needed
+// Added MQTT Command Power - Shutdown
+//
 // -------------------- 1.38 --------------------
 // Added Button support
 // Added Switch support
@@ -24,7 +33,7 @@ extern "C" {
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 1.38
+#define Version 1.40
 
 String Hostname = "NotConfigured";
 String System_Header = "";
@@ -231,7 +240,7 @@ unsigned long MQTT_Allow_Flash_Delay = 30000;
 
 
 // ------------------------------------------------------------ ESP_Reboot() ------------------------------------------------------------
-Ticker ESP_Reboot_Ticker;
+Ticker ESP_Power_Ticker;
 
 
 // ------------------------------------------------------------ Buzzer ------------------------------------------------------------
@@ -351,7 +360,7 @@ Ticker Update_Ticker;
 
 
 // ------------------------------------------------------------ CLI ------------------------------------------------------------
-#define Command_List_Length 18
+#define Command_List_Length 21
 const char* Commands_List[Command_List_Length] = {
   "hostname",
   "wifi ssid",
@@ -363,19 +372,22 @@ const char* Commands_List[Command_List_Length] = {
   "system header",
   "system sub header",
   "list",
+  "json",
   "fs list",
   "fs cat",
   "fs format",
+  "fs config load",
   "fs config drop",
   "show mac",
   "save",
   "check",
-  "reboot"};
+  "reboot",
+  "shutdown"};
 
 String CLI_Input_String;
 bool CLI_Command_Complate = false;
 
-#define Serial_CLI_Boot_Message_Timeout 5
+#define Serial_CLI_Boot_Message_Timeout 3
 
 
 // ------------------------------------------------------------ Load Cell ------------------------------------------------------------
@@ -929,12 +941,33 @@ void ESP_Reboot() {
 } // ESP_Reboot()
 
 
+// ############################################################ ESP_Reboot() ############################################################
+void ESP_Shutdown() {
+
+  Log(MQTT_Topic[Topic_System], "Shutting down");
+  Serial.flush();
+
+  ESP.deepSleep(0);
+
+} // ESP_Reboot()
+
+
 // ############################################################ Reboot() ############################################################
 void Reboot(unsigned long Reboot_In) {
 
   Log(MQTT_Topic[Topic_System], "Kill command issued, rebooting in " + String(Reboot_In / 1000) + " seconds");
 
-  ESP_Reboot_Ticker.once_ms(Reboot_In, ESP_Reboot);
+  ESP_Power_Ticker.once_ms(Reboot_In, ESP_Reboot);
+
+} // Reboot()
+
+
+// ############################################################ Reboot() ############################################################
+void Shutdown(unsigned long Shutdown_In) {
+
+  Log(MQTT_Topic[Topic_System], "Kill command issued, shutting down in " + String(Shutdown_In / 1000) + " seconds");
+
+  ESP_Power_Ticker.once_ms(Shutdown_In, ESP_Shutdown);
 
 } // Reboot()
 
@@ -1593,6 +1626,10 @@ void connectToWifi() {
 // ############################################################ MQTT_KeepAlive() ############################################################
 void MQTT_KeepAlive() {
 
+  // If the MQTT Client is not connected no reason to send try to send a keepalive
+  // Dont send keepalives during updates
+  if (MQTT_Client.connected() == false && ArduinoOTA_Active == true) return;
+
   // Create json buffer
   DynamicJsonBuffer jsonBuffer(220);
   JsonObject& root_KL = jsonBuffer.createObject();
@@ -2238,8 +2275,122 @@ bool FS_Config_Save() {
 // } // Device_Config()
 
 
+
+// ############################################################ CLI_Print() ############################################################
+void CLI_Print(String Print_String) {
+
+  Serial.println(Print_String);
+  Serial.print(Hostname + ": ");
+}
+
+
+// ############################################################ Get_Serial_Input() ############################################################
+bool Get_Serial_Input() {
+
+  if (Serial.available() > 0) {
+    String Incomming_String = Serial.readString();
+    Serial.print(Incomming_String);
+    CLI_Input_String = CLI_Input_String + Incomming_String;
+  }
+
+
+  if (CLI_Input_String.indexOf("\n") != -1) {
+    CLI_Input_String.replace("\r", "");
+    CLI_Input_String.replace("\n", "");
+
+    CLI_Input_String.trim();
+
+    CLI_Command_Complate = true;
+    return true;
+  }
+
+  return false;
+}
+
+
+
+
+// ############################################################ Wait_For_Serial_Input() ############################################################
+void Wait_For_Serial_Input(String Wait_String) {
+  CLI_Input_String = "";
+
+  Serial.println();
+  Serial.print("Please enter new " + Wait_String + ": ");
+
+  while (Get_Serial_Input() == false) delay(1);
+}
+
+
+// ############################################################ CLI_Config_Check() ############################################################
+String CLI_Config_Check() {
+
+  if (Hostname == "NotConfigured") {
+    return "Failed - Hostname not configured";
+  }
+  else if (WiFi_SSID == "") {
+    return "Failed - WiFi SSID not configured";
+  }
+  else if (WiFi_Password == "") {
+    return "Failed - WiFi Password not configured";
+  }
+  else if (MQTT_Broker == "") {
+    return "Failed - MQTT Broker not configured";
+  }
+  else if (MQTT_Port == "") {
+    return "Failed - MQTT Port not configured";
+  }
+  else if (MQTT_Username == "") {
+    return "Failed - MQTT Username not configured";
+  }
+  else if (MQTT_Password == "") {
+    return "Failed - MQTT Password not configured";
+  }
+  else if (System_Header == "") {
+    return "Failed - System Header not configured";
+  }
+
+  return "Passed";
+}
+
+// #################################### FS_Config_Save() ####################################
+void FS_Config_Drop() {
+
+  // Create json string to store base config
+  const size_t bufferSize = JSON_ARRAY_SIZE(9) + 60;
+  DynamicJsonBuffer jsonBuffer(bufferSize);
+  JsonObject& root = jsonBuffer.createObject();
+
+  // Generate json
+  root.set("Hostname", Hostname);
+  root.set("System_Header", System_Header);
+  root.set("System_Sub_Header", System_Sub_Header);
+  root.set("WiFi_SSID", WiFi_SSID);
+  root.set("WiFi_Password", WiFi_Password);
+  root.set("MQTT_Broker", MQTT_Broker);
+  root.set("MQTT_Port", MQTT_Port);
+  root.set("MQTT_Username", MQTT_Username);
+  root.set("MQTT_Password", MQTT_Password);
+  root.set("MQTT_Allow_Flash_Password", MQTT_Allow_Flash_Password);
+  root.set("Config_ID", Config_ID);
+
+  File configFile = SPIFFS.open(FS_Confing_File_Name, "w");
+  if (!configFile) {
+    Log(MQTT_Topic[Topic_System] + "/FSConfig", "Failed to open config file for writing");
+    return;
+  }
+
+  root.printTo(configFile);
+  configFile.close();
+
+  Log(MQTT_Topic[Topic_System] + "/FSConfig", "Config droped clean config saved to SPIFFS");
+
+  return;
+}
+
+
 // ############################################################ FS_Config() ############################################################
 bool FS_Config_Load() {
+
   Log(MQTT_Topic[Topic_System] + "/Dobby", "Loading FS Config");
 
   // Open file
@@ -2390,6 +2541,7 @@ bool FS_Config_Load() {
     }
   }
 
+
   // ############### Load_Cell ###############
   if (root.get<String>("LoadCell_Pins_DT") != "") {
     LoadCell_Pins_DT = Pin_To_Number(root.get<String>("LoadCell_Pins_DT"));
@@ -2410,6 +2562,7 @@ bool FS_Config_Load() {
     Load_Cell.begin(LoadCell_Pins_DT, LoadCell_Pins_SCK);
     Load_Cell.tare();				        // reset the scale to 0
   }
+
 
   // ############### DC_Voltmeter ###############
   if (root.get<String>("DC_Voltmeter_Pins") != "") {
@@ -2489,463 +2642,6 @@ bool FS_Config_Load() {
 }
 
 
-// #################################### FS_Config_Show() ####################################
-void FS_Config_Show() {
-  String Payload;
-
-  File configFile = SPIFFS.open(FS_Confing_File_Name, "r");
-
-  if (!configFile) {
-    Config_json_Loaded = true;
-    Log(MQTT_Topic[Topic_System] + "/FSConfig", "Failed to open config file");
-    configFile.close();
-    return;
-  }
-
-  size_t size = configFile.size();
-  if (size > Config_Json_Max_Buffer_Size) {
-    Config_json_Loaded = true;
-    Log(MQTT_Topic[Topic_System] + "/FSConfig", "Config file size is too large");
-    configFile.close();
-    return;
-  }
-
-  DynamicJsonBuffer jsonBuffer(size + 100);
-  JsonObject& root = jsonBuffer.parseObject(configFile);
-
-  root.printTo(Payload);
-
-  configFile.close();
-
-  Log(MQTT_Topic[Topic_System] + "/FSConfig", Payload);
-}
-
-
-// #################################### FS_Config_Save() ####################################
-void FS_Config_Drop() {
-
-  // Create json string to store base config
-  const size_t bufferSize = JSON_ARRAY_SIZE(9) + 60;
-  DynamicJsonBuffer jsonBuffer(bufferSize);
-  JsonObject& root = jsonBuffer.createObject();
-
-  // Generate json
-  root.set("Hostname", Hostname);
-  root.set("System_Header", System_Header);
-  root.set("System_Sub_Header", System_Sub_Header);
-  root.set("WiFi_SSID", WiFi_SSID);
-  root.set("WiFi_Password", WiFi_Password);
-  root.set("MQTT_Broker", MQTT_Broker);
-  root.set("MQTT_Port", MQTT_Port);
-  root.set("MQTT_Username", MQTT_Username);
-  root.set("MQTT_Password", MQTT_Password);
-  root.set("MQTT_Allow_Flash_Password", MQTT_Allow_Flash_Password);
-  root.set("Config_ID", Config_ID);
-
-  File configFile = SPIFFS.open(FS_Confing_File_Name, "w");
-  if (!configFile) {
-    Log(MQTT_Topic[Topic_System] + "/FSConfig", "Failed to open config file for writing");
-    return;
-  }
-
-  root.printTo(configFile);
-  configFile.close();
-
-  Log(MQTT_Topic[Topic_System] + "/FSConfig", "Config droped clean config saved to SPIFFS");
-
-  return;
-}
-
-
-// ############################################################ FS_Config_Set() ############################################################
-bool FS_Config_Set(String Topic, String Payload) {
-
-  if (Topic != MQTT_Topic[Topic_Config]) {
-    return false;
-  }
-
-  Payload = Payload.substring(0, Payload.indexOf(";"));
-
-
-  File configFile = SPIFFS.open(FS_Confing_File_Name, "w");
-
-  if (!configFile) {
-    Log(MQTT_Topic[Topic_System] + "/FSConfig", "Failed to open config file for writing");
-    return false;
-  }
-
-  configFile.print(Payload);
-  configFile.close();
-
-  Log(MQTT_Topic[Topic_System] + "/FSConfig", "Saved to SPIFFS");
-
-  Log(MQTT_Topic[Topic_System] + "/FSConfig", "Config changed reboot required, rebooting in 2 seconds");
-  Reboot(2000);
-
-  return true;
-
-} // FS_Config_Set
-
-
-// ############################################################ MQTT_Settings() ############################################################
-bool MQTT_Settings(String Topic, String Payload) {
-
-  if (Topic.indexOf(MQTT_Topic[Topic_Settings]) == -1) return false;
-
-  if (Payload.indexOf(";") == -1) return false; // ADD ERROR for missing ";"
-
-  // Remove ";" and anything after
-  Payload = Payload.substring(0, Payload.indexOf(";"));
-
-  Topic.replace(MQTT_Topic[Topic_Settings] + "/", "");
-
-  // Device_Config(Topic, Payload);
-
-  return true;
-
-} // MQTT_Settings
-
-
-// ################################### Version_Show() ###################################
-bool Version_Show() {
-  Log(MQTT_Topic[Topic_System] + "/Version", "Running Dubby v" + String(Version));
-  return true;
-} // Version_Show()
-
-
-// ################################### Version_Update() ###################################
-void Version_Update() {
-  Log(MQTT_Topic[Topic_System] + "/Version", "Checking for updates ... Running Dobby v" + String(Version) + " My IP: " + IPtoString(WiFi.localIP()));
-} // Version_Update()
-
-
-// ################################### MQTT_Commands() ###################################
-bool MQTT_Commands(String Topic, String Payload) {
-
-  // Ignore none commands
-  if (Topic.indexOf(MQTT_Topic[Topic_Commands]) == -1) {
-    return false;
-  }
-
-  // Ignore commands send to Dobby
-  if (Topic.indexOf(MQTT_Topic[Topic_Dobby]) != -1) {
-    return false;
-  }
-
-  Payload = Payload.substring(0, Payload.indexOf(";"));
-  Topic.replace(MQTT_Topic[Topic_Commands] + "/", "");
-
-  if (Topic == "Power" && Payload.indexOf("Reboot") != -1) {
-    Reboot(10000);
-    return true;
-  }
-
-  else if (Topic == "Flash" && Payload.indexOf(MQTT_Allow_Flash_Password) != -1) {
-    MQTT_Allow_Flash();
-    return true;
-  }
-
-  else if (Topic == "FS") {
-    if (FS_Commands(Payload) == true) return true;
-  }
-
-  else if (Topic == "Pins" && Payload == "Map") {
-    Pin_Map();
-    return true;
-  }
-
-  else if (Topic == "Blink") {
-    Indicator_LED_Blink(Payload.toInt());
-    return true;
-  }
-
-  else if (Topic == "Hostname") {
-    Hostname = Payload;
-    FS_Config_Drop();
-    Log(MQTT_Topic[Topic_System] + "/DeviceConfig", "Reboot required rebooting in 2 seconds");
-    Reboot(2000);
-    return true;
-  }
-
-  else if (Topic == "Version") {
-    if (Payload == "Show") Version_Show();
-    if (Payload == "Update") Version_Update();
-    return true;
-  }
-
-  else if (Topic == "IP") {
-    if (Payload == "Show") IP_Show();
-    return true;
-  }
-
-  else if (Topic == "Dimmer") {
-
-    Topic.replace("Dimmer", "");
-
-    if (Topic == "FadeJump") {
-      Dimmer_Fade_Jump = Payload.toInt();
-      Log(MQTT_Topic[Topic_System] + "/Dimmer", "Dimmer Fade Jump changed to: " + String(Dimmer_Fade_Jump));
-      return true;
-    }
-
-    else if (Topic == "FadeJumpDelay") {
-      Dimmer_Fade_Jump_Delay = Payload.toInt();
-      Log(MQTT_Topic[Topic_System] + "/Dimmer", "Dimmer Fade Jump Delay changed to: " + String(Dimmer_Fade_Jump_Delay));
-      return true;
-    }
-  } // Dimmer
-
-
-  else if (Topic == "FSConfig") {
-    if (Payload == "Save") FS_Config_Save();
-    else if (Payload == "Show") FS_Config_Show();
-    else if (Payload == "Drop") FS_Config_Drop();
-    return true;
-  }
-
-  else if (Topic == "FSConfig/Set") {
-    FS_Config_Set(Topic, Payload);
-    return true;
-  }
-
-
-  else if (Topic == "WiFi") {
-    if (Payload == "Signal") WiFi_Signal();
-    return true;
-  }
-
-
-  else if (Topic == "Test") {
-
-    Serial.println("MARKER TEST");
-    Log("/test", "MARKER");
-
-    String publish_String;
-
-    publish_String = String(DC_Voltmeter_Pins);
-
-
-    Log("/ts", publish_String);
-
-
-  } // Test
-
-  else {
-    Log(MQTT_Topic[Topic_System] + "/Commands", "Unknown command. " + Topic + " - " + Payload);
-  }
-
-  return true;
-
-} // MQTT_Commands()
-
-
-// ################################### MQTT_All() ###################################
-bool MQTT_All(String Topic, String Payload) {
-
-  if (Topic == MQTT_Topic[Topic_All]) {
-
-    Payload = Payload.substring(0, Payload.indexOf(";"));
-
-    if (Payload == "KillKillMultiKill") {
-      Log(MQTT_Topic[Topic_System], "Someone went on a killing spree, let the panic begin ...");
-      Reboot(10000 + random(15000));
-      return true;
-    }
-
-    else if (Payload == "Dimmer-OFF" && Dimmer_Configured == true) {
-      Log(MQTT_Topic[Topic_Dimmer] + "/0", "All OFF");
-      for (int i = 0; i < Dimmer_Max_Number_Of; i++) {
-        if (Dimmer_Pins[i] != 255) {
-          if (Dimmer_State[i] != 0) Dimmer_Fade(i + 1, 0);
-          Log(MQTT_Topic[Topic_Dimmer] + "/" + String(i + 1) + "/State", "0");
-        }
-      }
-      return true;
-    } // Dimmer-OFF
-
-    else if (Payload == "Relay-OFF" && Relay_Configured == true) {
-      Log(MQTT_Topic[Topic_Relay] + "/0", "All OFF");
-      for (int i = 0; i < Relay_Max_Number_Of; i++) {
-        if (Relay_Pins[i] != 255) {
-          if (digitalRead(Relay_Pins[i]) == Relay_On_State) {
-            digitalWrite(Relay_Pins[i], !Relay_On_State);
-            Log(MQTT_Topic[Topic_Relay] + "/" + String(i + 1) + "/State", String(OFF));
-          }
-        }
-        return true;
-      }
-    } // Update
-    else if (Payload == "Update") {
-      int Update_Delay = 5000 + random(15000);
-      Log(MQTT_Topic[Topic_System] + "/Version", "Mass update triggered, updating in " + String(Update_Delay) + " ms. Lets dance");
-      Update_Ticker.once_ms(Update_Delay, Version_Update);
-
-      return true;
-    } // Update
-  }
-
-  return false;
-} // MQTT_All()
-
-
-// ################################### onMqttMessage() ###################################
-void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
-
-  if (ArduinoOTA_Active == true) return;
-
-  else if (Buzzer(topic, payload)) return;
-
-  else if (DHT(topic, payload)) return;
-
-  else if (Relay(topic, payload)) return;
-
-  else if (Distance(topic, payload)) return;
-
-  else if (Dimmer(topic, payload)) return;
-
-  else if (LoadCell(topic, payload)) return;
-
-  else if (DC_Voltmeter(topic, payload)) return;
-
-  else if (Switch(topic, payload)) return;
-
-  else if (FS_Config_Set(topic, payload)) return;
-
-  else if (MQTT_Settings(topic, payload)) return;
-
-  else if (MQTT_Commands(topic, payload)) return;
-
-  else if (MQTT_All(topic, payload)) return;
-
-} // MQTT_Settings
-
-
-// ############################################################ ArduinoOTA_Setup() ############################################################
-void ArduinoOTA_Setup() {
-
-  ArduinoOTA.setHostname(Hostname.c_str());
-  ArduinoOTA.setPassword("StillNotSinking");
-
-  ArduinoOTA.onStart([]() {
-    Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "ArduinoOTA ... Started");
-    ArduinoOTA_Active = true;
-    MQTT_KeepAlive_Ticker.detach();
-    String type;
-    if (ArduinoOTA.getCommand() == U_FLASH) {
-      type = "sketch";
-    } else { // U_SPIFFS
-      type = "filesystem";
-    }
-
-    // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-    Serial.println("Start updating " + type);
-  });
-
-  ArduinoOTA.onEnd([]() {
-    Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "ArduinoOTA ... End");
-    ArduinoOTA_Active = false;
-    Serial.println("End");
-  });
-
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-
-  ArduinoOTA.onError([](ota_error_t error) {
-    ArduinoOTA_Active = false;
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) {
-      Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "Auth Failed");
-    } else if (error == OTA_BEGIN_ERROR) {
-      Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "Begin Failed");
-    } else if (error == OTA_CONNECT_ERROR) {
-      Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "Connect Failed");
-    } else if (error == OTA_RECEIVE_ERROR) {
-      Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "Receive Failed");
-    } else if (error == OTA_END_ERROR) {
-      Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "End Failed");
-    }
-  });
-
-  ArduinoOTA.begin();
-
-} // ArduinoOTA_Setup()
-
-// ############################################################ CLI_Print() ############################################################
-void CLI_Print(String Print_String) {
-
-  Serial.println(Print_String);
-  Serial.print(Hostname + ": ");
-}
-
-
-// ############################################################ Get_Serial_Input() ############################################################
-bool Get_Serial_Input() {
-
-  if (Serial.available() > 0) {
-    String Incomming_String = Serial.readString();
-    Serial.print(Incomming_String);
-    CLI_Input_String = CLI_Input_String + Incomming_String;
-  }
-
-
-  if (CLI_Input_String.indexOf("\n") != -1) {
-    CLI_Input_String.replace("\r", "");
-    CLI_Input_String.replace("\n", "");
-
-    CLI_Input_String.trim();
-
-    CLI_Command_Complate = true;
-    return true;
-  }
-
-  return false;
-}
-
-
-// ############################################################ Wait_For_Serial_Input() ############################################################
-void Wait_For_Serial_Input(String Wait_String) {
-  CLI_Input_String = "";
-
-  Serial.println();
-  Serial.print("Please enter new " + Wait_String + ": ");
-
-  while (Get_Serial_Input() == false) delay(1);
-}
-
-
-// ############################################################ CLI_Config_Check() ############################################################
-String CLI_Config_Check() {
-
-  if (Hostname == "NotConfigured") {
-    return "Failed - Hostname not configured";
-  }
-  else if (WiFi_SSID == "") {
-    return "Failed - WiFi SSID not configured";
-  }
-  else if (WiFi_Password == "") {
-    return "Failed - WiFi Password not configured";
-  }
-  else if (MQTT_Broker == "") {
-    return "Failed - MQTT Broker not configured";
-  }
-  else if (MQTT_Port == "") {
-    return "Failed - MQTT Port not configured";
-  }
-  else if (MQTT_Username == "") {
-    return "Failed - MQTT Username not configured";
-  }
-  else if (MQTT_Password == "") {
-    return "Failed - MQTT Password not configured";
-  }
-  else if (System_Header == "") {
-    return "Failed - System Header not configured";
-  }
-
-  return "Passed";
-}
-
-
 // ############################################################ Serial_CLI_Command_Check() ############################################################
 void Serial_CLI_Command_Check() {
 
@@ -2998,6 +2694,26 @@ void Serial_CLI_Command_Check() {
     Wait_For_Serial_Input("system sub header");
     System_Sub_Header = CLI_Input_String;
     Serial.println("system sub header set to: " + System_Sub_Header);
+  }
+
+  // JSON Config
+  else if (CLI_Input_String == "json") {
+    Wait_For_Serial_Input("json config string");
+    Serial.println("JSON CFG:"); // RM
+    Serial.println(CLI_Input_String); // RM
+
+    DynamicJsonBuffer jsonBuffer(CLI_Input_String.length() + 100);
+    JsonObject& root_CLI = jsonBuffer.parseObject(CLI_Input_String);
+
+    if (root_CLI.containsKey("Hostname")) Hostname = root_CLI.get<String>("Hostname");
+    if (root_CLI.containsKey("WiFi_SSID")) WiFi_SSID = root_CLI.get<String>("WiFi_SSID");
+    if (root_CLI.containsKey("WiFi_Password")) WiFi_Password = root_CLI.get<String>("WiFi_Password");
+    if (root_CLI.containsKey("MQTT_Broker")) MQTT_Broker = root_CLI.get<String>("MQTT_Broker");
+    if (root_CLI.containsKey("MQTT_Port")) MQTT_Port = root_CLI.get<unsigned long>("MQTT_Port");
+    if (root_CLI.containsKey("MQTT_Username")) MQTT_Username = root_CLI.get<String>("MQTT_Username");
+    if (root_CLI.containsKey("MQTT_Password")) MQTT_Password = root_CLI.get<String>("MQTT_Password");
+    if (root_CLI.containsKey("System_Header")) System_Header = root_CLI.get<String>("System_Header");
+    if (root_CLI.containsKey("System_Sub_Header")) System_Sub_Header = root_CLI.get<String>("System_Sub_Header");
   }
 
   // Misc
@@ -3086,6 +2802,10 @@ void Serial_CLI_Command_Check() {
     }
   }
 
+  else if (CLI_Input_String == "fs config load") {
+    FS_Config_Load();
+  }
+
   else if (CLI_Input_String == "fs config drop") {
     FS_Config_Drop();
   }
@@ -3108,6 +2828,18 @@ void Serial_CLI_Command_Check() {
 
     delay(500);
     ESP.restart();
+  }
+
+  else if (CLI_Input_String == "shutdown") {
+    Serial.println("");
+    for (byte i = 3; i > 0; i--) {
+      Serial.printf("\tShutting down in: %i\r", i);
+      delay(1000);
+    }
+    Log(MQTT_Topic[Topic_System], "Shutdown, bye bye :-(");
+
+    delay(500);
+    ESP.deepSleep(0);
   }
 
   else if (CLI_Input_String == "show mac") {
@@ -3145,8 +2877,8 @@ void Serial_CLI() {
 
 
 // ############################################################ Serial_CLI_Boot_Message() ############################################################
-void Serial_CLI_Boot_Message() {
-  for (byte i = Serial_CLI_Boot_Message_Timeout; i > 0; i--) {
+void Serial_CLI_Boot_Message(unsigned int Timeout) {
+  for (byte i = Timeout; i > 0; i--) {
     Serial.printf("\tPress any key to enter Serial CLI, timeout in: %i \r", i);
     delay(1000);
     if (Get_Serial_Input() == true) {
@@ -3157,6 +2889,353 @@ void Serial_CLI_Boot_Message() {
   Serial.printf("\tPress any key to enter Serial CLI, timeout in: %i \r", i);
   Serial.println("");
 }
+
+
+// #################################### FS_Config_Show() ####################################
+void FS_Config_Show() {
+  String Payload;
+
+  File configFile = SPIFFS.open(FS_Confing_File_Name, "r");
+
+  if (!configFile) {
+    Config_json_Loaded = true;
+    Log(MQTT_Topic[Topic_System] + "/FSConfig", "Failed to open config file");
+    configFile.close();
+    return;
+  }
+
+  size_t size = configFile.size();
+  if (size > Config_Json_Max_Buffer_Size) {
+    Config_json_Loaded = true;
+    Log(MQTT_Topic[Topic_System] + "/FSConfig", "Config file size is too large");
+    configFile.close();
+    return;
+  }
+
+  DynamicJsonBuffer jsonBuffer(size + 100);
+  JsonObject& root = jsonBuffer.parseObject(configFile);
+
+  root.printTo(Payload);
+
+  configFile.close();
+
+  Log(MQTT_Topic[Topic_System] + "/FSConfig", Payload);
+}
+
+
+// ############################################################ FS_Config_Set() ############################################################
+bool FS_Config_Set(String Topic, String Payload) {
+
+  if (Topic != MQTT_Topic[Topic_Config]) {
+    return false;
+  }
+
+  Payload = Payload.substring(0, Payload.indexOf(";"));
+
+
+  File configFile = SPIFFS.open(FS_Confing_File_Name, "w");
+
+  if (!configFile) {
+    Log(MQTT_Topic[Topic_System] + "/FSConfig", "Failed to open config file for writing");
+    return false;
+  }
+
+  configFile.print(Payload);
+  configFile.close();
+
+  Log(MQTT_Topic[Topic_System] + "/FSConfig", "Saved to SPIFFS");
+
+  Log(MQTT_Topic[Topic_System] + "/FSConfig", "Config changed reboot required, rebooting in 2 seconds");
+  Reboot(2000);
+
+  return true;
+
+} // FS_Config_Set
+
+
+// // ############################################################ MQTT_Settings() ############################################################
+// bool MQTT_Settings(String Topic, String Payload) {
+//
+//   if (Topic.indexOf(MQTT_Topic[Topic_Settings]) == -1) return false;
+//
+//   if (Payload.indexOf(";") == -1) return false; // ADD ERROR for missing ";"
+//
+//   // Remove ";" and anything after
+//   Payload = Payload.substring(0, Payload.indexOf(";"));
+//
+//   Topic.replace(MQTT_Topic[Topic_Settings] + "/", "");
+//
+//   // Device_Config(Topic, Payload);
+//
+//   return true;
+//
+// } // MQTT_Settings
+
+
+// ################################### Version_Show() ###################################
+bool Version_Show() {
+  Log(MQTT_Topic[Topic_System] + "/Version", "Running Dubby v" + String(Version));
+  return true;
+} // Version_Show()
+
+
+// ################################### Version_Update() ###################################
+void Version_Update() {
+  Log(MQTT_Topic[Topic_System] + "/Version", "Checking for updates ... Running Dobby v" + String(Version) + " My IP: " + IPtoString(WiFi.localIP()));
+} // Version_Update()
+
+
+// ################################### MQTT_Commands() ###################################
+bool MQTT_Commands(String Topic, String Payload) {
+
+  // Ignore none commands
+  if (Topic.indexOf(MQTT_Topic[Topic_Commands]) == -1) {
+    return false;
+  }
+
+  // Ignore commands send to Dobby
+  if (Topic.indexOf(MQTT_Topic[Topic_Dobby]) != -1) {
+    return false;
+  }
+
+  Payload = Payload.substring(0, Payload.indexOf(";"));
+  Topic.replace(MQTT_Topic[Topic_Commands] + "/", "");
+
+  if (Topic == "Power") {
+    if (Payload.indexOf("Reboot") != -1) {
+      Reboot(10000);
+    }
+    else if (Payload.indexOf("Shutdown") != -1) {
+      Shutdown(10000);
+    }
+    return true;
+  }
+
+  else if (Topic == "Flash" && Payload.indexOf(MQTT_Allow_Flash_Password) != -1) {
+    MQTT_Allow_Flash();
+    return true;
+  }
+
+  else if (Topic == "FS") {
+    if (FS_Commands(Payload) == true) return true;
+  }
+
+  else if (Topic == "Pins" && Payload == "Map") {
+    Pin_Map();
+    return true;
+  }
+
+  else if (Topic == "Blink") {
+    Indicator_LED_Blink(Payload.toInt());
+    return true;
+  }
+
+  else if (Topic == "Hostname") {
+    Hostname = Payload;
+    FS_Config_Drop();
+    Log(MQTT_Topic[Topic_System] + "/DeviceConfig", "Reboot required rebooting in 2 seconds");
+    Reboot(2000);
+    return true;
+  }
+
+  else if (Topic == "Version") {
+    if (Payload == "Show") Version_Show();
+    if (Payload == "Update") Version_Update();
+    return true;
+  }
+
+  else if (Topic == "IP") {
+    if (Payload == "Show") IP_Show();
+    return true;
+  }
+
+  else if (Topic == "Dimmer/FadeJump") {
+    Dimmer_Fade_Jump = Payload.toInt();
+    Log(MQTT_Topic[Topic_System] + "/Dimmer", "Dimmer Fade Jump changed to: " + String(Dimmer_Fade_Jump));
+    return true;
+  }
+
+  else if (Topic == "Dimmer/FadeJumpDelay") {
+    Dimmer_Fade_Jump_Delay = Payload.toInt();
+    Log(MQTT_Topic[Topic_System] + "/Dimmer", "Dimmer Fade Jump Delay changed to: " + String(Dimmer_Fade_Jump_Delay));
+    return true;
+  } // Dimmer
+
+
+  else if (Topic == "FSConfig") {
+    if (Payload == "Save") FS_Config_Save();
+    else if (Payload == "Show") FS_Config_Show();
+    else if (Payload == "Drop") FS_Config_Drop();
+    return true;
+  }
+
+  else if (Topic == "FSConfig/Set") {
+    FS_Config_Set(Topic, Payload);
+    return true;
+  }
+
+
+  else if (Topic == "WiFi") {
+    if (Payload == "Signal") WiFi_Signal();
+    return true;
+  }
+
+
+  // else if (Topic == "Test") {
+  //
+  //   Serial.println("MARKER TEST");
+  //   Log("/test", "MARKER");
+  //
+  //   String publish_String;
+  //
+  //   publish_String = String(DC_Voltmeter_Pins);
+  //
+  //
+  //   Log("/ts", publish_String);
+  //
+  //
+  // } // Test
+
+  else {
+    Log(MQTT_Topic[Topic_System] + "/Commands", "Unknown command. " + Topic + " - " + Payload);
+  }
+
+  return true;
+
+} // MQTT_Commands()
+
+
+// ################################### MQTT_All() ###################################
+bool MQTT_All(String Topic, String Payload) {
+
+  if (Topic == MQTT_Topic[Topic_All]) {
+
+    Payload = Payload.substring(0, Payload.indexOf(";"));
+
+    if (Payload == "KillKillMultiKill") {
+      Log(MQTT_Topic[Topic_System], "Someone went on a killing spree, let the panic begin ...");
+      Reboot(10000 + random(15000));
+      return true;
+    }
+
+    else if (Payload == "Dimmer-OFF" && Dimmer_Configured == true) {
+      Log(MQTT_Topic[Topic_Dimmer] + "/0", "All OFF");
+      for (int i = 0; i < Dimmer_Max_Number_Of; i++) {
+        if (Dimmer_Pins[i] != 255) {
+          if (Dimmer_State[i] != 0) Dimmer_Fade(i + 1, 0);
+          Log(MQTT_Topic[Topic_Dimmer] + "/" + String(i + 1) + "/State", "0");
+        }
+      }
+      return true;
+    } // Dimmer-OFF
+
+    else if (Payload == "Relay-OFF" && Relay_Configured == true) {
+      Log(MQTT_Topic[Topic_Relay] + "/0", "All OFF");
+      for (int i = 0; i < Relay_Max_Number_Of; i++) {
+        if (Relay_Pins[i] != 255) {
+          if (digitalRead(Relay_Pins[i]) == Relay_On_State) {
+            digitalWrite(Relay_Pins[i], !Relay_On_State);
+            Log(MQTT_Topic[Topic_Relay] + "/" + String(i + 1) + "/State", String(OFF));
+          }
+        }
+        return true;
+      }
+    } // Update
+    else if (Payload == "Update") {
+      int Update_Delay = 5000 + random(15000);
+      Log(MQTT_Topic[Topic_System] + "/Version", "Mass update triggered, updating in " + String(Update_Delay) + " ms. Lets dance");
+      Update_Ticker.once_ms(Update_Delay, Version_Update);
+
+      return true;
+    } // Update
+  }
+
+  return false;
+} // MQTT_All()
+
+
+// ################################### onMqttMessage() ###################################
+void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
+
+  if (ArduinoOTA_Active == true) return;
+
+  else if (Buzzer(topic, payload)) return;
+
+  else if (DHT(topic, payload)) return;
+
+  else if (Relay(topic, payload)) return;
+
+  else if (Distance(topic, payload)) return;
+
+  else if (Dimmer(topic, payload)) return;
+
+  else if (LoadCell(topic, payload)) return;
+
+  else if (DC_Voltmeter(topic, payload)) return;
+
+  else if (Switch(topic, payload)) return;
+
+  else if (FS_Config_Set(topic, payload)) return;
+
+  // else if (MQTT_Settings(topic, payload)) return;
+
+  else if (MQTT_Commands(topic, payload)) return;
+
+  else if (MQTT_All(topic, payload)) return;
+
+} // MQTT_Settings
+
+
+// ############################################################ ArduinoOTA_Setup() ############################################################
+void ArduinoOTA_Setup() {
+
+  ArduinoOTA.setHostname(Hostname.c_str());
+  ArduinoOTA.setPassword("StillNotSinking");
+
+  ArduinoOTA.onStart([]() {
+    Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "ArduinoOTA ... Started");
+    ArduinoOTA_Active = true;
+    MQTT_KeepAlive_Ticker.detach();
+    String type;
+    if (ArduinoOTA.getCommand() == U_FLASH) {
+      type = "sketch";
+    } else { // U_SPIFFS
+      type = "filesystem";
+    }
+
+    // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+    Serial.println("Start updating " + type);
+  });
+
+  ArduinoOTA.onEnd([]() {
+    Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "ArduinoOTA ... End");
+    ArduinoOTA_Active = false;
+    Serial.println("End");
+  });
+
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+
+  ArduinoOTA.onError([](ota_error_t error) {
+    ArduinoOTA_Active = false;
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) {
+      Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "Auth Failed");
+    } else if (error == OTA_BEGIN_ERROR) {
+      Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "Begin Failed");
+    } else if (error == OTA_CONNECT_ERROR) {
+      Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "Connect Failed");
+    } else if (error == OTA_RECEIVE_ERROR) {
+      Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "Receive Failed");
+    } else if (error == OTA_END_ERROR) {
+      Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "End Failed");
+    }
+  });
+
+  ArduinoOTA.begin();
+
+} // ArduinoOTA_Setup()
 
 
 // ############################################################ Base_Config_Check() ############################################################
@@ -3196,7 +3275,6 @@ void Base_Config_Check() {
 
   else {
     Log(MQTT_Topic[Topic_System] + "/Dobby", "Base config check done, all OK");
-    Serial_CLI_Boot_Message();
     return;
   }
 }
@@ -3219,6 +3297,8 @@ void setup() {
 
   // ------------------------------ FS ------------------------------
   SPIFFS.begin();
+
+  Serial_CLI_Boot_Message(Serial_CLI_Boot_Message_Timeout);
 
   FS_Config_Load();
 
