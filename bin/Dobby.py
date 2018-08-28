@@ -638,8 +638,8 @@ def MQTT_KeepAlive_Show():
 # ---------------------------------------- Auto Update ----------------------------------------
 def Auto_Update(Hostname, IP, Current_SW):
 
+    # FIX - Add system software update
     if Hostname == "Dobby":
-        # FIX - Add system software update
         return
 
     # FIX CHECK IP AND RETURN IF NOT VALID
@@ -679,19 +679,21 @@ def Auto_Update(Hostname, IP, Current_SW):
             # FIX - Add support for beta firmware
             pass
         else:
-            Firmware_List.append(float(Firmware_Name.replace(".bin", "")))
+            Firmware_List.append(Firmware_Name.replace(".bin", ""))
 
-    if Current_SW < str(max(Firmware_List)).ljust(4, "0"):
-        Log("Info", "AutoUpdate", "Updating", Hostname + "From: " + str(Current_SW) + " To:" + str(max(Firmware_List)).ljust(4, "0"))
+    if Current_SW < max(Firmware_List):
+        Log("Info", "AutoUpdate", "Updating", Hostname + "From: " + str(Current_SW) + " To:" + max(Firmware_List))
 
+        print Current_SW        # RM
+        
         # FIX ADD FOLDER ROOT PATH BELOW
-        # call(["python", "/etc/Dobby/Tools/espota.py", "-i", IP, "-a", "StillNotSinking", "-f", "/etc/Dobby/Firmware/" + str(max(Firmware_List)).ljust(4, "0") + ".bin"])
+        # call(["python", "/etc/Dobby/Tools/espota.py", "-i", IP, "-a", "StillNotSinking", "-f", "/etc/Dobby/Firmware/" + str(max(Firmware_List)) + ".bin"])
 
-    elif Current_SW == str(max(Firmware_List)).ljust(4, "0"):
+    elif Current_SW == max(Firmware_List):
         Log("Debug", "AutoUpdate", "OK", Hostname + "Up to date")
 
     else:
-        Log("Debug", "AutoUpdate", "Newer", Hostname + " Running: " + str(Current_SW) + " Newest is:" + str(max(Firmware_List)).ljust(4, "0"))
+        Log("Debug", "AutoUpdate", "Newer", Hostname + " Running: " + str(Current_SW) + " Newest is:" + max(Firmware_List))
 
 
 # ---------------------------------------- # On message callbacks - Spawns threads ----------------------------------------
