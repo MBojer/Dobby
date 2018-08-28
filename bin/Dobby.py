@@ -679,21 +679,21 @@ def Auto_Update(Hostname, IP, Current_SW):
             # FIX - Add support for beta firmware
             pass
         else:
-            Firmware_List.append(Firmware_Name.replace(".bin", ""))
+            Firmware_List.append(int(Firmware_Name.replace(".bin", "")))
 
     if Current_SW < max(Firmware_List):
-        Log("Info", "AutoUpdate", "Updating", Hostname + "From: " + str(Current_SW) + " To:" + max(Firmware_List))
+        Log("Info", "AutoUpdate", "Updating", Hostname + "From: " + str(Current_SW) + " To:" + str(max(Firmware_List)))
 
-        print Current_SW        # RM
-        
         # FIX ADD FOLDER ROOT PATH BELOW
-        # call(["python", "/etc/Dobby/Tools/espota.py", "-i", IP, "-a", "StillNotSinking", "-f", "/etc/Dobby/Firmware/" + str(max(Firmware_List)) + ".bin"])
+        call(["python", "/etc/Dobby/Tools/espota.py", "-i", IP, "-a", "StillNotSinking", "-f", "/etc/Dobby/Firmware/" + str(max(Firmware_List)) + ".bin"])
+
+        Log("Debug", "AutoUpdate", "Update compleate", Hostname + "From: " + str(Current_SW) + " To:" + str(max(Firmware_List)))
 
     elif Current_SW == max(Firmware_List):
         Log("Debug", "AutoUpdate", "OK", Hostname + "Up to date")
 
     else:
-        Log("Debug", "AutoUpdate", "Newer", Hostname + " Running: " + str(Current_SW) + " Newest is:" + max(Firmware_List))
+        Log("Debug", "AutoUpdate", "Newer", Hostname + " Running: " + str(Current_SW) + " Newest is:" + str(max(Firmware_List)))
 
 
 # ---------------------------------------- # On message callbacks - Spawns threads ----------------------------------------

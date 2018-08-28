@@ -28,6 +28,11 @@
 //
 // -------------------- 1.35 --------------------
 // Added RSSI to keepalive and WiFi Signal to show signal strength
+//
+// 
+// Bug list:
+//
+// LoadCell = If the loadcell is configured but not connected the device will go into a reboot loop.
 
 
 #include <Arduino.h>
