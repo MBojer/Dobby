@@ -529,15 +529,15 @@ def KeepAlive_Monitor(Topic, Payload):
 
     Log("Debug", "KeepAliveMonitor", "KeepAlive", "From: " + root_KL["Hostname"])
 
-    if root_KL["IP"] == "":
+    if "IP" not in root_KL:
         root_KL["IP"] = "0.0.0.0"
 
-    if root_KL["RSSI"] == "":
+    if "RSSI" not in root_KL:
         root_KL["RSSI"] = "0"
 
     if root_KL["Hostname"] != "Dobby":
         # Spawn thread for Auto Update Check
-        AU_Thread = threading.Thread(target=Auto_Update, kwargs={"Hostname": root_KL["Hostname"], "IP": root_KL["IP"], "Current_SW": root_KL["Software"]})
+        AU_Thread = threading.Thread(target=Auto_Update, kwargs={"Hostname": root_KL["Hostname"], "IP": root_KL["IP"], "Current_SW": str(root_KL["Software"])})
         AU_Thread.daemon = True
         AU_Thread.start()
 
@@ -683,17 +683,21 @@ def Auto_Update(Hostname, IP, Current_SW):
         else:
             Firmware_List.append(float(Firmware_Name.replace(".bin", "")))
 
-    if Current_SW < max(Firmware_List):
-        Log("Info", "AutoUpdate", "Updating", Hostname + "From: " + str(Current_SW) + " To:" + str(max(Firmware_List)))
+    if Current_SW < str(max(Firmware_List)).ljust(4, "0"):
+        Log("Info", "AutoUpdate", "Updating", Hostname + "From: " + str(Current_SW) + " To:" + str(max(Firmware_List)).ljust(4, "0"))
 
         # FIX ADD FOLDER ROOT PATH BELOW
-        call(["python", "/etc/Dobby/Tools/espota.py", "-i", IP, "-a", "StillNotSinking", "-f", "/etc/Dobby/Firmware/" + str(max(Firmware_List)) + ".bin"])
+        # call(["python", "/etc/Dobby/Tools/espota.py", "-i", IP, "-a", "StillNotSinking", "-f", "/etc/Dobby/Firmware/" + str(max(Firmware_List)).ljust(4, "0") + ".bin"])
 
-    elif Current_SW == max(Firmware_List):
+        print "MARKER UPDATE"
+        print Current_SW
+        print str(max(Firmware_List)).ljust(4, "0")
+
+    elif Current_SW == str(max(Firmware_List)).ljust(4, "0"):
         Log("Debug", "AutoUpdate", "OK", Hostname + "Up to date")
 
     else:
-        Log("Debug", "AutoUpdate", "Newer", Hostname + " Running: " + str(Current_SW) + " Newest is:" + str(max(Firmware_List)))
+        Log("Debug", "AutoUpdate", "Newer", Hostname + " Running: " + str(Current_SW) + " Newest is:" + str(max(Firmware_List)).ljust(4, "0"))
 
 
 # ---------------------------------------- # On message callbacks - Spawns threads ----------------------------------------

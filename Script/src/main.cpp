@@ -3,6 +3,9 @@
 
 // Change log:
 //
+// -------------------- 1.41 --------------------
+// Sending Version as String to make sure the 0 at the end is kept
+//
 // -------------------- 1.40 --------------------
 // Added support for pasting JSON string in CLI
 // Moved Serial CLI before FS_Config_Load
@@ -33,7 +36,7 @@ extern "C" {
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 1.40
+#define Version 1.41
 
 String Hostname = "NotConfigured";
 String System_Header = "";
@@ -1639,7 +1642,7 @@ void MQTT_KeepAlive() {
   root_KL.set("IP", IPtoString(WiFi.localIP()));
   root_KL.set("Uptime", millis());
   root_KL.set("FreeMemory", system_get_free_heap_size());
-  root_KL.set("Software", Version);
+  root_KL.set("Software", String(Version));
   root_KL.set("IP", IPtoString(WiFi.localIP()));
   root_KL.set("RSSI", WiFi.RSSI());
 
