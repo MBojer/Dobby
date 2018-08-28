@@ -4,7 +4,7 @@
 // Change log:
 //
 // -------------------- 1.41 --------------------
-// Sending Version as String to make sure the 0 at the end is kept
+// Converted software version from float to unsigned int
 //
 // -------------------- 1.40 --------------------
 // Added support for pasting JSON string in CLI
@@ -36,7 +36,11 @@ extern "C" {
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 1.41
+#define Version 101041
+// First didget = Software type 1-Production 2-Beta 3-Alpha
+// Secound and third didget = Major version number
+// Fourth to sixth = Minor version number
+
 
 String Hostname = "NotConfigured";
 String System_Header = "";
@@ -1642,7 +1646,7 @@ void MQTT_KeepAlive() {
   root_KL.set("IP", IPtoString(WiFi.localIP()));
   root_KL.set("Uptime", millis());
   root_KL.set("FreeMemory", system_get_free_heap_size());
-  root_KL.set("Software", String(Version));
+  root_KL.set("Software", Version);
   root_KL.set("IP", IPtoString(WiFi.localIP()));
   root_KL.set("RSSI", WiFi.RSSI());
 

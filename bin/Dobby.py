@@ -28,7 +28,7 @@ import json
 import os
 
 # System variables
-Version = 0.07
+Version = 101008
 Start_Time = datetime.datetime.now()
 
 # MQTT Client
@@ -204,8 +204,6 @@ def MQTT_KeepAlive_Start(MQTT_Client):
         KeepAlive_Publish_Dict["Uptime"] = Uptime_MS
         KeepAlive_Publish_Dict["FreeMemory"] = psutil.virtual_memory()[1]
         KeepAlive_Publish_Dict["Software"] = Version
-
-        # Publish_String = "Up for: " + str(datetime.datetime.now() - Start_Time) + " Free Memory: " + str(psutil.virtual_memory()[1]) + " Software Version: " + str(Version)
 
         Log("Debug", "Dobby", "MQTT KeepAlive", "Ping")
         MQTT_Client.publish(System_Header + "/KeepAlive/Dobby", payload=json.dumps(KeepAlive_Publish_Dict), qos=0, retain=False)
@@ -537,7 +535,7 @@ def KeepAlive_Monitor(Topic, Payload):
 
     if root_KL["Hostname"] != "Dobby":
         # Spawn thread for Auto Update Check
-        AU_Thread = threading.Thread(target=Auto_Update, kwargs={"Hostname": root_KL["Hostname"], "IP": root_KL["IP"], "Current_SW": str(root_KL["Software"])})
+        AU_Thread = threading.Thread(target=Auto_Update, kwargs={"Hostname": root_KL["Hostname"], "IP": root_KL["IP"], "Current_SW": root_KL["Software"]})
         AU_Thread.daemon = True
         AU_Thread.start()
 
@@ -549,7 +547,7 @@ def KeepAlive_Monitor(Topic, Payload):
         if e[0] == 1146:
             Log("Debug", "KeepAliveMonitor", "db", "Log table missing, creating it")
             try:
-                db_KL_Curser.execute("CREATE TABLE `KeepAliveMonitor` (`id` INTEGER PRIMARY KEY AUTO_INCREMENT NOT NULL, `Device` VARCHAR(25) NOT NULL, `LastKeepAlive` timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL, `UpFor` int(11) unsigned NOT NULL, `FreeMemory` DECIMAL(13,0) NOT NULL, `SoftwareVersion` FLOAT(4,2) NOT NULL, `IP` VARCHAR(16) NOT NULL, `RSSI` INT(5) NOT NULL);")
+                db_KL_Curser.execute("CREATE TABLE `KeepAliveMonitor` (`id` INTEGER PRIMARY KEY AUTO_INCREMENT NOT NULL, `Device` VARCHAR(25) NOT NULL, `LastKeepAlive` timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL, `UpFor` int(11) unsigned NOT NULL, `FreeMemory` DECIMAL(13,0) NOT NULL, `SoftwareVersion` int(6) NOT NULL, `IP` VARCHAR(16) NOT NULL, `RSSI` INT(5) NOT NULL);")
             except (MySQLdb.Error, MySQLdb.Warning) as e:
                 # Error 1050 = Table already exists
                 if e[0] != 1050:
@@ -688,10 +686,6 @@ def Auto_Update(Hostname, IP, Current_SW):
 
         # FIX ADD FOLDER ROOT PATH BELOW
         # call(["python", "/etc/Dobby/Tools/espota.py", "-i", IP, "-a", "StillNotSinking", "-f", "/etc/Dobby/Firmware/" + str(max(Firmware_List)).ljust(4, "0") + ".bin"])
-
-        print "MARKER UPDATE"
-        print Current_SW
-        print str(max(Firmware_List)).ljust(4, "0")
 
     elif Current_SW == str(max(Firmware_List)).ljust(4, "0"):
         Log("Debug", "AutoUpdate", "OK", Hostname + "Up to date")
