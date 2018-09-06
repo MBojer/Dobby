@@ -37,7 +37,7 @@ MQTT_Client = MQTT.Client(client_id="Dobby", clean_session=True)
 
 # ---------------------------------------- Logging ----------------------------------------
 def Log(Log_Level, Log_Source, Log_Header, Log_Text):
-    Log_Thread = threading.Thread(target=Write_Log, kwargs={"Log_Level": Log_Level, "Log_Source": Log_Source, "Log_Header": Log_Header, "Log_Text": Log_Text})
+ Log_Thread = threading.Thread(target=Write_Log, kwargs={"Log_Level": Log_Level, "Log_Source": Log_Source, "Log_Header": Log_Header, "Log_Text": Log_Text})
     Log_Thread.daemon = True
     Log_Thread.start()
 
