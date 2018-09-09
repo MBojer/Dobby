@@ -34,10 +34,15 @@ sudo date -s "$(wget -qSO- --max-redirect=0 google.com 2>&1 | grep Date: | cut -
 # Install dependencies
 sudo apt-get install -y git mosquitto mosquitto-clients supervisor python-pip picocom mysql-server mysql-client default-libmysqlclient-dev
 
-# Install dependencies - Dash
-pip install dash==0.26.3 dash-html-components==0.12.0 dash-core-components==0.28.0
+# Update pip
+sudo pip install --upgrade pip
+pip install --upgrade pip
 
 pip install flask logging paho-mqtt psutil mysql-python
+
+# Install dependencies - Dash
+pip install dash==0.26.3 dash-html-components==0.12.0 dash-core-components==0.28.0 pandas
+
 
 # Pull and move
 git clone https://github.com/MBojer/Dobby.git
