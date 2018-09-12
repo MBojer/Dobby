@@ -1509,6 +1509,10 @@ void Buzzer_Play() {
     int Tone = Buzzer_Melody.substring(0, Buzzer_Melody.indexOf(",")).toInt();
     unsigned long Tone_Time = Buzzer_Melody.substring(Buzzer_Melody.indexOf(",") + 1, Buzzer_Melody.length()).toInt();
 
+    Serial.println("Buzzer_Pins: " + String(Buzzer_Pins));
+    Serial.println("Tone: " + String(Tone));
+    Serial.println("Tone_Time: " + String(Tone_Time));
+
     Buzzer_Melody = Buzzer_Melody.substring(Buzzer_Melody.indexOf(String(Tone_Time)) + String(Tone_Time).length(), Buzzer_Melody.length());
 
     tone(Buzzer_Pins, Tone, Tone_Time);
@@ -2458,9 +2462,9 @@ bool FS_Config_Load() {
   if (root.get<String>("Buzzer_Pins") != "") {
     Buzzer_Pins = root.get<byte>("Buzzer_Pins");
     if (Pin_Monitor(Buzzer_Pins) == true) {
+      Buzzer_Configured = true;
       pinMode(Buzzer_Pins, OUTPUT);
       MQTT_Subscribe(MQTT_Topic[Topic_Buzzer], true, NONE);
-      Buzzer_Configured = true;
     }
   }
 

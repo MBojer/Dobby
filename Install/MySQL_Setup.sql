@@ -13,7 +13,16 @@ GRANT ALL PRIVILEGES ON Dobby.* TO 'dobby'@'%'
 GRANT ALL PRIVILEGES ON DobbyLog.* TO 'dobby'@'%'
     WITH GRANT OPTION;
 
-CREATE TABLE `DeviceConfig` (
+CREATE TABLE `Dobby`.`Users` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `Username` varchar(45) NOT NULL,
+  `Password` varchar(45) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `id_UNIQUE` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+
+
+CREATE TABLE `Dobby`.`DeviceConfig` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `Hostname` varchar(25) NOT NULL,
   `Config_Active` tinyint(1) unsigned NOT NULL,

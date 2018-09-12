@@ -6,20 +6,6 @@
 # apt-get install uuid-dev
 
 
-# mosquitto auto Setup
-# https://medium.com/@eranda/setting-up-authentication-on-mosquitto-mqtt-broker-de5df2e29afc
-
-# mosquitto auth
-# password_file /etc/mosquitto/passwd
-# allow_anonymous false
-
-# mosqutto passwd
-# DasBoot:$6$f1TtphlShQ11QIGp$nsQcgIvCJxPrNLxpzp0R0qyhbpmtR1XoS+yVebAh3Ww5ZGV4p9lhQ5OXioUM1j3wSP0hShjn8lGJAOauP5+nZQ==
-
-
-
-
-
 
 # Create User
 sudo adduser dobby
@@ -41,7 +27,7 @@ pip install --upgrade pip
 pip install flask logging paho-mqtt psutil mysql-python
 
 # Install dependencies - Dash
-pip install dash==0.26.3 dash-html-components==0.12.0 dash-core-components==0.28.0 pandas
+pip install dash==0.26.3 dash-html-components==0.12.0 dash-core-components==0.28.0 pandas dash-auth==1.0.0
 
 
 # Pull and move
@@ -66,3 +52,6 @@ sudo ln -s /etc/Dobby/Install/Config_Files/supervisor/conf.d/Dobby.conf /etc/sup
 sudo ln -s /etc/Dobby/Install/Config_Files/supervisor/conf.d/Dash.conf /etc/supervisor/conf.d/Dash.conf
 sudo supervisorctl reread
 sudo supervisorctl update
+
+# mosquitto Config
+sudo ln -s /etc/Dobby/Install/Config_Files/mosquitto/Dobby_Auto.conf /etc/mosquitto/conf.d/Dobby_Auto.conf

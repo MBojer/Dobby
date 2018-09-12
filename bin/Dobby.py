@@ -528,7 +528,10 @@ def KeepAlive_Monitor(Topic, Payload):
     Log("Debug", "KeepAliveMonitor", "KeepAlive", "From: " + root_KL["Hostname"])
 
     if "IP" not in root_KL:
-        root_KL["IP"] = "0.0.0.0"
+        if root_KL["Hostname"] is "Dobby":
+            root_KL["IP"] = "127.0.0.1"
+        else:
+            root_KL["IP"] = "0.0.0.0"
 
     if "RSSI" not in root_KL:
         root_KL["RSSI"] = "0"
