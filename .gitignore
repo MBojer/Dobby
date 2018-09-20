@@ -11,3 +11,5 @@
 
 .remote-sync.json
 .ftpconfig
+
+platformio.ini

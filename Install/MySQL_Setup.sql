@@ -19,7 +19,36 @@ CREATE TABLE `Dobby`.`Users` (
   `Password` varchar(45) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id_UNIQUE` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4;
+
+
+CREATE TABLE `Dobby`.`Alerts` (
+  `id` int(11) NOT NULL,
+  `Name` varchar(45) NOT NULL,
+  `Type` varchar(45) NOT NULL,
+  `Enabled` tinyint(1) NOT NULL,
+  `Alert_State` tinyint(1) NOT NULL DEFAULT '0',
+  `MQTT_Target` varchar(45) NOT NULL,
+  `MQTT_Payload_Clear` decimal(6,2) NOT NULL,
+  `MQTT_Payload_Trigger` decimal(6,2) NOT NULL,
+  `Alert_Target` varchar(45) NOT NULL,
+  `Alert_Subject` varchar(45) NOT NULL,
+  `Alert_Payload_Clear` varchar(45) NOT NULL,
+  `Alert_Payload_Trigger` varchar(45) NOT NULL,
+  PRIMARY KEY (`id`)
+  UNIQUE KEY `id_UNIQUE` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+
+
+CREATE TABLE `Dobby`.`DashButtons` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `Name` varchar(45) NOT NULL,
+  `Type` varchar(45) NOT NULL,
+  `Target_Topic` varchar(45) NOT NULL,
+  `Target_Payload` varchar(45) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `id_UNIQUE` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4;
 
 
 CREATE TABLE `Dobby`.`DeviceConfig` (

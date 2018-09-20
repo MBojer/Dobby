@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# Version 0.4
+# Version 1.0
 
 import dash
 import dash_auth
@@ -8,6 +8,8 @@ import dash_auth
 from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_table_experiments as dt
+
 
 # import plotly.graph_objs as go
 
@@ -24,44 +26,42 @@ import MySQLdb
 import pandas as pd
 
 # MISC
-import collections
-import ast
+# import collections
+# import ast
+
+# json
+import json
 
 # MySQL
-MySQL_Server = '192.168.1.2'
-# MySQL_Server = '10.106.138.5'
+MySQL_Server = 'localhost'
 MySQL_Username = 'dobby'
 MySQL_Password = 'HereToServe'
 
-db_Connection = MySQLdb.connect(host=MySQL_Server, user=MySQL_Username, passwd=MySQL_Password)
+db_pd_Connection = MySQLdb.connect(host=MySQL_Server, user=MySQL_Username, passwd=MySQL_Password)
 
 # Dobby
-MQTT_Broker = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Broker';", con=db_Connection)
-MQTT_Port = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Port';", con=db_Connection)
-MQTT_Username = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Username';", con=db_Connection)
-MQTT_Password = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Password';", con=db_Connection)
-System_Header = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='System' AND Target='Dobby' AND Name='Header';", con=db_Connection)
+MQTT_Broker = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Broker';", con=db_pd_Connection)
+MQTT_Port = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Port';", con=db_pd_Connection)
+MQTT_Username = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Username';", con=db_pd_Connection)
+MQTT_Password = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Password';", con=db_pd_Connection)
+System_Header = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='System' AND Target='Dobby' AND Name='Header';", con=db_pd_Connection)
+DashButtons_Number_Of = pd.read_sql("SELECT COUNT(id) FROM Dobby.DashButtons;", con=db_pd_Connection)
 
-MQTT_Broker.Value[0] = "192.168.1.111"   # RM
-# MQTT_Broker.Value[0] = "10.106.138.5"   # RM
-
-
-# Dropdown lists
-MonitorAgent_Agent_List = pd.read_sql("SELECT DISTINCT Agent FROM DobbyLog.MonitorAgent;", con=db_Connection)
-KeepAliveMonitor_Device_List = pd.read_sql("SELECT DISTINCT Device FROM DobbyLog.KeepAliveMonitor;", con=db_Connection)
-Device_List = pd.read_sql("SELECT Hostname FROM Dobby.DeviceConfig WHERE Config_Active = '1';", con=db_Connection)
-Bin_Device_List = pd.read_sql("SELECT DISTINCT Device FROM DobbyLog.KeepAliveMonitor WHERE INSTR(`Device`, 'Bin') > 0;", con=db_Connection)
-
+# Add users and passwords
 # User auth list
-db_User_List = pd.read_sql("SELECT Username, Password FROM Dobby.Users;", con=db_Connection)
+db_User_List = pd.read_sql("SELECT Username, Password FROM Dobby.Users;", con=db_pd_Connection)
 
 User_List = []
 
 for i in db_User_List.index:
     User_List.append([db_User_List.Username[i], db_User_List.Password[i]])
 
+del db_User_List
+
+
 # Dash
 app = dash.Dash()
+
 
 # Dash auth
 auth = dash_auth.BasicAuth(
@@ -69,57 +69,221 @@ auth = dash_auth.BasicAuth(
         User_List
 )
 
+# Needed with taps
+app.config['suppress_callback_exceptions'] = True
 
-def String_To_Dict(Dict):
-    return ast.literal_eval("{" + Dict + "}")
+
+# ================================================================================ Functions ================================================================================
+# ================================================================================ Functions ================================================================================
+# ================================================================================ Functions ================================================================================
+
+# ======================================== MQTT Publish ========================================
+def MQTT_Publish(Topic, Payload):
+    MQTT.single(Topic, Payload, hostname=MQTT_Broker.Value[0], port=MQTT_Port.Value[0], auth={'username': MQTT_Username.Value[0], 'password': MQTT_Password.Value[0]})
 
 
-def Generate_Device_Config_String(Selected_Device):
+# ======================================== SQL Open /Close ========================================
+def Open_db(db=""):
+    try:
+        db = MySQLdb.connect(host=MySQL_Server,    # your host, usually localhost
+                             user=MySQL_Username,         # your username
+                             passwd=MySQL_Password,  # your password
+                             db=db)        # name of the data base
+        return db
 
-    Device_Config = pd.read_sql("SELECT * FROM Dobby.DeviceConfig WHERE Hostname='" + Selected_Device + "' AND Config_Active=1;", con=db_Connection)
+    except (MySQLdb.Error, MySQLdb.Warning) as e:
+        print(e)
+        return False
 
-    Config_Dict = {}
+
+def Close_db(conn, cur):
+    try:
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+
+    except (MySQLdb.Error, MySQLdb.Warning) as e:
+        print(e)
+        return False
+
+
+# ======================================== SQL_To_List ========================================
+def SQL_To_List(SQL_String):
+    # Open db connection
+    db_SQL_Connection = Open_db('')
+    db_SQL_Curser = db_SQL_Connection.cursor()
+
+    db_SQL_Curser.execute(SQL_String)
+    db_List = db_SQL_Curser.fetchall()
+
+    # Close db connection
+    Close_db(db_SQL_Connection, db_SQL_Curser)
+
+    Return_List = []
+
+    for i in db_List:
+        Return_List.append(i[0])
+
+    return Return_List
+
+
+# ======================================== Generate_Device_Config_Dict ========================================
+def Generate_Device_Config_Dict(Selected_Device, db_Curser):
+
+    if Selected_Device is None:
+        return None
+
+    db_Curser.execute("SELECT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA`='Dobby' AND `TABLE_NAME`='DeviceConfig';")
+    Device_Config_Setting = db_Curser.fetchall()
+
+    db_Curser.execute("SELECT * FROM Dobby.DeviceConfig WHERE Hostname='" + Selected_Device + "' AND Config_Active=1;")
+    Device_Config_Value = db_Curser.fetchone()
+
+    Row_List = []
     Config_Ignore_List = ['id', 'Date_Modified', 'Config_Active', 'Config_ID']
 
-    for i in Device_Config:
-        if Device_Config[i][0] is not None and i not in Config_Ignore_List:
-            Config_Dict[str(i)] = str(Device_Config[i][0])
+    i = 0
 
-    return Config_Dict
+    for Setting in Device_Config_Setting:
+        if Setting[0] not in Config_Ignore_List:
+            Row_List.append({'Setting': [Setting[0]], 'Value': [Device_Config_Value[i]]})
+        i = i + 1
+
+    return Row_List
 
 
-app.config['suppress_callback_exceptions'] = True
+# ======================================== Generate_Variable_Dict ========================================
+def Generate_Variable_Dict(String):
+
+    if String == "":
+        return {}
+
+    return dict([i.split(':') for i in String.split(' ')])
+
+
+# ======================================== Generate_Variable_Dict ========================================
+def Generate_Variable_String(Dict):
+    # Remove {}
+    Return_String = str(Dict)[1:-1]
+
+    # Remove ' and u'
+    Return_String = Return_String.replace("u'", "")
+    Return_String = Return_String.replace("'", "")
+
+    # Remove ,
+    Return_String = Return_String.replace(",", "")
+
+    # Replace ": " with ":"
+    Return_String = Return_String.replace(": ", ":")
+
+    return Return_String
+
+
+# ======================================== Generate_json_Config_String ========================================
+def MQTT_Config_New(Selected_Device):
+
+    # No reason to continue if no device is selected
+    if Selected_Device is None:
+        return
+
+    db_FSCJ_Connection = Open_db("Dobby")
+    db_FSCJ_Curser = db_FSCJ_Connection.cursor()
+
+    # Get config
+    try:
+        db_FSCJ_Curser.execute("SELECT DISTINCT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA`='Dobby' AND `TABLE_NAME`='DeviceConfig';")
+        Config_Name_List = db_FSCJ_Curser.fetchall()
+
+        db_FSCJ_Curser.execute("SELECT * FROM DeviceConfig WHERE Hostname='" + Selected_Device + "';")
+        Config_Value_List = db_FSCJ_Curser.fetchall()
+
+    except (MySQLdb.Error, MySQLdb.Warning) as e:
+        if e[0] == 1146:
+            print "Unable to build json Config for: " + str(Selected_Device)
+        else:
+            print "db error building json Config for: " + str(Selected_Device)
+            Close_db(db_FSCJ_Connection, db_FSCJ_Curser)
+            return
+
+    Close_db(db_FSCJ_Connection, db_FSCJ_Curser)
+
+    # Compare ConfigID
+    if Config_Name_List is None:
+        print "Unable to build json Config for: " + str(Selected_Device)
+
+    if Config_Name_List is () or Config_Value_List is ():
+        print "json Config empthy for: " + str(Selected_Device)
+        return
+
+    Config_Dict = {}
+
+    Interation = 0
+
+    for x in Config_Name_List:
+        if str(x[0]) != "id" and str(x[0]) != "Config_Active" and str(x[0]) != "Date_Modified" and Config_Value_List[0][Interation] is not None:
+            Config_Dict[str(x[0])] = str(Config_Value_List[0][Interation])
+        Interation = Interation + 1
+
+    return json.dumps(Config_Dict)
 
 
 # ======================================== Layout ========================================
 app.layout = html.Div([
-    html.Title('Dobby'),
 
-    dcc.Tabs(id="tabs", value='Devices_Tab', children=[
+    dcc.Tabs(id="tabs", value='Buttons_Tab', children=[
+        dcc.Tab(label='Buttons', value='Buttons_Tab'),
         dcc.Tab(label='MonitorAgent', value='MonitorAgent_Tab'),
-        dcc.Tab(label='KeepAliveMonitor', value='KeepAliveMonitor_Tab'),
         dcc.Tab(label='Devices', value='Devices_Tab'),
-        dcc.Tab(label='Device Config', value='Device_Config', id='Device_Config_Tab_id', style={'display': 'none'}),
+        dcc.Tab(label='Users', value='Users_Tab'),
         ]),
 
     html.Div(id='Main_Tabs'),
 
-    html.Div(id='System_Variable', children='', style={'display': 'none'})
-])
+    # No idea why this needs to be here, if its not the tabs with datatables does not load
+    html.Div([
+        dt.DataTable(rows=[{}]),
+        ], style={"display": "none"}),
+
+    # Places to store variables
+    html.Div([
+
+        html.Div(id='Devices_Tab_Variables', children=""),
+        html.Div(id='MonitorAgent_Tab_Variables', children=""),
+        html.Div(id='Users_Tab_Variables', children=""),
+        html.Div(id='Buttons_Tab_Variables', children=""),
+
+        ], style={'display': 'none'})
+    ])
 
 
 # ======================================== Tabs ========================================
-@app.callback(Output('Main_Tabs', 'children'), [Input('tabs', 'value')])
-def render_content(tab):
+@app.callback(
+    Output('Main_Tabs', 'children'),
+    [
+        Input('tabs', 'value'),
+        ],
+    [
+        State('Devices_Tab_Variables', 'children'),
+        State('MonitorAgent_Tab_Variables', 'children'),
+        State('Users_Tab_Variables', 'children'),
+        State('Buttons_Tab_Variables', 'children'),
+        ]
+    )
+def render_content(tab, Devices_Tab_Variables, MonitorAgent_Tab_Variables, Users_Tab_Variables, Buttons_Tab_Variables):
+
+    Devices_Tab_Variables = Generate_Variable_Dict(Devices_Tab_Variables)
+    MonitorAgent_Tab_Variables = Generate_Variable_Dict(MonitorAgent_Tab_Variables)
+    Users_Tab_Variables = Generate_Variable_Dict(Users_Tab_Variables)
+    Buttons_Tab_Variables = Generate_Variable_Dict(Buttons_Tab_Variables)
 
     # ======================================== MonitorAgent Tab ========================================
     if tab == 'MonitorAgent_Tab':
         return html.Div([
-            html.Button('Update', id='MonitorAgent_Update_Button'),
-
             dcc.Dropdown(
                 id='MonitorAgent_Dropdown',
-                options=[{'label': Agents, 'value': Agents} for Agents in MonitorAgent_Agent_List.Agent],
+                options=[{'label': Agents, 'value': Agents} for Agents in SQL_To_List("SELECT DISTINCT Agent_Name FROM Dobby.MonitorAgentConfig;")],
+                value=MonitorAgent_Tab_Variables.get('MonitorAgent_Dropdown')
                 ),
 
             dcc.Slider(
@@ -133,407 +297,631 @@ def render_content(tab):
             dcc.Graph(id='MonitorAgent_Graph'),
         ], className="MonitorAgent"),
 
-    # ======================================== KeepAliveMonitor Tab ========================================
-    elif tab == 'KeepAliveMonitor_Tab':
-        return html.Div([
-            html.Button('Update', id='KeepAliveMonitor_Update_Button'),
-
-            dcc.Dropdown(
-                id='KeepAliveMonitor_Dropdown',
-                options=[{'label': Device, 'value': Device} for Device in KeepAliveMonitor_Device_List.Device],
-                ),
-
-            dcc.Slider(
-                id='KeepAliveMonitor_Slider',
-                min=10,
-                max=25000,
-                step=10,
-                value=50,
-                ),
-
-            dcc.Graph(id='KeepAliveMonitor_Graph'),
-        ])
-
     # ======================================== Devices Tab ========================================
     elif tab == 'Devices_Tab':
         return html.Div([
 
             dcc.Dropdown(
                 id='Devices_Dropdown',
-                options=[{'label': Device, 'value': Device} for Device in Device_List.Hostname],
-            ),
-
-            html.Button('Update', id='Devices_Update_Button'),
-
+                options=[{'label': Device, 'value': Device} for Device in SQL_To_List("SELECT Hostname FROM `Dobby`.`DeviceConfig` WHERE Config_Active = '1' ORDER BY Hostname;")],
+                value=Devices_Tab_Variables.get('Devices_Dropdown'),
+                ),
+            # KeepAlive info
+            html.Div([
+                html.H2('KeepAlive'),
+                html.Button('Read', id='Devices_Read_KeepAlive_Button', n_clicks=0),
+                dcc.Graph(id='Devices_KeepAlive_Graph', style={'height': '375px', 'width': '100%'}),
+                dcc.Slider(
+                    id='Devices_KeepAlive_Slider',
+                    min=10,
+                    max=25000,
+                    step=60,
+                    value=Devices_Tab_Variables.get('Devices_KeepAlive_Slider', 3600)
+                    ),
+                html.P(id='Devices_KeepAlive_Text'),
+                ]),
+            # Device Config
             html.Div([
                 html.Div([
+                    # Header text
                     html.H2('Config'),
-                    # dcc.Textarea(
-                    #     id='Devices_Config_Text',
-                    #     placeholder='Press "Read" to load config',
-                    #     value='Press "Read" to load config',
-                    #     rows=50,
-                    #     style={'width': '50%'},
-                    # ),
-                    # html.P('No config avalible', id='Devices_Config_Text'),
-                    html.Button('Read', id='Devices_Read_Config', n_clicks=1),
-                    html.Button('Reapply config', id='Devices_Reapply_Config', n_clicks=1),
+                    # Buttons
+                    html.Button('Read', id='Devices_Read_Config_Button', n_clicks=0),
+                    html.Button('Save', id='Devices_Save_Config_Button', n_clicks=0),
+                    html.Button('Send Config', id='Devices_Send_Config_Button', n_clicks=0),
+                    # Button Text
                     html.P(id='Devices_Config_Buttons_Text'),
-                    html.Div(id='Devices_Config_Variables', children='Reapply:0 Read:0 Last_Click:0', style={'display': 'none'})
-                ]),
+                    # Data Table
+                    html.Div([
+                        dt.DataTable(
+                            id='Devices_Config_Table',
+                            rows=[],
+                            columns=['Setting', 'Value'],
+                            min_height=500,
+                            resizable=True,
+                            editable=True,
+                            filterable=True,
+                            sortable=True,
+                            )
+                        ]),
+                    # Data Table text
+                    html.P(id='Devices_Config_Text'),
 
+                    # Device Config copy field
+                    html.Div([
+                        html.H2('json Config'),
+                        html.Textarea(
+                            id='Devices_json_Config_String',
+                            placeholder="Please select a device above to generate the json config string",
+                            style={'width': '100%'},
+                            disabled=True,
+                            readOnly=True,
+                            ),
+                        html.P(id='Devices_json_Config_Text'),
+                        ], style={'marginBottom': 50, 'marginTop': 25}),
+                    ]),
+                # Power
                 html.Div([
                     html.H2('Power'),
                     html.Button('Reboot', id='Devices_Reboot_Button', n_clicks=1),
                     html.Button('Shutdown', id='Devices_Shutdown_Button', n_clicks=1),
                     html.P(id='Devices_Power_Text'),
-                    html.Div(id='Device_Power_Variables', children='Reboot:0 Shutdown:0 Last_Click:0', style={'display': 'none'})
                 ])
             ], id="Devices_Options", style={'display': 'block'})
         ])
 
-    # ======================================== Device_Config_Tab ========================================
-    elif tab == 'Device_Config':
+    # ======================================== Users Tab ========================================
+    elif tab == 'Users_Tab':
         return html.Div([
-
-            # dcc.Dropdown(
-            #     id='Device_Config_Dropdown',
-            #     options=[{'label': Device, 'value': Device} for Device in Device_List.Hostname],
-            #     ),
-
-            # Table(df),
-            html.Table(
-                id='Device_Config_Table',
-                children=[
-                    html.Tr([
-                        html.Th(children="Setting"),
-                        html.Th(children="Value"),
-                    ]),
-                ]),
-            html.Button('Update', id='Test_Update_Button', n_clicks=1),
-        ])
-
-
-@app.callback(
-    Output('Device_Config_Div', 'children'),
-    [
-        Input('Device_Config_Dropdown', 'value'),
-        ],
-    )
-def Device_Config_Div_Update(Selected_Device):
-
-    if Selected_Device is None:
-        return
-
-    Return_Div = []
-
-    Device_Config = pd.read_sql("SELECT * FROM Dobby.DeviceConfig WHERE Hostname='" + Selected_Device + "' AND Config_Active=1;", con=db_Connection)
-
-    Config_Ignore_List = ['id', 'Date_Modified', 'Config_Active', 'Config_ID']
-
-    for i in collections.OrderedDict(sorted(Device_Config.items())):
-        if Device_Config[i][0] is not None and i not in Config_Ignore_List:
-            Return_Div.append(
-                html.Button(
-                    str(i).replace("_", " "),
-                    id=str(i),
-                    disabled=True,
-                    ),
-                )
-
-            print i
-            # Use dropdown if pin
-            if '_Pins' in i:
-                Return_Div.append(dcc.Dropdown(
-                    clearable=True,
-                    multi=True,
-                    options=[
-                        {'label': 'D0', 'value': 'D0'},
-                        {'label': 'D1', 'value': 'D1'},
-                        {'label': 'D2', 'value': 'D2'},
-                        {'label': 'D3', 'value': 'D3'},
-                        {'label': 'D4', 'value': 'D4'},
-                        {'label': 'D5', 'value': 'D5'},
-                        {'label': 'D6', 'value': 'D6'},
-                        {'label': 'D7', 'value': 'D7'},
-                        {'label': 'D8', 'value': 'D8'},
-                        {'label': 'A0', 'value': 'A0'},
-                        ],
-                    value=str(Device_Config[i][0]),
+            html.Button('Read', id='Users_Read_Button', n_clicks=0),
+            html.Button('Save', id='Users_Save_Button', n_clicks=0),
+            # Button Text
+            html.P(id='Users_Buttons_Text'),
+            # Data Table
+            html.Div([
+                dt.DataTable(
+                    id='Users_Table',
+                    rows=[],
+                    columns=['Username', 'Password'],
+                    min_height=300,
+                    resizable=True,
+                    editable=True,
+                    filterable=True,
+                    # sortable=True,
                     )
+                ]),
+            # Data Table text
+            html.P(id='Users_Text'),
+        ], id='Users_Tab')
+
+    # ======================================== Users Tab ========================================
+    elif tab == 'Buttons_Tab':
+
+        db_Write_Connection = Open_db('Dobby')
+        db_Write_Curser = db_Write_Connection.cursor()
+
+        db_Write_Curser.execute("SELECT * FROM Dobby.DashButtons;")
+        db_Resoult = db_Write_Curser.fetchall()
+
+        Button_List = []
+
+        for Entry in db_Resoult:
+            if Entry[2] == "Button":
+                Button_List.append(html.Button(str(Entry[1]), id=str('DBTN_' + str(Entry[0])), n_clicks=0),)
+
+        Close_db(db_Write_Connection, db_Write_Curser)
+
+        return html.Div([
+            html.Div(
+                id="Buttons_Tab_Div",
+                children=Button_List,
+                style={}
                 )
-
-            else:
-                Return_Div.append(dcc.Input(type='text', value=str(Device_Config[i][0])),)
-
-    return Return_Div
+        ], id='Buttons_Tab')
 
 
-# ======================================== Device Config ========================================
-# Change Device Config tab name to indicate what settings is getting changeds
+# ================================================================================ Callbacks ================================================================================
+# ================================================================================ Callbacks ================================================================================
+# ================================================================================ Callbacks ================================================================================
+# ================================================================================ Callbacks ================================================================================
+
+# ======================================== Button Tab - Callbacks ========================================
+# Button Tabs
 @app.callback(
-    Output('Device_Config_Tab_id', 'label'),
+    Output('Buttons_Tab_Variables', 'children'),
     [
-        Input('System_Variable', 'children'),
+        Input('DBTN_' + str(i), 'n_clicks') for i in range(DashButtons_Number_Of['COUNT(id)'])
+        ],
+    [
+        State('Buttons_Tab_Variables', 'children'),
         ],
     )
-def Device_Config_Update_Tab_Text(System_Variable):
+def Buttons_Tab_Buttons(*args):
 
-    System_Variable = String_To_Dict(System_Variable)
+    # Import variables from div able
+    Buttons_Tab_Variables = Generate_Variable_Dict(args[len(args) - 1])
 
-    if System_Variable["Selected_Device"] is None:
-        return "Device Config"
+    # - 1 excludes Buttons_Tab_Variables
+    for i in range(len(args) - 1):
+        if int(Buttons_Tab_Variables.get('DBTN_' + str(i), 0)) != int(args[i]):
+            Buttons_Tab_Variables['DBTN_' + str(i)] = args[i]
+
+            # Open db connection
+            db_Write_Connection = Open_db('Dobby')
+            db_Write_Curser = db_Write_Connection.cursor()
+
+            # i is the id of the row in the db table
+            db_Write_Curser.execute("SELECT Target_Topic, Target_Payload FROM Dobby.DashButtons WHERE id='" + str(i) + "';")
+            Topic_Payload = db_Write_Curser.fetchone()
+
+            Close_db(db_Write_Connection, db_Write_Curser)
+
+            # MQTT_Publish("/Test", Topic_Payload[1])
+            MQTT_Publish(Topic_Payload[0], Topic_Payload[1])
+
+            # Close db connection
+            break
+
+            # To fix bug where Generate_Variable_String fails if it has less then two vars
+    if Buttons_Tab_Variables.get('Last_Click', "None") is "None":
+        Buttons_Tab_Variables['Last_Click'] = 'None'
+
     else:
-        return "Device Config: " + str(System_Variable["Selected_Device"])
+        # Open db connection
+        db_Write_Connection = Open_db('Dobby')
+        db_Write_Curser = db_Write_Connection.cursor()
+
+        print """str(Buttons_Tab_Variables['''Last_Click'''].replace("DBTN_", ""))"""
+        print str(Buttons_Tab_Variables['''Last_Click'''].replace("DBTN_", ""))
+
+        # i is the id of the row in the db table
+        db_Write_Curser.execute("SELECT Target_Topic, Target_Payload FROM Dobby.DashButtons WHERE id='" + str(Buttons_Tab_Variables["""Last_Click"""]).replace("DBTN_", "") + "';")
+        Topic_Payload = db_Write_Curser.fetchone()
+
+        Close_db(db_Write_Connection, db_Write_Curser)
+
+        print Topic_Payload[0]
+        print Topic_Payload[1]
+
+        Buttons_Tab_Variables['Last_Click'] = 'None'
+
+        MQTT_Publish("/Test", Topic_Payload[1])
+        # MQTT_Publish(Topic_Payload[0], Topic_Payload[1])
+
+        # Close db connection
+
+    print Buttons_Tab_Variables
+
+    return Generate_Variable_String(Buttons_Tab_Variables)
 
 
-# Load settings when the tab is clicked
+# ======================================== Users Tab - Callbacks ========================================
+# Users Tabs
 @app.callback(
-    Output('Device_Config_Table', 'children'),
+    Output('Users_Table', 'rows'),
     [
-        Input('Device_Config_Tab_id', 'n_clicks'),
+        Input('Users_Tab_Variables', 'children'),
         ],
     [
-        State('System_Variable', 'children')
+        State('Users_Table', 'rows'),
+        ],
+    )
+def Users_Tab_DataTable(Users_Tab_Variables, Users_Table):
+
+    # Open db connection
+    db_Write_Connection = Open_db('Dobby')
+    db_Write_Curser = db_Write_Connection.cursor()
+
+    # Import variables from div able
+    Users_Tab_Variables = Generate_Variable_Dict(Users_Tab_Variables)
+
+    # ======================================== Load ========================================
+    # Pass Last_Click if None so username mismatch does not trigger
+    if Users_Tab_Variables.get('Last_Click', "None") == "None":
+        pass
+
+    # ======================================== Read Users ========================================
+    if Users_Tab_Variables.get('Last_Click', "None") == "Users_Read_Button":
+        pass
+
+    # ======================================== Save Users ========================================
+    elif Users_Tab_Variables.get('Last_Click', "None") == "Users_Save_Button":
+        Current_Users = []
+
+        db_Write_Curser.execute("SELECT Username, Password FROM Dobby.Users ORDER BY Username;")
+        db_User_List = db_Write_Curser.fetchall()
+
+        for Username, Password in db_User_List:
+            Current_Users.append({'Username': Username, 'Password': Password})
+
+        Config_Changes = []
+
+        # Needed so you dont change the config id when no changes is made
+        for i in range(len(Users_Table)):
+            # Check usernames match just for good mesure
+            if Current_Users[i]['Username'] != Users_Table[i]['Username']:
+                print "ERROR: Username mismatch"
+                return [{'Username': 'Error', 'Password': 'Username mismatch'}]
+
+            elif Current_Users[i]['Password'] != Users_Table[i]['Password']:
+                # Add chnages to chnages dict
+                Config_Changes.append({'id': -1, 'Username': Current_Users[i]['Username'], 'Password': Users_Table[i]['Password']})
+
+        # Get device id for use in sql changes below
+        for i in range(len(Config_Changes)):
+            db_Write_Curser.execute("SELECT id FROM Dobby.Users WHERE Username='" + Config_Changes[i]['''Username'''] + "';")
+            User_id = db_Write_Curser.fetchone()
+            Config_Changes[i]['id'] = str(User_id[0])
+
+        # Write Changes
+        for Change in Config_Changes:
+            db_Write_Curser.execute("UPDATE `Dobby`.`Users` SET `Password`='" + str(Change['''Password''']) + "' WHERE `id`='" + Change['''id'''] + "';")
+
+    # ======================================== Return table ========================================
+    Return_Dict = []
+
+    db_Write_Curser.execute("SELECT Username, Password FROM Dobby.Users ORDER BY Username;")
+    db_User_List = db_Write_Curser.fetchall()
+
+    for Username, Password in db_User_List:
+        Return_Dict.append({'Username': Username, 'Password': Password})
+
+    Close_db(db_Write_Connection, db_Write_Curser)
+
+    return Return_Dict
+
+
+# ======================================== Users Tab - Callbacks ========================================
+# Users Tabs
+@app.callback(
+    Output('Users_Tab_Variables', 'children'),
+    [
+        Input('Users_Read_Button', 'n_clicks'),
+        Input('Users_Save_Button', 'n_clicks'),
+        ],
+    [
+        State('Users_Tab_Variables', 'children'),
         ]
     )
-def Device_Config_Read_Config(clicks, System_Variable):
+def Users_Tab_Buttons(Users_Read_Button, Users_Save_Button, Users_Tab_Variables):
+    Users_Tab_Variables = Generate_Variable_Dict(Users_Tab_Variables)
 
-    System_Variable = String_To_Dict(System_Variable)
+    Button_List = [Users_Read_Button, Users_Save_Button]
+    Button_List_Text = ['Users_Read_Button', 'Users_Save_Button']
 
-    if System_Variable['Selected_Device'] is None:
+    # Check if buttons was presses
+    for i in range(len(Button_List)):
+        if Button_List[i] != int(Users_Tab_Variables.get(Button_List_Text[i], 0)):
+            Users_Tab_Variables[Button_List_Text[i]] = Button_List[i]
+            Users_Tab_Variables['Last_Click'] = Button_List_Text[i]
+            break
+
+    return Generate_Variable_String(Users_Tab_Variables)
+
+
+# ======================================== MonitorAgent Tab - Callbacks ========================================
+# Update Monitor Agent Tab
+@app.callback(
+    Output('MonitorAgent_Tab_Variables', 'children'),
+    [
+        Input('MonitorAgent_Dropdown', 'value'),
+        ],
+    [
+        State('MonitorAgent_Tab_Variables', 'children')
+        ]
+    )
+def MonitorAgent_Tab_Buttons(MonitorAgent_Dropdown, MonitorAgent_Tab_Variables):
+    MonitorAgent_Tab_Variables = Generate_Variable_Dict(MonitorAgent_Tab_Variables)
+
+    MonitorAgent_Tab_Variables['MonitorAgent_Dropdown'] = MonitorAgent_Dropdown
+
+    return Generate_Variable_String(MonitorAgent_Tab_Variables)
+
+
+# ======================================== Devices Tab - Callbacks ========================================
+
+# Text updates
+# Text updates
+# Text updates
+# Update Device Config KeepAlive Text
+@app.callback(
+    Output('Devices_KeepAlive_Text', 'children'),
+    [
+        Input('Devices_KeepAlive_Graph', 'figure'),
+        ],
+    [
+        State('Devices_Tab_Variables', 'children')
+        ],
+    )
+def Devices_KeepAlive_Text(Devices_KeepAlive_Graph, Devices_Tab_Variables):
+    Devices_Tab_Variables = Generate_Variable_Dict(Devices_Tab_Variables)
+
+    if Devices_Tab_Variables['Devices_Dropdown'] == 'None':
         return
 
-    Device_Settings_Dict = Generate_Device_Config_String(System_Variable['Selected_Device'])
-
-    Table_Row_List = [
-        html.Tr([
-            html.Th(children="Setting"),
-            html.Th(children="Value"),
-            ]),
-        ]
-
-    # for key, value in Device_Settings_Dict.iteritems():
-    #     Table_Row_List.append(
-    #         html.Tr([
-    #             html.Td(children=key),
-    #             html.Td(children=value),
-    #             ]),
-    #         )
-
-    for key, value in Device_Settings_Dict.iteritems():
-
-        if '_Pins' in key:
-            Table_Row_List.append(
-                html.Tr([
-                    html.Td(children=key),
-                    html.Td(children=dcc.Dropdown(
-                        clearable=True,
-                        multi=True,
-                        value=str(value),
-                        options=[
-                            {'label': 'D0', 'value': 'D0'},
-                            {'label': 'D1', 'value': 'D1'},
-                            {'label': 'D2', 'value': 'D2'},
-                            {'label': 'D3', 'value': 'D3'},
-                            {'label': 'D4', 'value': 'D4'},
-                            {'label': 'D5', 'value': 'D5'},
-                            {'label': 'D6', 'value': 'D6'},
-                            {'label': 'D7', 'value': 'D7'},
-                            {'label': 'D8', 'value': 'D8'},
-                            {'label': 'A0', 'value': 'A0'},
-                            ],
-                        )),
-                    ]),
-                )
-        else:
-            Table_Row_List.append(
-                html.Tr([
-                    html.Td(children=key),
-                    html.Td(children=dcc.Input(type='text', value=value)),
-                    ]),
-                )
-
-    return Table_Row_List
+    return str(datetime.datetime.now().strftime('Updated: %Y-%m-%d %H:%M:%S'))
 
 
-# ======================================== System_Variable ========================================
-# Saves "global vairables" to a child in a hidden div table to allow sharing of values
-@app.callback(
-        Output('System_Variable', 'children'),
-    [
-        Input('Devices_Dropdown', 'value')
-        ],
-    [
-        State('System_Variable', 'children')
-        ]
-)
-def Save_Selected_Device(Selected_Device, System_Variable):
-
-    System_Variable_Dict = {}
-
-    if System_Variable != "":
-        print "hit"
-        System_Variable_Dict = ast.literal_eval("{" + System_Variable + "}")
-        # System_Variable_Dict = dict([i.split(':') for i in System_Variable.split(';')])
-
-    System_Variable_Dict['Selected_Device'] = str(Selected_Device)
-
-    Return_String = ""
-
-    for key, value in System_Variable_Dict.iteritems():
-        Return_String = Return_String + key + ":" + value
-
-    # if Devices_Reapply_Config != int(Devices_Config_Variables['Reapply']) and int(Devices_Config_Variables['Reapply']) != 0:
-    #     Last_Click = "Reapply"
-    #
-    # if Devices_Read_Config != int(Devices_Config_Variables['Read']) and int(Devices_Config_Variables['Read']) != 0:
-    #     Last_Click = "Read"
-
-    # return ("Reapply:" + str(Devices_Reapply_Config) + " Read:" + str(Devices_Read_Config) + " Last_Click:" + Last_Click)
-    return str(System_Variable_Dict)[1:-1]
-
-
-# ############################################################################## working code below ##############################################################################
-# ############################################################################## working code below ##############################################################################
-# ############################################################################## working code below ##############################################################################
-
-
-# ======================================== Devices_Config_Buttons_Text ========================================
 @app.callback(
     Output('Devices_Config_Buttons_Text', 'children'),
     [
-        Input('Devices_Config_Variables', 'children'),
+        Input('Devices_Tab_Variables', 'children'),
         ],
-    [
-        State('Devices_Dropdown', 'value')
-        ]
     )
-def Devices_Config_Buttons(Device_Config_Variables, Selected_Device):
+def Devices_Config_Buttons_Text(Devices_Tab_Variables):
+    Devices_Tab_Variables = Generate_Variable_Dict(Devices_Tab_Variables)
 
-    Device_Config_Variables = dict([i.split(':') for i in Device_Config_Variables.split(' ')])
-
-    if str(Device_Config_Variables['Last_Click']) == "None":
+    if Devices_Tab_Variables['Devices_Dropdown'] == 'None':
         return
 
-    elif str(Device_Config_Variables['Last_Click']) == "Read":
-        return str(datetime.datetime.now().strftime('Config read: %Y-%m-%d %H:%M:%S'))
+    if "Devices_Read_Config_Button" in str(Devices_Tab_Variables['Last_Click']):
+        return str(datetime.datetime.now().strftime('Updates: %Y-%m-%d %H:%M:%S'))
+    elif "Devices_Save_Config_Button" in str(Devices_Tab_Variables['Last_Click']):
+        return str(datetime.datetime.now().strftime('Saved: %Y-%m-%d %H:%M:%S'))
+    elif "Devices_Send_Config_Button" in str(Devices_Tab_Variables['Last_Click']):
+        return str(datetime.datetime.now().strftime('Send requested: %Y-%m-%d %H:%M:%S'))
+    else:
+        return
 
-    elif str(Device_Config_Variables['Last_Click']) == "Reapply":
-        MQTT.single(System_Header.Value[0] + "/Commands/Dobby/Config", str(Selected_Device) + ",-1;", hostname=MQTT_Broker.Value[0], port=MQTT_Port.Value[0], auth={'username': MQTT_Username.Value[0], 'password': MQTT_Password.Value[0]})
-        return str(datetime.datetime.now().strftime('Config reapplied: %Y-%m-%d %H:%M:%S'))
+    # return str(datetime.datetime.now().strftime('Updated: %Y-%m-%d %H:%M:%S'))
 
 
-# ======================================== Devices_Config_Buttons_Clicked ========================================
-# Used to store variabled to share between callbacks
+# Update Device Config Text
 @app.callback(
-        Output('Devices_Config_Variables', 'children'),
+    Output('Devices_Config_Text', 'children'),
     [
-        Input('Devices_Reapply_Config', 'n_clicks'),
-        Input('Devices_Read_Config', 'n_clicks')
+        Input('Devices_Config_Table', 'rows'),
         ],
     [
-        State('Devices_Config_Variables', 'children')
-        ]
-)
-def Devices_Power_Buttons_Ckicked(Devices_Reapply_Config, Devices_Read_Config, Devices_Config_Variables):
+        State('Devices_Tab_Variables', 'children')
+        ],
+    )
+def Devices_Config_Text(Devices_Config_Table, Devices_Tab_Variables):
+    Devices_Tab_Variables = Generate_Variable_Dict(Devices_Tab_Variables)
 
-    Devices_Config_Variables = dict([i.split(':') for i in Devices_Config_Variables.split(' ')])
+    if Devices_Tab_Variables['Devices_Dropdown'] == 'None':
+        return
 
-    Last_Click = "None"
-
-    if Devices_Reapply_Config != int(Devices_Config_Variables['Reapply']) and int(Devices_Config_Variables['Reapply']) != 0:
-        Last_Click = "Reapply"
-
-    if Devices_Read_Config != int(Devices_Config_Variables['Read']) and int(Devices_Config_Variables['Read']) != 0:
-        Last_Click = "Read"
-
-    return ("Reapply:" + str(Devices_Reapply_Config) + " Read:" + str(Devices_Read_Config) + " Last_Click:" + Last_Click)
+    return str(datetime.datetime.now().strftime('Updated: %Y-%m-%d %H:%M:%S'))
 
 
-# ======================================== Devices_Power_Buttons ========================================
-# Used to take action based on Last_Click comming from "Devices_Power_Buttons_State"
+# Update Device Config Text
+@app.callback(
+    Output('Devices_json_Config_Text', 'children'),
+    [
+        Input('Devices_json_Config_String', 'value'),
+        ],
+    [
+        State('Devices_Tab_Variables', 'children')
+        ],
+    )
+def Devices_json_Config_Text(Devices_json_Config_String, Devices_Tab_Variables):
+    Devices_Tab_Variables = Generate_Variable_Dict(Devices_Tab_Variables)
+
+    if Devices_Tab_Variables['Devices_Dropdown'] == 'None':
+        return
+
+    return str(datetime.datetime.now().strftime('Updated: %Y-%m-%d %H:%M:%S'))
+
+
+# Update Device Config Text AND send MQTT Message
 @app.callback(
     Output('Devices_Power_Text', 'children'),
     [
-        Input('Device_Power_Variables', 'children'),
+        Input('Devices_Tab_Variables', 'children')
         ],
-    [
-        State('Devices_Dropdown', 'value')
-        ]
     )
-def Devices_Power_Buttons(Device_Power_Variables, Selected_Device):
+def Devices_Power_Text(Devices_Tab_Variables):
+    Devices_Tab_Variables = Generate_Variable_Dict(Devices_Tab_Variables)
 
-    Device_Power_Variables = dict([i.split(':') for i in Device_Power_Variables.split(' ')])
-
-    if str(Device_Power_Variables['Last_Click']) == "None":
+    if Devices_Tab_Variables['Devices_Dropdown'] == 'None':
         return
 
-    elif str(Device_Power_Variables['Last_Click']) == "Reboot":
-        MQTT.single(System_Header.Value[0] + "/Commands/" + Selected_Device + "/Power", "Reboot;", hostname=MQTT_Broker.Value[0], port=MQTT_Port.Value[0], auth={'username': MQTT_Username.Value[0], 'password': MQTT_Password.Value[0]})
-        return str(datetime.datetime.now().strftime('Reboot triggered: %Y-%m-%d %H:%M:%S'))
+    if "Devices_Reboot_Button" in str(Devices_Tab_Variables['Last_Click']):
+        Return_String = str(datetime.datetime.now().strftime('Reboot requested: %Y-%m-%d %H:%M:%S'))
+        Action_Text = 'Reboot'
+    elif "Devices_Shutdown_Button" in str(Devices_Tab_Variables['Last_Click']):
+        Return_String = str(datetime.datetime.now().strftime('Shutdown requested: %Y-%m-%d %H:%M:%S'))
+        Action_Text = 'Shutdown'
+    else:
+        return
 
-    elif str(Device_Power_Variables['Last_Click']) == "Shutdown":
-        MQTT.single(System_Header.Value[0] + "/Commands/" + Selected_Device + "/Power", "Shutdown;", hostname=MQTT_Broker.Value[0], port=MQTT_Port.Value[0], auth={'username': MQTT_Username.Value[0], 'password': MQTT_Password.Value[0]})
-        return str(datetime.datetime.now().strftime('Shutdown triggered: %Y-%m-%d %H:%M:%S'))
+    MQTT.single(System_Header.Value[0] + "/Commands/" + str(Devices_Tab_Variables['Devices_Dropdown']) + "/Power", Action_Text + ";", hostname=MQTT_Broker.Value[0], port=MQTT_Port.Value[0], auth={'username': MQTT_Username.Value[0], 'password': MQTT_Password.Value[0]})
+    return Return_String
 
 
-# ======================================== Device_Power_Variables ========================================
-# Used to store variabled to share between callbacks
+# Update Device Config variables
 @app.callback(
-        Output('Device_Power_Variables', 'children'),
+    Output('Devices_Tab_Variables', 'children'),
     [
+        Input('Devices_Dropdown', 'value'),
+        Input('Devices_Read_Config_Button', 'n_clicks'),
+        Input('Devices_Save_Config_Button', 'n_clicks'),
+        Input('Devices_Send_Config_Button', 'n_clicks'),
+        Input('Devices_Read_KeepAlive_Button', 'n_clicks'),
+        Input('Devices_KeepAlive_Slider', 'value'),
         Input('Devices_Reboot_Button', 'n_clicks'),
-        Input('Devices_Shutdown_Button', 'n_clicks')
+        Input('Devices_Shutdown_Button', 'n_clicks'),
         ],
     [
-        State('Device_Power_Variables', 'children')
+        State('Devices_Tab_Variables', 'children')
+        ],
+    )
+def Devices_Tab_Buttons(Devices_Dropdown, Devices_Read_Config_Button, Devices_Save_Config_Button, Devices_Send_Config_Button, Devices_Read_KeepAlive_Button, Devices_KeepAlive_Slider, Devices_Reboot_Button, Devices_Shutdown_Button, Devices_Tab_Variables):
+
+    Devices_Tab_Variables = Generate_Variable_Dict(Devices_Tab_Variables)
+
+    Button_List = [Devices_Read_Config_Button, Devices_Save_Config_Button, Devices_Send_Config_Button, Devices_Read_KeepAlive_Button, Devices_KeepAlive_Slider, Devices_Reboot_Button, Devices_Shutdown_Button]
+    Button_List_Text = ['Devices_Read_Config_Button', 'Devices_Save_Config_Button', 'Devices_Send_Config_Button', 'Devices_Read_KeepAlive_Button', 'Devices_KeepAlive_Slider', 'Devices_Reboot_Button', 'Devices_Shutdown_Button']
+
+    # Check if buttons was presses
+    for i in range(len(Button_List)):
+        if Button_List[i] != int(Devices_Tab_Variables.get(Button_List_Text[i], 0)):
+            Devices_Tab_Variables[Button_List_Text[i]] = Button_List[i]
+            Devices_Tab_Variables['Last_Click'] = Button_List_Text[i]
+            break
+
+    # Check if the slider moved
+
+    # Reset Last_Click if dropdown changes to prevent issuen with clicks happening when the next device is selected
+    if Devices_Tab_Variables.get('Devices_Dropdown', 'None') != Devices_Dropdown:
+        Devices_Tab_Variables['Devices_Dropdown'] = Devices_Dropdown
+        Devices_Tab_Variables['Last_Click'] = "None"
+
+    return Generate_Variable_String(Devices_Tab_Variables)
+
+
+# ======================================== Devices Tab - Callbacks ========================================
+# Update Device json Config
+@app.callback(
+    Output('Devices_json_Config_String', 'value'),
+    [
+        Input('Devices_Tab_Variables', 'children'),
+        ],
+    )
+def Devices_Tab_json_Config_Show(Devices_Tab_Variables):
+    Devices_Tab_Variables = Generate_Variable_Dict(Devices_Tab_Variables)
+
+    return MQTT_Config_New(Devices_Tab_Variables.get('Devices_Dropdown', "None"))
+
+
+# Update Device KeepAlive graph
+@app.callback(
+    Output('Devices_KeepAlive_Graph', 'figure'),
+    [
+        Input('Devices_Tab_Variables', 'children'),
+        Input('Devices_KeepAlive_Slider', 'value'),
+        ],
+    )
+def Devices_Tab_KeepAlive_Show(Devices_Tab_Variables, Devices_KeepAlive_Slider):
+
+    # Import variables from div able
+    Devices_Tab_Variables = Generate_Variable_Dict(Devices_Tab_Variables)
+
+    # Do nothing if no device have been selected in the dropdown
+    if Devices_Tab_Variables.get('Devices_Dropdown', "None") == "None":
+        return {'data': ''}
+
+    # ======================================== Read KeepAlive ========================================
+    else:
+        df = pd.read_sql("SELECT LastKeepAlive, UpFor, FreeMemory, SoftwareVersion, IP, RSSI FROM DobbyLog.KeepAliveMonitor WHERE Device = '" + str(Devices_Tab_Variables['Devices_Dropdown']) + "' ORDER BY id DESC LIMIT " + str(Devices_Tab_Variables['Devices_KeepAlive_Slider']) + ";", con=db_pd_Connection)
+
+        Return_Data = {'data': [{}]}
+
+        Return_Data["data"].append({
+            'x': df.LastKeepAlive,
+            'y': df.UpFor, 'name': "Uptime in ms",
+            'line': {"shape": 'spline'}
+        })
+        Return_Data["data"].append({
+            'x': df.LastKeepAlive,
+            'y': df.FreeMemory, 'name': "Free Memory",
+            'line': {"shape": 'spline'}
+        })
+        Return_Data["data"].append({
+            'x': df.LastKeepAlive,
+            'y': df.RSSI, 'name': "WiFi Signal Strenght (RSSI)",
+            'line': {"shape": 'spline'}
+        })
+
+        return {'data': Return_Data}
+
+
+# Update Device Config rows
+@app.callback(
+    Output('Devices_Config_Table', 'rows'),
+    [
+        Input('Devices_Tab_Variables', 'children'),
+        ],
+    [
+        State('Devices_Config_Table', 'rows'),
         ]
-)
-def Devices_Power_Buttons_State(Devices_Reboot_Button_Clicks, Devices_Shutdown_Button_Clicks, Device_Power_Variables):
+    )
+def Devices_Tab_Config_Show(Devices_Tab_Variables, Devices_Config_Table):
 
-    Device_Power_Variables = dict([i.split(':') for i in Device_Power_Variables.split(' ')])
+    # Open db connection
+    db_Write_Connection = Open_db('Dobby')
+    db_Write_Curser = db_Write_Connection.cursor()
 
-    Last_Click = "None"
+    # Import variables from div able
+    Devices_Tab_Variables = Generate_Variable_Dict(Devices_Tab_Variables)
 
-    if Devices_Reboot_Button_Clicks != int(Device_Power_Variables['Reboot']) and int(Device_Power_Variables['Reboot']) != 0:
-        Last_Click = "Reboot"
+    # Do nothing if no device have been selected in the dropdown
+    if Devices_Tab_Variables['Devices_Dropdown'] == "None":
+        Close_db(db_Write_Connection, db_Write_Curser)
+        return [{'Setting': '', 'Value': ''}]
 
-    if Devices_Shutdown_Button_Clicks != int(Device_Power_Variables['Shutdown']) and int(Device_Power_Variables['Shutdown']) != 0:
-        Last_Click = "Shutdown"
+    # ======================================== Save Config ========================================
+    elif Devices_Tab_Variables.get('Last_Click', "None") == "Devices_Save_Config_Button":
+        Current_Config = Generate_Device_Config_Dict(Devices_Tab_Variables['Devices_Dropdown'], db_Write_Curser)
 
-    return ("Reboot:" + str(Devices_Reboot_Button_Clicks) + " Shutdown:" + str(Devices_Shutdown_Button_Clicks) + " Last_Click:" + Last_Click)
+        # Needed to refer between tables
+        i = 0
 
+        # Needed so you dont change the config id when no changes is made
+        Config_Changes = {}
 
-# ======================================== Devices - Disable Options ========================================
-# Removed the Div table containing all options untill a device is selected
-@app.callback(Output('Devices_Options', 'style'), inputs=[Input('Devices_Dropdown', 'value')])
-def Devices_Display_Options(Selected_Dropdown):
+        for Current_Config_Row in Current_Config:
 
-    if Selected_Dropdown is None:
-        return {'display': 'none'}
-    else:
-        return {}
-        # return {'display': 'block'}
+            # If value is '' set it to NULL
+            if Devices_Config_Table[i]['Value'] == '':
+                Config_Changes[Devices_Config_Table[i]['Setting'][0]] = 'NULL'
 
+            elif Devices_Config_Table[i]['Value'][0] != Current_Config_Row['Value'][0]:
+                # Add chnages to chnages dict
+                Config_Changes[Devices_Config_Table[i]['Setting'][0]] = Devices_Config_Table[i]['Value']
 
-@app.callback(Output('Device_Config_Tab_id', 'style'), inputs=[Input('Devices_Dropdown', 'value')])
-def Devices_Displat_Config_Tab(Selected_Dropdown):
+            i = i + 1
 
-    if Selected_Dropdown is None:
-        return {'display': 'none'}
-    else:
-        return {}
+        if Config_Changes != {}:
+            # Get device id for use in sql changes below
+            db_Write_Curser.execute("SELECT id FROM Dobby.DeviceConfig WHERE Hostname='" + Devices_Tab_Variables['Devices_Dropdown'] + "' AND Config_Active='1';")
+            Device_id = db_Write_Curser.fetchone()
+            Device_id = str(Device_id[0])
+
+            # Apply changes
+            for key, value in Config_Changes.iteritems():
+                if value is 'NULL':
+                    db_Write_Curser.execute("UPDATE `Dobby`.`DeviceConfig` SET `" + str(key) + "`=NULL WHERE `id`='" + Device_id + "';")
+                else:
+                    db_Write_Curser.execute("UPDATE `Dobby`.`DeviceConfig` SET `" + str(key) + "`='" + str(value) + "' WHERE `id`='" + Device_id + "';")
+
+            # Get Current Config_ID
+            db_Write_Curser.execute("SELECT Config_ID FROM Dobby.DeviceConfig WHERE `id`='" + Device_id + "';")
+            Current_Config_ID = db_Write_Curser.fetchone()
+
+            # Update Config_ID
+            db_Write_Curser.execute("UPDATE `Dobby`.`DeviceConfig` SET `Config_ID`='" + str(Current_Config_ID[0] + 1) + "' WHERE `id`='" + Device_id + "';")
+
+            # Update Last modified
+            db_Write_Curser.execute("UPDATE `Dobby`.`DeviceConfig` SET `Date_Modified`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + Device_id + "';")
+
+    # ======================================== Send Config ========================================
+    elif Devices_Tab_Variables.get('Last_Click', "None") == "Devices_Send_Config_Button":
+        MQTT.single(System_Header.Value[0] + "/Commands/Dobby/Config", Devices_Tab_Variables['Devices_Dropdown'] + ",-1;", hostname=MQTT_Broker.Value[0], port=MQTT_Port.Value[0], auth={'username': MQTT_Username.Value[0], 'password': MQTT_Password.Value[0]})
+
+    # ======================================== Return table ========================================
+    Return_Dict = Generate_Device_Config_Dict(Devices_Tab_Variables['Devices_Dropdown'], db_Write_Curser)
+
+    Close_db(db_Write_Connection, db_Write_Curser)
+
+    return Return_Dict
 
 
 # ======================================== MonitorAgent ========================================
-@app.callback(Output('MonitorAgent_Graph', 'figure'), inputs=[Input('MonitorAgent_Slider', 'value'), Input('MonitorAgent_Dropdown', 'value'), Input('MonitorAgent_Update_Button', 'n_clicks')])
-def MonitorAgent_Update_Graph(Selected_Slider_Value, Selected_Dropdown, n_clicks):
+@app.callback(
+    Output('MonitorAgent_Graph', 'figure'),
+    [
+        Input('MonitorAgent_Slider', 'value'),
+        Input('MonitorAgent_Dropdown', 'value'),
+        ]
+    )
+def MonitorAgent_Update_Graph(Selected_Slider_Value, Selected_Dropdown):
 
     if Selected_Dropdown is None:
         return
 
-    df = pd.read_sql("SELECT DateTime, Source, Value FROM DobbyLog.MonitorAgent WHERE Agent = '" + str(Selected_Dropdown) + "' ORDER BY id DESC LIMIT " + str(Selected_Slider_Value) + ";", con=db_Connection)
+    df = pd.read_sql("SELECT DateTime, Source, Value FROM DobbyLog.MonitorAgent WHERE Agent = '" + str(Selected_Dropdown) + "' ORDER BY id DESC LIMIT " + str(Selected_Slider_Value) + ";", con=db_pd_Connection)
 
     Return_Data = {'data': [{}]}
 
@@ -547,39 +935,9 @@ def MonitorAgent_Update_Graph(Selected_Slider_Value, Selected_Dropdown, n_clicks
     return {'data': Return_Data, 'layout': 'ytest'}
 
 
-# ======================================== KeepAliveMonitor ========================================
-@app.callback(Output('KeepAliveMonitor_Graph', 'figure'), inputs=[Input('KeepAliveMonitor_Slider', 'value'), Input('KeepAliveMonitor_Dropdown', 'value'), Input('KeepAliveMonitor_Update_Button', 'n_clicks')])
-def KeepAliveMonitor_Update_Graph(Selected_Slider_Value, Selected_Dropdown, n_clicks):
-
-    if Selected_Dropdown is None:
-        return
-
-    df = pd.read_sql("SELECT LastKeepAlive, UpFor, FreeMemory, SoftwareVersion, IP, RSSI FROM DobbyLog.KeepAliveMonitor WHERE Device = '" + str(Selected_Dropdown) + "' ORDER BY id DESC LIMIT " + str(Selected_Slider_Value) + ";", con=db_Connection)
-
-    Return_Data = {'data': [{}]}
-
-    Return_Data["data"].append({
-        'x': df.LastKeepAlive,
-        'y': df.UpFor, 'name': "Uptime in ms",
-        'line': {"shape": 'spline'}
-    })
-    Return_Data["data"].append({
-        'x': df.LastKeepAlive,
-        'y': df.FreeMemory, 'name': "Free Memory",
-        'line': {"shape": 'spline'}
-    })
-    Return_Data["data"].append({
-        'x': df.LastKeepAlive,
-        'y': df.RSSI, 'name': "WiFi Signal Strenght (RSSI)",
-        'line': {"shape": 'spline'}
-    })
-
-    return {'data': Return_Data}
-
-
-# ======================================== External Components ========================================
+# FIX - Move css to local storage
 app.css.append_css({
-    'external_url': 'https://codepen.io/chriddyp/pen/bWLwgP.css'
+    "external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"
 })
 
 
