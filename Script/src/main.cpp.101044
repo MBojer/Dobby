@@ -3,13 +3,6 @@
 
 // Change log:
 //
-// -------------------- 101045 --------------------
-// Pin_Monitor - Added support for I2C pins
-//
-// Adjusted MPU6050 buffer size based on secound last post:
-// https://arduino.stackexchange.com/questions/10308/how-to-clear-fifo-buffer-on-mpu6050
-// Resoulted in very stable readings
-//
 // -------------------- 101044 --------------------
 // Improved MPU-6050 readings
 //
@@ -59,7 +52,7 @@ extern "C" {
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 101045
+#define Version 101044
 // First didget = Software type 1-Production 2-Beta 3-Alpha
 // Secound and third didget = Major version number
 // Fourth to sixth = Minor version number
@@ -363,28 +356,7 @@ byte Dimmer_Fade_Jump_Delay = 40;
 #define Pin_Monitor_Pins_Number_Of 10
 String Pin_Monitor_Pins_Names[Pin_Monitor_Pins_Number_Of] = {"D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "A0"};
 byte Pin_Monitor_Pins_List[Pin_Monitor_Pins_Number_Of] = {D0, D1, D2, D3, D4, D5, D6, D7, D8, A0};
-
-byte Pin_Monitor_Pins_Active[Pin_Monitor_Pins_Number_Of] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-// 0 = In Use
-// 1 = Free
-// 2 = Free / In Use - I2C - SCL
-// 3 = Free / In Use - I2C - SDA
-// 255 = Error
-#define Pin_In_Use 0
-#define Pin_Free 1
-#define Pin_SCL 2
-#define Pin_SDA 3
-#define Pin_Error 255
-
-// Action
-// 0 = Reserve - Normal Pin
-// 1 = Reserve - I2C SCL
-// 2 = Reserve - I2C SDA
-// 3 = State
-#define Reserve_Normal 0
-#define Reserve_I2C_SCL 1
-#define Reserve_I2C_SDA 2
-#define Check_State 3
+bool Pin_Monitor_Pins_Active[Pin_Monitor_Pins_Number_Of] = {false, false, false, false, false, false, false, false, false, false};
 
 
 // ------------------------------------------------------------ Button ------------------------------------------------------------
@@ -505,7 +477,7 @@ uint8_t MPU6050_Interrupt_Status;   // holds actual interrupt status byte from M
 uint8_t MPU6050_Device_Status;      // return status after each device operation (0 = success, !0 = error)
 uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
 uint16_t fifoCount;     // count of all bytes currently in FIFO
-uint8_t fifoBuffer[1024]; // FIFO storage buffer
+uint8_t fifoBuffer[64]; // FIFO storage buffer
 
 // orientation/motion vars
 Quaternion MPU6050_Quaternion;           // [w, x, y, z]         quaternion container
@@ -513,9 +485,51 @@ VectorInt16 MPU6050_Accelerometer;         // [x, y, z]            accel sensor 
 VectorInt16 MPU6050_Accelerometer_Real;     // [x, y, z]            gravity-free accel sensor measurements
 VectorInt16 MPU6050_Accelerometer_World;    // [x, y, z]            world-frame accel sensor measurements
 VectorFloat MPU6050_Gravity;    // [x, y, z]            gravity vector
+// float euler[3];         // [psi, theta, phi]    Euler angle container
+// float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
 // For Interrupt
 volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
+
+// #include <RunningAverage.h>
+//
+//
+//
+// bool MPU6050_Gyro_Invert_Axis = false;
+//
+// bool MPU6050_Zero_Active = false;
+//
+// Ticker MPU6050_Ticker;
+//
+// const int MPU6050_Address = 0x68; // I2C address of the MPU6050
+// uint32_t MPU6050_i;
+//
+// #define MPU6050_Min_Value 265
+// #define MPU6050_Max_Value 402
+//
+// #define MPU6050_Zero_Gyro_Count 100
+//
+// int16_t MPU6050_AcX = 0;
+// int16_t MPU6050_AcY = 0;
+// int16_t MPU6050_AcZ = 0;
+// int16_t MPU6050_GyX = 0;
+// int16_t MPU6050_GyY = 0;
+// int16_t MPU6050_GyZ = 0;
+//
+// double MPU6050_GyX_Deg_Offset = 0;
+// double MPU6050_GyY_Deg_Offset = 0;
+// double MPU6050_GyZ_Deg_Offset = 0;
+//
+//
+// int16_t MPU6050_Accelerometer_X_Min = 0;
+// int16_t MPU6050_Accelerometer_X_Max = 0;
+// int16_t MPU6050_Accelerometer_X_Reset = 0;
+// int16_t MPU6050_Accelerometer_Y_Min = 0;
+// int16_t MPU6050_Accelerometer_Y_Max = 0;
+// int16_t MPU6050_Accelerometer_Y_Reset = 0;
+// int16_t MPU6050_Accelerometer_Z_Min = 0;
+// int16_t MPU6050_Accelerometer_Z_Max = 0;
+// int16_t MPU6050_Accelerometer_Z_Reset = 0;
 
 
 // ------------------------------------------------------------ BMP180 ------------------------------------------------------------
@@ -538,7 +552,6 @@ float BMP180_Altitude = -1337.0;
 #define BMP180_RunningAverage_Length 254
 RunningAverage BMP180_RA_Current_Pressure(BMP180_RunningAverage_Length);
 RunningAverage BMP180_RA_Current_Temperature(BMP180_RunningAverage_Length);
-
 
 // ############################################################ String_To_IP() ############################################################
 IPAddress String_To_IP(String IP_String) {
@@ -764,7 +777,7 @@ bool BMP180_Loop() {
 
     // FIX - check if runnng averidge is full and add the averidge to the list to not just get the averidge of the last 3 sec if you read every 5 min
     BMP180_RA_Current_Pressure.addValue(BMP.readPressure());
-    // BMP180_RA_Current_Temperature.addValue(BMP.readTemperature());
+    BMP180_RA_Current_Temperature.addValue(BMP.readTemperature());
 
     return true;
   }
@@ -818,7 +831,8 @@ void ICACHE_RAM_ATTR MPU6050_BMP_DataReady() {
 void MPU6050_Loop() {
   // if programming failed, don't try to do anything
   if (MPU6050_BMP_Ready == false || MPU6050_Configured == false) {
-      return;
+    Serial.println("NOT RDY:");
+    return;
   }
 
   // To prevent a eternal loop crash
@@ -852,8 +866,7 @@ void MPU6050_Loop() {
   fifoCount = mpu.getFIFOCount();
 
   // check for overflow (this should never happen unless our code is too inefficient)
-  // if ((MPU6050_Interrupt_Status & 0x10) || fifoCount == 1024) {  // Original
-  if ((MPU6050_Interrupt_Status & 0x10) || fifoCount == 16384) {
+  if ((MPU6050_Interrupt_Status & 0x10) || fifoCount == 1024) {
       // reset so we can continue cleanly
       mpu.resetFIFO();
       Log(MQTT_Topic[Topic_Error] + "/MPU6050", "FIFO overflow");
@@ -881,6 +894,83 @@ void MPU6050_Loop() {
 
   }
 }
+
+// ############################################################ MPU6050_Gyro_Zero_Show() ############################################################
+void MPU6050_Gyro_Zero_Show() {
+ // Log(MQTT_Topic[Topic_MPU6050] + "/Zero/X", String(MPU6050_GyX_Deg_Offset));
+ // Log(MQTT_Topic[Topic_MPU6050] + "/Zero/Y", String(MPU6050_GyY_Deg_Offset));
+ // Log(MQTT_Topic[Topic_MPU6050] + "/Zero/Z", String(MPU6050_GyZ_Deg_Offset));
+}
+
+// ############################################################ MPU6050_Gyro_Zero_Generate() ############################################################
+void MPU6050_Gyro_Zero_Generate() {
+
+  // Log(MQTT_Topic[Topic_System] + "/MPU6050", "Zeroing");
+  //
+  // MPU6050_Zero_Active = true;
+  //
+  // // Create running average variables to store values
+  // RunningAverage X_Offset_RA(MPU6050_Zero_Gyro_Count);
+  // RunningAverage Y_Offset_RA(MPU6050_Zero_Gyro_Count);
+  // RunningAverage Z_Offset_RA(MPU6050_Zero_Gyro_Count);
+  //
+  // // Run for loop x MPU6050_Zero_Gyro_Count
+  // for (byte i = 0; i < MPU6050_Zero_Gyro_Count; i++) {
+  //   // Refreadh values
+  //   MPU6050_Read();
+  //
+  //   // Add value to running average
+  //   X_Offset_RA.addValue(MPU6050_GyX_Deg);
+  //   Y_Offset_RA.addValue(MPU6050_GyY_Deg);
+  //   Z_Offset_RA.addValue(MPU6050_GyZ_Deg);
+  //
+  //   // Delay not to kill mpu
+  //   delay(20);
+  // }
+  //
+  // MPU6050_GyX_Deg_Offset = X_Offset_RA.getAverage();
+  // MPU6050_GyY_Deg_Offset = Y_Offset_RA.getAverage();
+  // MPU6050_GyZ_Deg_Offset = Z_Offset_RA.getAverage();
+  //
+  // if (MPU6050_Gyro_Invert_Axis == true) {
+  //   // Subtract 180 to invert axis
+  //   MPU6050_GyX_Deg_Offset = MPU6050_GyX_Deg_Offset - 180.00;
+  //   if (MPU6050_GyX_Deg_Offset < 0) {
+  //     // Add 360 to numbers below 0
+  //     MPU6050_GyX_Deg_Offset = MPU6050_GyX_Deg_Offset + 360.00;
+  //   }
+  //   // Subtract 180 to invert axis
+  //   MPU6050_GyY_Deg_Offset = MPU6050_GyY_Deg_Offset - 180.00;
+  //   if (MPU6050_GyY_Deg_Offset < 0) {
+  //     // Add 360 to numbers below 0
+  //     MPU6050_GyY_Deg_Offset = MPU6050_GyY_Deg_Offset + 360.00;
+  //   }
+  //   // Subtract 180 to invert axis
+  //   MPU6050_GyZ_Deg_Offset = MPU6050_GyZ_Deg_Offset - 180.00;
+  //   if (MPU6050_GyZ_Deg_Offset < 0) {
+  //     // Add 360 to numbers below 0
+  //     MPU6050_GyZ_Deg_Offset = MPU6050_GyZ_Deg_Offset + 360.00;
+  //   }
+  // }
+  //
+  // MPU6050_Zero_Active = false;
+  //
+  // // Log resoults
+  // MPU6050_Gyro_Zero_Show();
+  //
+  // Log(MQTT_Topic[Topic_System] + "/MPU6050", "Zeroing compleate");
+
+}
+
+// // ############################################################ MPU6050_Read_Temperature() ############################################################
+// void MPU6050_Read_Temperature() {
+//
+//   if (MPU6050_Configured == false) {
+//     return;
+//   }
+//
+//   Log(MQTT_Topic[Topic_MPU6050] + "/Temperature/State", String(MPU6050_Temperature));
+// }
 
 
 // ############################################################ MPU6050_Read_Gyro() ############################################################
@@ -956,12 +1046,25 @@ bool MPU6050(String Topic, String Payload) {
     MPU6050_Read_Accelerometer();
   }
 
-  // Check topic - Accelerometer Max
-  else if (Topic == "AccelerometerMax" && Payload == "?") {
-    MPU6050_Accelerometer_Max();
-  }
-
-
+  // // Check topic - Accelerometer Max
+  // else if (Topic == "AccelerometerMax" && Payload == "?") {
+  //   MPU6050_Accelerometer_Max();
+  // }
+  //
+  // // Check topic - Zero
+  // else if (Topic == "Zero") {
+  //   if (Payload == "Run") {
+  //     MPU6050_Gyro_Zero_Generate();
+  //   }
+  //   if (Payload == "?") {
+  //     MPU6050_Gyro_Zero_Show();
+  //   }
+  // }
+  //
+  // else {
+  //   return false;
+  // }
+  //
   return false;
 }
 
@@ -1145,33 +1248,28 @@ byte Pin_To_Number(String Pin_Name) {
 } // Pin_Monitor_String()
 
 
-// ############################################################ Pin_Monitor(Reserve_Normal, ) ############################################################
+// ############################################################ Pin_Monitor() ############################################################
 // Will return false if pin is in use or invalid
-bool Pin_Monitor(byte Action, byte Pin_Number) {
-  // 0 = In Use
-  // 1 = Free
-  // 2 = Free / In Use - I2C - SCL
-  // 3 = Free / In Use - I2C - SDA
-  // 255 = Error
-  // #define Pin_In_Use 0
-  // #define Pin_Free 1
-  // #define Pin_SCL 2
-  // #define Pin_SDA 3
-  // #define Pin_Error 255
+bool Pin_Monitor_State(String Pin_Name) {
 
-  // Pin_Number
-  // 0 = Reserve - Normal Pin
-  // 1 = Reserve - I2C SCL
-  // 2 = Reserve - I2C SDA
-  // 3 = State
-  // #define Reserve_Normal 0
-  // #define Reserve_I2C_SCL 1
-  // #define Reserve_I2C_SDA 2
-  // #define Check_State 3
+    for (byte i = 0; i < Pin_Monitor_Pins_Number_Of; i++) {
+      if (Pin_Name == Pin_Monitor_Pins_Names[i]) {
+        return Pin_Monitor_Pins_Active[i];
+      }
+    }
 
+    return false;
+}
+
+
+
+// ############################################################ Pin_Monitor() ############################################################
+// Will return false if pin is in use or invalid
+bool Pin_Monitor(byte Pin_Number) {
+
+  byte Selected_Pin = 255;
 
   // Find seleced Pin
-  byte Selected_Pin = 255;
   for (byte i = 0; i < Pin_Monitor_Pins_Number_Of; i++) {
     if (Pin_Number == Pin_Monitor_Pins_List[i]) {
       Selected_Pin = i;
@@ -1179,103 +1277,26 @@ bool Pin_Monitor(byte Action, byte Pin_Number) {
     }
   }
 
-
-  // Known pin check
+  // On list check
   if (Selected_Pin == 255) {
     Log(MQTT_Topic[Topic_Error] + "/PinMonitor", "Pin " + String(Pin_Number) + " not on pin list");
-    return Pin_Error;
+    return false;
   }
 
-  // Reserve a normal pin
-  else if (Action == Reserve_Normal) {
-    // Check if pin is free
-    // Pin is free
-    if (Pin_Monitor_Pins_Active[Selected_Pin] == Pin_Free) {
-      // Reserve pin
-      Pin_Monitor_Pins_Active[Selected_Pin] = Pin_In_Use;
-      // Log event
-      Log(MQTT_Topic[Topic_System] + "/PinMonitor", "Pin " + Number_To_Pin(Pin_Number) + " is free");
-      // Return state
-      return Pin_Free;
-    }
-    // Pin is use return what it is used by
-    else {
-      // Log event
-      Log(MQTT_Topic[Topic_Error] + "/PinMonitor", "Pin " + Number_To_Pin(Pin_Number) + " is in use");
-      // Return state
-      return Pin_Monitor_Pins_Active[Selected_Pin];
-    }
+  // In use check
+  if (Pin_Monitor_Pins_Active[Selected_Pin] == true) {
+    Log(MQTT_Topic[Topic_Error] + "/PinMonitor", "Pin " + Number_To_Pin(Pin_Number) + " is in use");
+    return false;
   }
 
-  // Reserve a I2C SCL Pin
-  else if (Action == Reserve_I2C_SCL) {
-    // Pin is free
-    if (Pin_Monitor_Pins_Active[Selected_Pin] == Pin_Free) {
-      // Reserve pin
-      Pin_Monitor_Pins_Active[Selected_Pin] = Pin_SCL;
-      // Log event
-      Log(MQTT_Topic[Topic_System] + "/PinMonitor", "Pin " + Number_To_Pin(Pin_Number) + " is free");
-      // Return state
-      return Pin_SCL;
-    }
-    // Pin already used as I2C SCL
-    else if (Pin_Monitor_Pins_Active[Selected_Pin] == Pin_SCL) {
-      // Log event
-      Log(MQTT_Topic[Topic_System] + "/PinMonitor", "Pin " + Number_To_Pin(Pin_Number) + " already used as I2C SCL");
-      // Return state
-      return Pin_SCL;
-    }
-    // Pin is in use
-    else {
-      // Log event
-      Log(MQTT_Topic[Topic_Error] + "/PinMonitor", "Pin " + Number_To_Pin(Pin_Number) + " is in use");
-      // Return state
-      return Pin_Monitor_Pins_Active[Selected_Pin];
-    }
+  // Not in use
+  else {
+    Pin_Monitor_Pins_Active[Selected_Pin] = true;
+    Log(MQTT_Topic[Topic_System] + "/PinMonitor", "Pin " + Number_To_Pin(Pin_Number) + " ok");
+    return true;
   }
-
-  // Reserve a I2C SDA Pin
-  else if (Action == Reserve_I2C_SDA) {
-    // Pin is free
-    if (Pin_Monitor_Pins_Active[Selected_Pin] == Pin_Free) {
-      // Reserve pin
-      Pin_Monitor_Pins_Active[Selected_Pin] = Pin_SDA;
-      // Log event
-      Log(MQTT_Topic[Topic_System] + "/PinMonitor", "Pin " + Number_To_Pin(Pin_Number) + " is free");
-      // Return state
-      return Pin_SDA;
-    }
-    // Pin already used as I2C SDA
-    else if (Pin_Monitor_Pins_Active[Selected_Pin] == Pin_SDA) {
-      // Log event
-      Log(MQTT_Topic[Topic_System] + "/PinMonitor", "Pin " + Number_To_Pin(Pin_Number) + " already used as I2C SDA");
-      // Return state
-      return Pin_SDA;
-    }
-    // Pin is in use
-    else {
-      // Log event
-      Log(MQTT_Topic[Topic_Error] + "/PinMonitor", "Pin " + Number_To_Pin(Pin_Number) + " is in use");
-      // Return state
-      return Pin_Monitor_Pins_Active[Selected_Pin];
-    }
-  }
-
-  // Check pin current state
-  else if (Action == Check_State) {
-    return Pin_Monitor_Pins_Active[Selected_Pin];
-  }
-
-  // Some error handling
-  Log(MQTT_Topic[Topic_Error] + "/PinMonitor", "Reached end of loop with no hit this should not happen");
-  return Pin_Error;
 } // Pin_Monitor
 
-
-// Refferance only - Pin Name
-bool Pin_Monitor(byte Action, String Pin_Name) {
-  return Pin_Monitor(Action, Pin_To_Number(Pin_Name));
-}
 
 // ############################################################ Pin_Map() ############################################################
 void Pin_Map() {
@@ -2486,6 +2507,232 @@ bool FS_Config_Save() {
 }
 
 
+
+// // ############################################################ Device_Config() ############################################################
+// void Device_Config(String Setting, String Value) {
+//
+//   String Old_Value;
+//
+//   // Value = "" = no reason to continue
+//   if (Value == "") return;
+//
+//   // ############### System ###############
+//   if (Setting == "Hostname") {
+//     if (Value == Hostname) return;
+//     Old_Value = Hostname;
+//     Hostname = Value;
+//     Rebuild_MQTT_Topics();
+//   }
+//
+//   else if (Setting == "System_Header") {
+//     if (Value == System_Header) return;
+//     Old_Value = System_Header;
+//     System_Header = Value;
+//     Rebuild_MQTT_Topics();
+//   }
+//
+//   else if (Setting == "System_Sub_Header") {
+//     if (Value == System_Sub_Header) return;
+//     Old_Value = System_Sub_Header;
+//     System_Sub_Header = Value;
+//     Rebuild_MQTT_Topics();
+//   }
+//
+//   else if (Setting == "WiFi_SSID") {
+//     if (Value == WiFi_SSID) return;
+//     Old_Value = WiFi_SSID;
+//     WiFi_SSID = Value;
+//   }
+//   else if (Setting == "WiFi_Password") {
+//     if (Value == WiFi_Password) return;
+//     Old_Value = WiFi_Password;
+//     WiFi_Password = Value;
+//   }
+//   else if (Setting == "MQTT_Broker") {
+//     if (Value == MQTT_Broker) return;
+//     Old_Value = MQTT_Broker;
+//     MQTT_Broker = Value;
+//   }
+//   else if (Setting == "MQTT_Port") {
+//     if (Value == MQTT_Port) return;
+//     Old_Value = MQTT_Port;
+//     MQTT_Port = Value;
+//   }
+//   else if (Setting == "MQTT_Username") {
+//     if (Value == MQTT_Username) return;
+//     Old_Value = MQTT_Username;
+//     MQTT_Username = Value;
+//   }
+//   else if (Setting == "MQTT_Password") {
+//     if (Value == MQTT_Password) return;
+//     Old_Value = MQTT_Password;
+//     MQTT_Password = Value;
+//   }
+//   else if (Setting == "MQTT_Allow_Flash_Password") {
+//     Old_Value = MQTT_Allow_Flash_Password;
+//     MQTT_Allow_Flash_Password = Value;
+//   }
+//
+//   else if (Setting == "MQTT_KeepAlive_Interval") {
+//     if ((unsigned long)Value.toInt() * 1000 == MQTT_KeepAlive_Interval) return;
+//     Old_Value = MQTT_KeepAlive_Interval;
+//     MQTT_KeepAlive_Ticker.detach();
+//     MQTT_KeepAlive_Interval = Value.toInt() * 1000;
+//     MQTT_KeepAlive_Ticker.attach_ms(MQTT_KeepAlive_Interval, MQTT_KeepAlive);
+//   }
+//
+//   // ############### Byzzer ###############
+//   else if (Setting == "Buzzer_Pins") {
+//     // FIX add check if old value = new calue then ignore
+//     Old_Value = Buzzer_Pins;
+//     Buzzer_Pins = Value.toInt();
+//     if (Pin_Monitor(Buzzer_Pins) == true) {
+//       pinMode(Buzzer_Pins, OUTPUT);
+//       MQTT_Subscribe(MQTT_Topic[Topic_Buzzer], true, NONE);
+//       Buzzer_Configured = true;
+//     }
+//   }
+//
+//   // ############### DHT ###############
+//   else if (Setting == "DHT_Pins") {
+//     Old_Value = Byte_ArrayToString(DHT_Pins);
+//     MQTT_Settings_Set(DHT_Pins, DHT_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/DHT", "DHT Pins");
+//     MQTT_Subscribe(MQTT_Topic[Topic_DHT], true, PLUS);
+//     DHT_Configured = true;
+//   }
+//
+//
+//   // ############### Relay ###############
+//   else if (Setting == "Relay_On_State") {
+//     Old_Value = Relay_On_State;
+//     Relay_On_State = Value.toInt();
+//     MQTT_Subscribe(MQTT_Topic[Topic_Relay], true, PLUS);
+//   }
+//
+//   else if (Setting == "Relay_Pins") {
+//     Old_Value = Byte_ArrayToString(Relay_Pins);
+//     MQTT_Settings_Set(Relay_Pins, Relay_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Relay", "Relay Pins");
+//     // Set pinMode
+//     for (byte i = 0; i < Relay_Max_Number_Of; i++) {
+//       if (Relay_Pins[i] != 255 && Pin_Monitor(Relay_Pins[i]) == true) {
+//           pinMode(Relay_Pins[i], OUTPUT);
+//           digitalWrite(Relay_Pins[i], !Relay_On_State);
+//           Relay_Configured = true;
+//       }
+//     }
+//   }
+//   else if (Setting == "Relay_Pin_Auto_Off") {
+//     Old_Value = Bool_ArrayToString(Relay_Pin_Auto_Off);
+//     MQTT_Settings_Set(Relay_Pin_Auto_Off, Relay_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Relay", "Relay Pins Auto Off");
+//   }
+//   else if (Setting == "Relay_Pin_Auto_Off_Delay") {
+//     Old_Value = ul_ArrayToString(Relay_Pin_Auto_Off_Delay);
+//     MQTT_Settings_Set(Relay_Pin_Auto_Off_Delay, Relay_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Relay", "Relay Pins Auto Off Delay");
+//   }
+//
+//
+//   // ############### Distance ###############
+//   else if (Setting == "Distance_Pins_Trigger") {
+//     Old_Value = Byte_ArrayToString(Distance_Pins_Trigger);
+//     MQTT_Subscribe(MQTT_Topic[Topic_Distance], true, PLUS);
+//     MQTT_Settings_Set(Distance_Pins_Trigger, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Pins Trigger");
+//     // Set pinMode
+//     for (byte i = 0; i < Distance_Max_Number_Of; i++) {
+//       if (Distance_Pins_Trigger[i] != 255 && Pin_Monitor(Distance_Pins_Trigger[i]) == true) {
+//         pinMode(Distance_Pins_Trigger[i], OUTPUT);
+//       }
+//     }
+//   }
+//
+//   else if (Setting == "Distance_Pins_Echo") {
+//     Old_Value = Byte_ArrayToString(Distance_Pins_Echo);
+//     MQTT_Settings_Set(Distance_Pins_Echo, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Pins Echo");
+//     // Set pinMode
+//     for (byte i = 0; i < Distance_Max_Number_Of; i++) {
+//       if (Distance_Pins_Echo[i] != 255 && Pin_Monitor(Distance_Pins_Echo[i]) == true) {
+//         pinMode(Distance_Pins_Echo[i], INPUT);
+//       }
+//     }
+//   }
+//
+//   else if (Setting == "Distance_Trigger_At") {
+//     Old_Value = int_ArrayToString(Distance_Trigger_At);
+//     MQTT_Settings_Set(Distance_Trigger_At, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Trigger At");
+//   }
+//   else if (Setting == "Distance_Target_ON") {
+//     Old_Value = String_ArrayToString(Distance_Target_ON);
+//     MQTT_Settings_Set(Distance_Target_ON, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Target ON");
+//   }
+//   else if (Setting == "Distance_Target_OFF") {
+//     Old_Value = String_ArrayToString(Distance_Target_OFF);
+//     MQTT_Settings_Set(Distance_Target_OFF, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Target OFF");
+//   }
+//   else if (Setting == "Distance_Refresh_Rate") {
+//     Old_Value = ul_ArrayToString(Distance_Refresh_Rate);
+//     MQTT_Settings_Set(Distance_Refresh_Rate, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Refresh Rate");
+//   }
+//   else if (Setting == "Distance_Auto_OFF_Delay") {
+//     Old_Value = ul_ArrayToString(Distance_Auto_OFF_Delay);
+//     MQTT_Settings_Set(Distance_Auto_OFF_Delay, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Auto OFF Delay");
+//   }
+//   else if (Setting == "Distance_Auto_OFF_Active") {
+//     Old_Value = Bool_ArrayToString(Distance_Auto_OFF_Active);
+//     MQTT_Settings_Set(Distance_Auto_OFF_Active, Distance_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Distance", "Distance Auto OFF Active");
+//   }
+//   else if (Setting == "Dimmer_Pins") {
+//     MQTT_Subscribe(MQTT_Topic[Topic_Dimmer], true, PLUS);
+//     MQTT_Settings_Set(Dimmer_Pins, Dimmer_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Dimmer", "Dimmer Pins");
+//     // Set pinMode
+//     for (byte i = 0; i < Dimmer_Max_Number_Of; i++) {
+//       if (Dimmer_Pins[i] != 255) {
+//         if (Pin_Monitor(Dimmer_Pins[i]) == true) {
+//           pinMode(Dimmer_Pins[i], OUTPUT);
+//           analogWrite(Dimmer_Pins[i], 0);
+//           Dimmer_State[i] = 0;
+//         }
+//       }
+//     }
+//   }
+//
+//   else if (Setting == "Button_Pins") {
+//     MQTT_Settings_Set(Button_Pins, Button_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Button", "Button Pins");
+//
+//     // Set pinMode
+//     for (byte i = 0; i < Button_Max_Number_Of; i++) {
+//       if (Button_Pins[i] != 255) {
+//         if (Pin_Monitor(Button_Pins[i]) == true) {
+//           pinMode(Button_Pins[i], INPUT_PULLUP);
+//         }
+//       }
+//     }
+//   }
+//   else if (Setting == "Button_Target") {
+//     MQTT_Settings_Set(Button_Target, Button_Max_Number_Of, Value, MQTT_Topic[Topic_System] + "/Button", "Button Target");
+//   }
+//
+//   // Config_ID is last config so will reboot if needed and save config
+//   else if (Setting == "Config_ID") {
+//     if (Value == "") {
+//       Value = "0";
+//     }
+//     Config_ID = Value;
+//     // Only save if triggered after config is loaded
+//     if (Config_json_Loaded == true) FS_Config_Save();
+//   }
+//
+//   else {
+//     Log(MQTT_Topic[Topic_Error] + "/DeviceConfig", "Unknown configuration: " + Setting);
+//     return;
+//   }
+//
+//   // Log value change
+//   Log(MQTT_Topic[Topic_System] + "/Dobby", "'" + Setting + "' changed from: " + Old_Value + " to: " + Value);
+//
+//
+// } // Device_Config()
+
+
+
 // ############################################################ CLI_Print() ############################################################
 void CLI_Print(String Print_String) {
 
@@ -2516,6 +2763,8 @@ bool Get_Serial_Input() {
 
   return false;
 }
+
+
 
 
 // ############################################################ Wait_For_Serial_Input() ############################################################
@@ -2653,7 +2902,7 @@ bool FS_Config_Load() {
   // // ############### Buzzer ###############
   if (root.get<String>("Buzzer_Pins") != "") {
     Buzzer_Pins = root.get<byte>("Buzzer_Pins");
-    if (Pin_Monitor(Reserve_Normal, Buzzer_Pins) == Pin_Free) {
+    if (Pin_Monitor(Buzzer_Pins) == true) {
       pinMode(Buzzer_Pins, OUTPUT);
       MQTT_Subscribe(MQTT_Topic[Topic_Buzzer], true, NONE);
       Buzzer_Configured = true;
@@ -2667,7 +2916,7 @@ bool FS_Config_Load() {
 
     // Check pins
     for (byte i = 0; i < DHT_Max_Number_Of; i++) {
-      if (DHT_Pins[i] != 255 && Pin_Monitor(Reserve_Normal, DHT_Pins[i]) == Pin_Free) {
+      if (DHT_Pins[i] != 255 && Pin_Monitor(DHT_Pins[i]) == true) {
         MQTT_Subscribe(MQTT_Topic[Topic_DHT], true, PLUS);
         DHT_Configured = true;
       }
@@ -2682,7 +2931,7 @@ bool FS_Config_Load() {
     // Relay pins
     MQTT_Settings_Set(Relay_Pins, Relay_Max_Number_Of, root.get<String>("Relay_Pins"), MQTT_Topic[Topic_System] + "/Relay", "Relay Pins");
     for (byte i = 0; i < Relay_Max_Number_Of; i++) {
-      if (Relay_Pins[i] != 255 && Pin_Monitor(Reserve_Normal, Relay_Pins[i]) == Pin_Free) {
+      if (Relay_Pins[i] != 255 && Pin_Monitor(Relay_Pins[i]) == true) {
         pinMode(Relay_Pins[i], OUTPUT);
         digitalWrite(Relay_Pins[i], !Relay_On_State);
       }
@@ -2704,7 +2953,7 @@ bool FS_Config_Load() {
     MQTT_Settings_Set(Distance_Pins_Trigger, Distance_Max_Number_Of, root.get<String>("Distance_Pins_Trigger"), MQTT_Topic[Topic_System] + "/Distance", "Distance Pins Trigger");
     // Set pinMode
     for (byte i = 0; i < Distance_Max_Number_Of; i++) {
-      if (Distance_Pins_Trigger[i] != 255 && Pin_Monitor(Reserve_Normal, Distance_Pins_Trigger[i]) == Pin_Free) {
+      if (Distance_Pins_Trigger[i] != 255 && Pin_Monitor(Distance_Pins_Trigger[i]) == true) {
         pinMode(Distance_Pins_Trigger[i], OUTPUT);
         Distance_Configured = true;
       }
@@ -2715,7 +2964,7 @@ bool FS_Config_Load() {
     MQTT_Settings_Set(Distance_Pins_Echo, Distance_Max_Number_Of, root.get<String>("Distance_Pins_Echo"), MQTT_Topic[Topic_System] + "/Distance", "Distance Pins Echo");
     // Set pinMode
     for (byte i = 0; i < Distance_Max_Number_Of; i++) {
-      if (Distance_Pins_Echo[i] != 255 && Pin_Monitor(Reserve_Normal, Distance_Pins_Echo[i]) == Pin_Free) {
+      if (Distance_Pins_Echo[i] != 255 && Pin_Monitor(Distance_Pins_Echo[i]) == true) {
         pinMode(Distance_Pins_Echo[i], INPUT);
       }
     }
@@ -2747,7 +2996,7 @@ bool FS_Config_Load() {
     // Set pinMode
     for (byte i = 0; i < Dimmer_Max_Number_Of; i++) {
       if (Dimmer_Pins[i] != 255) {
-        if (Pin_Monitor(Reserve_Normal, Dimmer_Pins[i]) == Pin_Free) {
+        if (Pin_Monitor(Dimmer_Pins[i]) == true) {
           pinMode(Dimmer_Pins[i], OUTPUT);
           analogWrite(Dimmer_Pins[i], 0);
           Dimmer_State[i] = 0;
@@ -2785,7 +3034,7 @@ bool FS_Config_Load() {
     DC_Voltmeter_Pins = Pin_To_Number(root.get<String>("DC_Voltmeter_Pins"));
 
     // Check to see if pin is free
-    if (Pin_Monitor(Reserve_Normal, DC_Voltmeter_Pins) == Pin_Free) {
+    if (Pin_Monitor(DC_Voltmeter_Pins) == true) {
       pinMode(DC_Voltmeter_Pins, INPUT);
       MQTT_Subscribe(MQTT_Topic[Topic_DC_Voltmeter], true, NONE);
     }
@@ -2816,7 +3065,7 @@ bool FS_Config_Load() {
     // Set pinMode
     for (byte i = 0; i < Button_Max_Number_Of; i++) {
       if (Button_Pins[i] != 255) {
-        if (Pin_Monitor(Reserve_Normal, Button_Pins[i]) == Pin_Free) {
+        if (Pin_Monitor(Button_Pins[i]) == true) {
           pinMode(Button_Pins[i], INPUT_PULLUP);
         }
       }
@@ -2837,7 +3086,7 @@ bool FS_Config_Load() {
     // Set pinMode
     for (byte i = 0; i < Switch_Max_Number_Of; i++) {
       if (Switch_Pins[i] != 255) {
-        if (Pin_Monitor(Reserve_Normal, Switch_Pins[i]) == Pin_Free) {
+        if (Pin_Monitor(Switch_Pins[i]) == true) {
           pinMode(Switch_Pins[i], INPUT_PULLUP);
           // Read current state
           Switch_Last_State[i] = digitalRead(Switch_Pins[i]);
@@ -2873,7 +3122,7 @@ bool FS_Config_Load() {
       Log(MQTT_Topic[Topic_System] + "/MPU6050", "All required pins set");
 
       // Reserve pins
-      if (Pin_Monitor(Reserve_I2C_SCL, MPU6050_Pin_SCL) == Pin_Free && Pin_Monitor(Reserve_I2C_SDA, MPU6050_Pin_SDA) == Pin_Free && Pin_Monitor(Reserve_Normal, MPU6050_Pin_Interrupt) == Pin_Free) {
+      if (Pin_Monitor(MPU6050_Pin_SCL) == true && Pin_Monitor(MPU6050_Pin_SDA) == true && Pin_Monitor(MPU6050_Pin_Interrupt) == true) {
         // Set pinmode for Interrupt
         pinMode(MPU6050_Pin_Interrupt, INPUT);
 
@@ -2892,6 +3141,21 @@ bool FS_Config_Load() {
       Log(MQTT_Topic[Topic_Error] + "/MPU6050", "All required pins not set, got SDA: " + Number_To_Pin(MPU6050_Pin_SDA) + " SCL: " + Number_To_Pin(MPU6050_Pin_SCL) + " Interrupt: " + Number_To_Pin(MPU6050_Pin_Interrupt));
     }
 
+
+    // // Set offsets
+    // if (root.get<String>("MPU6050_Gyro_X_Offset") != "") {
+    //   MPU6050_GyX_Deg_Offset = root.get<double>("MPU6050_Gyro_X_Offset");
+    // }
+    // if (root.get<String>("MPU6050_Gyro_Y_Offset") != "") {
+    //   MPU6050_GyY_Deg_Offset = root.get<double>("MPU6050_Gyro_Y_Offset");
+    // }
+    // if (root.get<String>("MPU6050_Gyro_Z_Offset") != "") {
+    //   MPU6050_GyZ_Deg_Offset = root.get<double>("MPU6050_Gyro_Z_Offset");
+    // }
+    // if (root.get<String>("MPU6050_Gyro_Invert_Axis") != "") {
+    //   MPU6050_Gyro_Invert_Axis = root.get<bool>("MPU6050_Gyro_Invert_Axis");
+    // }
+
     Log(MQTT_Topic[Topic_System] + "/MPU6050", "Configuration compleate");
   }
 
@@ -2899,14 +3163,13 @@ bool FS_Config_Load() {
   if (root.get<String>("BMP180_Pin_SCL") != "") {
     Log(MQTT_Topic[Topic_System] + "/BMP180", "Configuring");
 
-    // If pin D5, D6 is used then the BMP180 lib fails to init
-    // FIX - Find out WTF
-    if (Pin_Monitor(Check_State, "D5") != Pin_Free) {
+    // If pin D%, D6 is used then the BMP180 lib fails to init
+    if (Pin_Monitor_State("D5") == true) {
       Log(MQTT_Topic[Topic_Error] + "/BMP180", "Pin D5 in use, this makes the BMP180 library fail");
       Log(MQTT_Topic[Topic_Error] + "/BMP180", "Disabling BMP180");
       BMP180_Configured = false;
     }
-    else if (Pin_Monitor(Check_State, "D6") != Pin_Free) {
+    else if (Pin_Monitor_State("D6") == true) {
       Log(MQTT_Topic[Topic_Error] + "/BMP180", "Pin D6 in use, this makes the BMP180 library fail");
       Log(MQTT_Topic[Topic_Error] + "/BMP180", "Disabling BMP180");
       BMP180_Configured = false;
@@ -2915,20 +3178,18 @@ bool FS_Config_Load() {
     // Pin D5, D6 not used
     else {
       // Set SCL
-      BMP180_Pin_SCL = Pin_Monitor(Reserve_I2C_SCL, root.get<String>("BMP180_Pin_SCL"));
+      BMP180_Pin_SCL = Pin_To_Number(root.get<String>("BMP180_Pin_SCL"));
       // Set SDA
       if (root.get<String>("BMP180_Pin_SDA") != "") {
-        BMP180_Pin_SDA = Pin_Monitor(Reserve_I2C_SDA, root.get<String>("BMP180_Pin_SDA"));
+        BMP180_Pin_SDA = Pin_To_Number(root.get<String>("BMP180_Pin_SDA"));
       }
 
       if (root.get<String>("BMP180_Altitude") != "") {
         BMP180_Altitude = root.get<float>("BMP180_Altitude");
       }
-      Serial.println("MARKER");
-
 
       // Check if both pins are free
-      if (Pin_Monitor(Check_State, BMP180_Pin_SCL) == Pin_SCL && Pin_Monitor(Check_State, BMP180_Pin_SDA) == Pin_SDA && BMP180_Altitude != -1337.0) {
+      if (Pin_Monitor(BMP180_Pin_SCL) == true && Pin_Monitor(BMP180_Pin_SDA) == true && BMP180_Altitude != -1337.0) {
         // Log it all went ok
         Log(MQTT_Topic[Topic_System] + "/BMP180", "Pins SDA: " + Number_To_Pin(BMP180_Pin_SDA) + " SCL: " + Number_To_Pin(BMP180_Pin_SCL) + " Altiture: " + String(BMP180_Altitude));
         // Subscripbe to topic
@@ -2962,7 +3223,7 @@ bool FS_Config_Load() {
 
   // '#################### Indicator LED '####################
   // Disable indicator LED if D4 was used
-  if (Pin_Monitor(Check_State, "D4") != Pin_Free) {
+  if (Pin_Monitor_State("D4") == true) {
     Log(MQTT_Topic[Topic_System] + "/LED", "Pin D4 used, disabling indicator LED");
     // Detatch the ticker
     Indicator_LED_Blink_Ticker.detach();
@@ -3386,6 +3647,31 @@ bool MQTT_Commands(String Topic, String Payload) {
 
     Log("/Test", "MARKER");
 
+    Serial.print("Sealevel calc: ");
+    Serial.println((int32_t)(BMP180_RA_Current_Pressure.getAverage() / pow(1.0 - BMP180_Altitude / 44330, 5.255)));
+
+
+
+    // Serial.print("BMP180_RA_Current_Altitude.getAverage()");
+    // Serial.println(BMP180_RA_Current_Altitude.getAverage());
+
+  //   Serial.print("Altitude = ");
+  //   Serial.print(bmp.readAltitude());
+  //   Serial.println(" meters");
+  //
+  //   Serial.print("Pressure at sealevel (calculated) = ");
+  //   Serial.print(bmp.readSealevelPressure());
+  //   Serial.println(" Pa");
+  //
+  // // you can get a more precise measurement of altitude
+  // // if you know the current sea level pressure which will
+  // // vary with weather and such. If it is 1015 millibars
+  // // that is equal to 101500 Pascals.
+  //   Serial.print("Real altitude = ");
+  //   Serial.print(bmp.readAltitude(101500));
+  //   Serial.println(" meters");
+
+
   } // Test
 
   else {
@@ -3679,7 +3965,7 @@ void setup() {
       // mpu.setXGyroOffset(220);
       // mpu.setYGyroOffset(76);
       // mpu.setZGyroOffset(-85);
-      mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
+      // mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
 
       // make sure it worked (returns 0 if so)
       if (MPU6050_Device_Status == 0) {

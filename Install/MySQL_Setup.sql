@@ -35,9 +35,9 @@ CREATE TABLE `Dobby`.`Alerts` (
   `Alert_Subject` varchar(45) NOT NULL,
   `Alert_Payload_Clear` varchar(45) NOT NULL,
   `Alert_Payload_Trigger` varchar(45) NOT NULL,
-  PRIMARY KEY (`id`)
-  UNIQUE KEY `id_UNIQUE` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+  `Triggered_DateTime` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4;
 
 
 CREATE TABLE `Dobby`.`DashButtons` (
@@ -96,6 +96,16 @@ CREATE TABLE `Dobby`.`DeviceConfig` (
   `DC_Voltmeter_R2` varchar(25) DEFAULT NULL,
   `DC_Voltmeter_Curcit_Voltage` varchar(25) DEFAULT NULL,
   `DC_Voltmeter_Offset` varchar(25) DEFAULT NULL,
+  `MPU6050_Pin_SCL` varchar(25) DEFAULT NULL,
+  `MPU6050_Pin_SDA` varchar(25) DEFAULT NULL,
+  `MPU6050_Pin_Interrupt` varchar(25) DEFAULT NULL,
+  `MPU6050_Gyro_X_Offset` decimal(5,2) DEFAULT NULL,
+  `MPU6050_Gyro_Y_Offset` decimal(5,2) DEFAULT NULL,
+  `MPU6050_Gyro_Z_Offset` decimal(5,2) DEFAULT NULL,
+  `MPU6050_Gyro_Invert_Axis` tinyint(1) DEFAULT NULL,
+  `BMP180_Pin_SCL` varchar(45) DEFAULT NULL,
+  `BMP180_Pin_SDA` varchar(45) DEFAULT NULL,
+  `BMP180_Altitude` decimal(6,1) DEFAULT NULL,
   `Date_Modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;

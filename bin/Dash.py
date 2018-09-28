@@ -1,6 +1,18 @@
 #!/usr/bin/python
 
-# Version 1.0
+# Improvements
+# Add limit slider to live graph
+
+# Changelog
+# - 101003
+# -- Added live graph under monitoring agent
+#
+# - 101002
+# -- Fixed issues with clicks getting triggered when reentering buttons tab
+# -- Added Systems tab and shutdown buttton
+#
+# - 101001
+# -- A lot of stull happened
 
 import dash
 import dash_auth
@@ -10,8 +22,8 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_table_experiments as dt
 
-
-# import plotly.graph_objs as go
+# Neede to be able to shutdown dash
+from flask import request
 
 # MQTT
 import paho.mqtt.publish as MQTT
@@ -32,6 +44,13 @@ import pandas as pd
 # json
 import json
 
+# MISC
+Version = 101003
+# First didget = Software type 1-Production 2-Beta 3-Alpha
+# Secound and third didget = Major version number
+# Fourth to sixth = Minor version number
+
+
 # MySQL
 MySQL_Server = 'localhost'
 MySQL_Username = 'dobby'
@@ -50,6 +69,8 @@ DashButtons_Number_Of = pd.read_sql("SELECT COUNT(id) FROM Dobby.DashButtons;", 
 # Add users and passwords
 # User auth list
 db_User_List = pd.read_sql("SELECT Username, Password FROM Dobby.Users;", con=db_pd_Connection)
+
+db_pd_Connection.close()
 
 User_List = []
 
@@ -76,6 +97,14 @@ app.config['suppress_callback_exceptions'] = True
 # ================================================================================ Functions ================================================================================
 # ================================================================================ Functions ================================================================================
 # ================================================================================ Functions ================================================================================
+
+# ======================================== Server Shutdown ========================================
+def Server_Shutdown():
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is None:
+        raise RuntimeError('Not running with the Werkzeug Server')
+    func()
+
 
 # ======================================== MQTT Publish ========================================
 def MQTT_Publish(Topic, Payload):
@@ -128,6 +157,34 @@ def SQL_To_List(SQL_String):
     return Return_List
 
 
+# ======================================== SQL_Read_df ========================================
+def SQL_Read_df(SQL_String):
+    # Open db connection
+    db_SQL_Connection = Open_db('')
+
+    df = pd.read_sql(SQL_String, con=db_SQL_Connection)
+
+    # Close db connection
+    db_SQL_Connection.close()
+
+    return df
+
+
+# ======================================== SQL_Read ========================================
+def SQL_Read(SQL_String):
+    # Open db connection
+    db_SQL_Connection = Open_db('')
+    db_SQL_Curser = db_SQL_Connection.cursor()
+
+    db_SQL_Curser.execute(SQL_String)
+    db_Resoult = db_SQL_Curser.fetchall()
+
+    # Close db connection
+    Close_db(db_SQL_Connection, db_SQL_Curser)
+
+    return db_Resoult
+
+
 # ======================================== Generate_Device_Config_Dict ========================================
 def Generate_Device_Config_Dict(Selected_Device, db_Curser):
 
@@ -156,26 +213,36 @@ def Generate_Device_Config_Dict(Selected_Device, db_Curser):
 # ======================================== Generate_Variable_Dict ========================================
 def Generate_Variable_Dict(String):
 
-    if String == "":
-        return {}
+    Return_Dict = {}
 
-    return dict([i.split(':') for i in String.split(' ')])
+    # Do nothing if string en empthy
+    if String == "" or String is None:
+        pass
+
+    else:
+        for i in String.split('<*>'):
+            # Skip if line is ''
+            if i == '':
+                continue
+
+            Dict_Entry = i.split('<;>')
+
+            # I asume that 2 x - and 2  : = datetime
+            if Dict_Entry[1].count('-') == 2 and Dict_Entry[1].count(':') == 2:
+                Dict_Entry[1] = datetime.datetime.strptime(Dict_Entry[1], '%Y-%m-%d %H:%M:%S')
+
+            Return_Dict[Dict_Entry[0]] = Dict_Entry[1]
+
+    return Return_Dict
 
 
 # ======================================== Generate_Variable_Dict ========================================
 def Generate_Variable_String(Dict):
-    # Remove {}
-    Return_String = str(Dict)[1:-1]
 
-    # Remove ' and u'
-    Return_String = Return_String.replace("u'", "")
-    Return_String = Return_String.replace("'", "")
+    Return_String = ''
 
-    # Remove ,
-    Return_String = Return_String.replace(",", "")
-
-    # Replace ": " with ":"
-    Return_String = Return_String.replace(": ", ":")
+    for Key, Value in Dict.iteritems():
+        Return_String = Return_String + str(Key) + '<;>' + str(Value) + '<*>'
 
     return Return_String
 
@@ -231,11 +298,14 @@ def MQTT_Config_New(Selected_Device):
 # ======================================== Layout ========================================
 app.layout = html.Div([
 
-    dcc.Tabs(id="tabs", value='Buttons_Tab', children=[
+    dcc.Tabs(id="tabs", value='MonitorAgent_Tab', children=[
         dcc.Tab(label='Buttons', value='Buttons_Tab'),
         dcc.Tab(label='MonitorAgent', value='MonitorAgent_Tab'),
+        dcc.Tab(label='Alerts', value='Alerts_Tab'),
+        dcc.Tab(label='Functions', value='Functions_Tab'),
         dcc.Tab(label='Devices', value='Devices_Tab'),
         dcc.Tab(label='Users', value='Users_Tab'),
+        dcc.Tab(label='System', value='System_Tab'),
         ]),
 
     html.Div(id='Main_Tabs'),
@@ -252,6 +322,7 @@ app.layout = html.Div([
         html.Div(id='MonitorAgent_Tab_Variables', children=""),
         html.Div(id='Users_Tab_Variables', children=""),
         html.Div(id='Buttons_Tab_Variables', children=""),
+        html.Div(id='System_Tab_Variables', children=""),
 
         ], style={'display': 'none'})
     ])
@@ -268,9 +339,10 @@ app.layout = html.Div([
         State('MonitorAgent_Tab_Variables', 'children'),
         State('Users_Tab_Variables', 'children'),
         State('Buttons_Tab_Variables', 'children'),
+        State('System_Tab_Variables', 'children'),
         ]
     )
-def render_content(tab, Devices_Tab_Variables, MonitorAgent_Tab_Variables, Users_Tab_Variables, Buttons_Tab_Variables):
+def render_content(tab, Devices_Tab_Variables, MonitorAgent_Tab_Variables, Users_Tab_Variables, Buttons_Tab_Variables, System_Tab_Variables):
 
     Devices_Tab_Variables = Generate_Variable_Dict(Devices_Tab_Variables)
     MonitorAgent_Tab_Variables = Generate_Variable_Dict(MonitorAgent_Tab_Variables)
@@ -280,22 +352,75 @@ def render_content(tab, Devices_Tab_Variables, MonitorAgent_Tab_Variables, Users
     # ======================================== MonitorAgent Tab ========================================
     if tab == 'MonitorAgent_Tab':
         return html.Div([
-            dcc.Dropdown(
-                id='MonitorAgent_Dropdown',
-                options=[{'label': Agents, 'value': Agents} for Agents in SQL_To_List("SELECT DISTINCT Agent_Name FROM Dobby.MonitorAgentConfig;")],
-                value=MonitorAgent_Tab_Variables.get('MonitorAgent_Dropdown')
-                ),
 
-            dcc.Slider(
-                id='MonitorAgent_Slider',
-                min=10,
-                max=25000,
-                step=10,
-                value=50,
-                ),
+            # Div for Dropdown and live button
+            html.Div(
+                style={
+                    'width': '100%',
+                    'display': 'table-cell',
+                    'margin-right': 'auto',
+                    'margin-left': 'auto',
+                },
+                children=[
+                    html.Div(
+                        style={
+                            'width': '95vw',
+                            'display': 'table-cell',
+                        },
+                        children=[
+                            dcc.Dropdown(
+                                id='MonitorAgent_Dropdown',
+                                options=[{'label': Agents, 'value': Agents} for Agents in SQL_To_List("SELECT DISTINCT Agent_Name FROM Dobby.MonitorAgentConfig;")],
+                                value=MonitorAgent_Tab_Variables.get('MonitorAgent_Dropdown')
+                            ),
+                        ],
+                    ),
+                    html.Div(
+                        style={
+                            'display': 'table-cell',
+                        },
+                        children=[
+                            html.Button('Switch to Live', id='MonitorAgent_Button_Live', n_clicks=0),
+                        ],
+                    ),
+                ],
+            ),
 
-            dcc.Graph(id='MonitorAgent_Graph'),
-        ], className="MonitorAgent"),
+            # Main graph
+            dcc.Graph(
+                id='MonitorAgent_Graph',
+                style={
+                    'height': '70vh',
+                    'width': '100%'
+                },
+            ),
+            dcc.Interval(
+                id='MonitorAgent_Graph_Live_Interval',
+                interval=int(MonitorAgent_Tab_Variables.get('Live_Graph_Interval', '1800000')),
+                n_intervals=0
+            ),
+
+            html.Div(
+                style={
+                    'marginLeft': '75px',
+                    'marginRight': '75px',
+                },
+                children=[
+                    dcc.RangeSlider(
+                        id='MonitorAgent_Slider',
+                        min=0,
+                        max=100,
+                        step=1,
+                        value=[95, 100],
+                        marks={},
+                    ),
+                ],
+            ),
+
+        ], className="MonitorAgent", style={
+            'height': '100%',
+            'width': '100%'
+            }),
 
     # ======================================== Devices Tab ========================================
     elif tab == 'Devices_Tab':
@@ -310,7 +435,13 @@ def render_content(tab, Devices_Tab_Variables, MonitorAgent_Tab_Variables, Users
             html.Div([
                 html.H2('KeepAlive'),
                 html.Button('Read', id='Devices_Read_KeepAlive_Button', n_clicks=0),
-                dcc.Graph(id='Devices_KeepAlive_Graph', style={'height': '375px', 'width': '100%'}),
+                dcc.Graph(
+                    id='Devices_KeepAlive_Graph',
+                    style={
+                        'height': '375px',
+                        'width': '100%'
+                        }
+                    ),
                 dcc.Slider(
                     id='Devices_KeepAlive_Slider',
                     min=10,
@@ -394,7 +525,7 @@ def render_content(tab, Devices_Tab_Variables, MonitorAgent_Tab_Variables, Users
             html.P(id='Users_Text'),
         ], id='Users_Tab')
 
-    # ======================================== Users Tab ========================================
+    # ======================================== Buttons Tab ========================================
     elif tab == 'Buttons_Tab':
 
         db_Write_Connection = Open_db('Dobby')
@@ -419,11 +550,56 @@ def render_content(tab, Devices_Tab_Variables, MonitorAgent_Tab_Variables, Users
                 )
         ], id='Buttons_Tab')
 
+    # ======================================== System Tab ========================================
+    elif tab == 'System_Tab':
+        return html.Div([
+            html.Button('Quit', id='System_Quit_Button', n_clicks=0),
+        ], id='System_Tab')
+
+    # ======================================== System Tab ========================================
+    elif tab == 'Alerts_Tab':
+        return html.Div([
+
+        ], id='Alerts_Tab')
+    # ======================================== System Tab ========================================
+    elif tab == 'Functions_Tab':
+        return html.Div([
+        ], id='Functions_Tab')
+
 
 # ================================================================================ Callbacks ================================================================================
 # ================================================================================ Callbacks ================================================================================
 # ================================================================================ Callbacks ================================================================================
 # ================================================================================ Callbacks ================================================================================
+
+# ======================================== Button Tab - Callbacks ========================================
+# Button Tabs
+@app.callback(
+    Output('System_Tab_Variables', 'children'),
+    [
+        Input('System_Quit_Button', 'n_clicks')
+        ],
+    [
+        State('System_Tab_Variables', 'children'),
+        ],
+    )
+def System_Tab_Buttons(System_Quit_Button, System_Tab_Variables):
+
+    # Import variables from div able
+    System_Tab_Variables = Generate_Variable_Dict(System_Tab_Variables)
+
+    # If n_clicks = 0 then the page has just been loaded so dont do anything
+    if int(System_Quit_Button) == 0:
+        System_Tab_Variables['System_Quit_Button'] = 0
+
+    elif int(System_Tab_Variables.get('System_Quit_Button', 0)) != int(System_Quit_Button):
+        System_Tab_Variables['System_Quit_Button'] = System_Quit_Button
+
+        print "System shutdown requested, shutting down"
+        Server_Shutdown()
+
+    return Generate_Variable_String(System_Quit_Button)
+
 
 # ======================================== Button Tab - Callbacks ========================================
 # Button Tabs
@@ -443,7 +619,11 @@ def Buttons_Tab_Buttons(*args):
 
     # - 1 excludes Buttons_Tab_Variables
     for i in range(len(args) - 1):
-        if int(Buttons_Tab_Variables.get('DBTN_' + str(i), 0)) != int(args[i]):
+        # If n_clicks = 0 then the page has just been loaded so dont do anything
+        if int(args[i]) == 0:
+            Buttons_Tab_Variables['DBTN_' + str(i)] = 0
+
+        elif int(Buttons_Tab_Variables.get('DBTN_' + str(i), 0)) != int(args[i]):
             Buttons_Tab_Variables['DBTN_' + str(i)] = args[i]
 
             # Open db connection
@@ -454,43 +634,12 @@ def Buttons_Tab_Buttons(*args):
             db_Write_Curser.execute("SELECT Target_Topic, Target_Payload FROM Dobby.DashButtons WHERE id='" + str(i) + "';")
             Topic_Payload = db_Write_Curser.fetchone()
 
+            # Close db connection
             Close_db(db_Write_Connection, db_Write_Curser)
 
-            # MQTT_Publish("/Test", Topic_Payload[1])
             MQTT_Publish(Topic_Payload[0], Topic_Payload[1])
 
-            # Close db connection
             break
-
-            # To fix bug where Generate_Variable_String fails if it has less then two vars
-    if Buttons_Tab_Variables.get('Last_Click', "None") is "None":
-        Buttons_Tab_Variables['Last_Click'] = 'None'
-
-    else:
-        # Open db connection
-        db_Write_Connection = Open_db('Dobby')
-        db_Write_Curser = db_Write_Connection.cursor()
-
-        print """str(Buttons_Tab_Variables['''Last_Click'''].replace("DBTN_", ""))"""
-        print str(Buttons_Tab_Variables['''Last_Click'''].replace("DBTN_", ""))
-
-        # i is the id of the row in the db table
-        db_Write_Curser.execute("SELECT Target_Topic, Target_Payload FROM Dobby.DashButtons WHERE id='" + str(Buttons_Tab_Variables["""Last_Click"""]).replace("DBTN_", "") + "';")
-        Topic_Payload = db_Write_Curser.fetchone()
-
-        Close_db(db_Write_Connection, db_Write_Curser)
-
-        print Topic_Payload[0]
-        print Topic_Payload[1]
-
-        Buttons_Tab_Variables['Last_Click'] = 'None'
-
-        MQTT_Publish("/Test", Topic_Payload[1])
-        # MQTT_Publish(Topic_Payload[0], Topic_Payload[1])
-
-        # Close db connection
-
-    print Buttons_Tab_Variables
 
     return Generate_Variable_String(Buttons_Tab_Variables)
 
@@ -597,25 +746,6 @@ def Users_Tab_Buttons(Users_Read_Button, Users_Save_Button, Users_Tab_Variables)
             break
 
     return Generate_Variable_String(Users_Tab_Variables)
-
-
-# ======================================== MonitorAgent Tab - Callbacks ========================================
-# Update Monitor Agent Tab
-@app.callback(
-    Output('MonitorAgent_Tab_Variables', 'children'),
-    [
-        Input('MonitorAgent_Dropdown', 'value'),
-        ],
-    [
-        State('MonitorAgent_Tab_Variables', 'children')
-        ]
-    )
-def MonitorAgent_Tab_Buttons(MonitorAgent_Dropdown, MonitorAgent_Tab_Variables):
-    MonitorAgent_Tab_Variables = Generate_Variable_Dict(MonitorAgent_Tab_Variables)
-
-    MonitorAgent_Tab_Variables['MonitorAgent_Dropdown'] = MonitorAgent_Dropdown
-
-    return Generate_Variable_String(MonitorAgent_Tab_Variables)
 
 
 # ======================================== Devices Tab - Callbacks ========================================
@@ -804,7 +934,7 @@ def Devices_Tab_KeepAlive_Show(Devices_Tab_Variables, Devices_KeepAlive_Slider):
 
     # ======================================== Read KeepAlive ========================================
     else:
-        df = pd.read_sql("SELECT LastKeepAlive, UpFor, FreeMemory, SoftwareVersion, IP, RSSI FROM DobbyLog.KeepAliveMonitor WHERE Device = '" + str(Devices_Tab_Variables['Devices_Dropdown']) + "' ORDER BY id DESC LIMIT " + str(Devices_Tab_Variables['Devices_KeepAlive_Slider']) + ";", con=db_pd_Connection)
+        df = SQL_Read_df("SELECT LastKeepAlive, UpFor, FreeMemory, SoftwareVersion, IP, RSSI FROM DobbyLog.KeepAliveMonitor WHERE Device = '" + str(Devices_Tab_Variables['Devices_Dropdown']) + "' ORDER BY id DESC LIMIT " + str(Devices_Tab_Variables['Devices_KeepAlive_Slider']) + ";")
 
         Return_Data = {'data': [{}]}
 
@@ -908,31 +1038,215 @@ def Devices_Tab_Config_Show(Devices_Tab_Variables, Devices_Config_Table):
     return Return_Dict
 
 
+# ======================================== MonitorAgent - MonitorAgent_Tab_Variables ========================================
+@app.callback(
+    Output('MonitorAgent_Tab_Variables', 'children'),
+    [
+        Input('MonitorAgent_Dropdown', 'value'),
+        Input('MonitorAgent_Slider', 'value'),
+        Input('MonitorAgent_Button_Live', 'n_clicks'),
+        ],
+    [
+        State('MonitorAgent_Tab_Variables', 'children')
+        ]
+    )
+def MonitorAgent_Tab_Buttons(MonitorAgent_Dropdown, MonitorAgent_Slider, MonitorAgent_Button_Live, MonitorAgent_Tab_Variables):
+
+    # Convert children to dict
+    MonitorAgent_Tab_Variables = Generate_Variable_Dict(MonitorAgent_Tab_Variables)
+
+    # Check if buttons was presses
+    if MonitorAgent_Button_Live != int(MonitorAgent_Tab_Variables.get('MonitorAgent_Button_Live', 0)):
+
+        Currernt_State = MonitorAgent_Tab_Variables.get('Show_Live_Graph', 'False')
+
+        if Currernt_State == 'False':
+            MonitorAgent_Tab_Variables['Show_Live_Graph'] = 'True'
+        elif Currernt_State == 'True':
+            MonitorAgent_Tab_Variables['Show_Live_Graph'] = 'False'
+
+        # Save n_clicks
+        MonitorAgent_Tab_Variables['MonitorAgent_Button_Live'] = MonitorAgent_Button_Live
+
+    # Save Dropdown selection
+    MonitorAgent_Tab_Variables['MonitorAgent_Dropdown'] = MonitorAgent_Dropdown
+
+    if MonitorAgent_Dropdown is not None:
+        # Get min/max dates for slider
+        db_MTB_Connection = Open_db('')
+        db_MTB_Curser = db_MTB_Connection.cursor()
+
+        db_MTB_Curser.execute("SELECT DateTime FROM DobbyLog.MonitorAgent WHERE Agent = '" + str(MonitorAgent_Dropdown) + "' ORDER BY id ASC LIMIT 1;")
+        Min_Date = db_MTB_Curser.fetchone()
+
+        db_MTB_Curser.execute("SELECT DateTime FROM DobbyLog.MonitorAgent WHERE Agent = '" + str(MonitorAgent_Dropdown) + "' ORDER BY id DESC LIMIT 1;")
+        Max_Date = db_MTB_Curser.fetchone()
+
+        # Close db connection
+        Close_db(db_MTB_Connection, db_MTB_Curser)
+
+        Min_Date = Min_Date[0]
+        Max_Date = Max_Date[0]
+
+        # Save min/max
+        MonitorAgent_Tab_Variables['Slider_Min_Date'] = Min_Date
+        MonitorAgent_Tab_Variables['Slider_Max_Date'] = Max_Date
+
+        Time_Span = Max_Date - Min_Date
+        Time_Jumps = Time_Span / 100
+
+        # Save Low value
+        if MonitorAgent_Slider[0] == 0:
+            MonitorAgent_Tab_Variables['Slider_Value_Low'] = Min_Date
+        elif MonitorAgent_Slider[0] == 100:
+            MonitorAgent_Tab_Variables['Slider_Value_Low'] = Max_Date
+        else:
+            MonitorAgent_Tab_Variables['Slider_Value_Low'] = Min_Date + Time_Jumps * MonitorAgent_Slider[0]
+
+        # removes ".######" from the datetime string
+        if len(str(MonitorAgent_Tab_Variables['Slider_Value_Low'])) > 19:
+            MonitorAgent_Tab_Variables['Slider_Value_Low'] = str(MonitorAgent_Tab_Variables['Slider_Value_Low'])[:-7]
+
+        # Save high value
+        if MonitorAgent_Slider[1] == 0:
+            MonitorAgent_Tab_Variables['Slider_Value_High'] = Min_Date
+        elif MonitorAgent_Slider[1] == 100:
+            MonitorAgent_Tab_Variables['Slider_Value_High'] = Max_Date
+        else:
+            MonitorAgent_Tab_Variables['Slider_Value_High'] = Min_Date + Time_Jumps * MonitorAgent_Slider[1]
+
+        # removes ".######" from the datetime string
+        if len(str(MonitorAgent_Tab_Variables['Slider_Value_High'])) > 19:
+            MonitorAgent_Tab_Variables['Slider_Value_High'] = str(MonitorAgent_Tab_Variables['Slider_Value_High'])[:-7]
+
+    # Convert dict to children
+    return Generate_Variable_String(MonitorAgent_Tab_Variables)
+
+
+# ======================================== MonitorAgent - Live button text ========================================
+@app.callback(
+    Output('MonitorAgent_Button_Live', 'children'),
+    [
+        Input('MonitorAgent_Tab_Variables', 'children')
+        ],
+    [
+        State('MonitorAgent_Button_Live', 'children'),
+        ]
+    )
+def MonitorAgent_Update_Live_Button_Text(MonitorAgent_Tab_Variables, MonitorAgent_Button_Live):
+    MonitorAgent_Tab_Variables = Generate_Variable_Dict(MonitorAgent_Tab_Variables)
+
+    if MonitorAgent_Tab_Variables.get('Show_Live_Graph', 'False') == 'True':
+        return 'Switch to History'
+    else:
+        return 'Switch to Live'
+
+
+# ======================================== MonitorAgent ========================================
+@app.callback(
+    Output('MonitorAgent_Graph_Live_Interval', 'interval'),
+    [
+        Input('MonitorAgent_Tab_Variables', 'children'),
+        ]
+    )
+def MonitorAgent_Update_Interval(MonitorAgent_Tab_Variables):
+    MonitorAgent_Tab_Variables = Generate_Variable_Dict(MonitorAgent_Tab_Variables)
+
+    if MonitorAgent_Tab_Variables.get('Show_Live_Graph', 'False') == 'False':
+        # 3600000 ms = 1 hour aka disabled
+        return 3600000
+    else:
+        return 1000
+
+
 # ======================================== MonitorAgent ========================================
 @app.callback(
     Output('MonitorAgent_Graph', 'figure'),
     [
-        Input('MonitorAgent_Slider', 'value'),
-        Input('MonitorAgent_Dropdown', 'value'),
+        Input('MonitorAgent_Tab_Variables', 'children'),
+        Input('MonitorAgent_Graph_Live_Interval', 'n_intervals'),
         ]
     )
-def MonitorAgent_Update_Graph(Selected_Slider_Value, Selected_Dropdown):
-
-    if Selected_Dropdown is None:
-        return
-
-    df = pd.read_sql("SELECT DateTime, Source, Value FROM DobbyLog.MonitorAgent WHERE Agent = '" + str(Selected_Dropdown) + "' ORDER BY id DESC LIMIT " + str(Selected_Slider_Value) + ";", con=db_pd_Connection)
+def MonitorAgent_Update_Graph(MonitorAgent_Tab_Variables, MonitorAgent_Graph_Live_Interval):
+    MonitorAgent_Tab_Variables = Generate_Variable_Dict(MonitorAgent_Tab_Variables)
 
     Return_Data = {'data': [{}]}
 
-    for i in df.Source.unique():
-            Return_Data["data"].append({
-                'x': df.DateTime[df['Source'] == i],
-                'y': df.Value[df['Source'] == i], 'name': i,
-                'line': {"shape": 'spline'}
-            })
+    # Do nothing untill a Agent is selected
+    if MonitorAgent_Tab_Variables.get('MonitorAgent_Dropdown', 'None') == 'None':
+        pass
+
+    # Live graph
+    elif MonitorAgent_Tab_Variables.get('Show_Live_Graph', 'False') == 'True':
+
+        # FIX - Add update time adjustment
+        # FIX - Move this to a slider
+        Live_Graph_Limit = 50
+
+        # db_SQL_Connection = Open_db('')
+        df = SQL_Read_df("SELECT DateTime, Source, Value FROM DobbyLog.MonitorAgent WHERE Agent = '" + MonitorAgent_Tab_Variables['MonitorAgent_Dropdown'] + "' ORDER BY id DESC LIMIT " + str(Live_Graph_Limit) + ";")
+        # db_SQL_Connection.close()
+
+        for i in df.Source.unique():
+                Return_Data["data"].append({
+                    'x': df.DateTime[df['Source'] == i],
+                    'y': df.Value[df['Source'] == i], 'name': i,
+                    'line': {"shape": 'spline'}
+                })
+
+    # History graph
+    elif MonitorAgent_Tab_Variables.get('Show_Live_Graph', 'False') == 'False':
+
+        df = SQL_Read_df("SELECT DateTime, Source, Value FROM DobbyLog.MonitorAgent WHERE Agent = '" + MonitorAgent_Tab_Variables['MonitorAgent_Dropdown'] + "' AND DateTime >= '" + str(MonitorAgent_Tab_Variables['Slider_Value_Low']) + "' AND DateTime <= '" + str(MonitorAgent_Tab_Variables['Slider_Value_High']) + "' ORDER BY DateTime;")
+
+        for i in df.Source.unique():
+                Return_Data["data"].append({
+                    'x': df.DateTime[df['Source'] == i],
+                    'y': df.Value[df['Source'] == i], 'name': i,
+                    'line': {"shape": 'spline'}
+                })
 
     return {'data': Return_Data, 'layout': 'ytest'}
+
+
+# ======================================== MonitorAgent - Slider Marks ========================================
+@app.callback(
+    Output('MonitorAgent_Slider', 'marks'),
+    [
+        Input('MonitorAgent_Tab_Variables', 'children')
+        ],
+    [
+        # State('MonitorAgent_Tab_Variables', 'children'),
+        ]
+    )
+def MonitorAgent_Update_Slider_Marks(MonitorAgent_Tab_Variables):
+
+    MonitorAgent_Tab_Variables = Generate_Variable_Dict(MonitorAgent_Tab_Variables)
+
+    if MonitorAgent_Tab_Variables.get('MonitorAgent_Dropdown', 'None') == 'None':
+        return {}
+
+    Time_Span = MonitorAgent_Tab_Variables['Slider_Max_Date'] - MonitorAgent_Tab_Variables['Slider_Min_Date']
+    Time_Jumps = Time_Span / 10
+
+    Marks_Dict = {}
+
+    # Add the first and last label
+    Marks_Dict['0'] = {'label': MonitorAgent_Tab_Variables['Slider_Min_Date']}
+    Marks_Dict['100'] = {'label': MonitorAgent_Tab_Variables['Slider_Max_Date']}
+
+    # Add the rest of the labels
+    for i in range(1, 10):
+        Name = str(i * 10)
+        Label = str(MonitorAgent_Tab_Variables['Slider_Min_Date'] + Time_Jumps * i)
+
+        # The [:-7] removes the ms from the end of the string
+        if "." in Label:
+            Label = Label[:-7]
+
+        Marks_Dict[Name] = {'label': Label}
+
+    return Marks_Dict
 
 
 # FIX - Move css to local storage

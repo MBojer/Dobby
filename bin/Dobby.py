@@ -1,8 +1,15 @@
 #!/usr/bin/python
 
 # ---------- Change log ----------
+# -- 101011
+# - Added MQTT Alerts
+#
+# -- 101010
+# - Changed MonitorAgent and Alerts callback to be single in stead of multiple.
+#   If two callbacks is registered on the same topic the latest will win
+#
 # -- 101009
-# Added support for email alerts
+# - Added support for email alerts
 
 # MySQL
 import MySQLdb
@@ -37,11 +44,19 @@ from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 
 # System variables
-Version = 101009
+Version = 101011
+# First didget = Software type 1-Production 2-Beta 3-Alpha
+# Secound and third didget = Major version number
+# Fourth to sixth = Minor version number
+
 Start_Time = datetime.datetime.now()
 
 # MQTT Client
 MQTT_Client = MQTT.Client(client_id="Dobby", clean_session=True)
+
+# Message_Check
+Alerts_Subscribe_List = []
+MonitorAgent_Subscribe_List = []
 
 
 # ---------------------------------------- Logging ----------------------------------------
@@ -275,6 +290,27 @@ def MQTT_On_Log(MQTT_Client, userdata, level, buf):
         Log("Warning", "MQTT", "Message", buf)
 
 
+# ---------------------------------------- Message_Check ----------------------------------------
+def Message_Check(Topic, Payload, Retained):
+
+    # Check for Alerts message
+    for i in range(len(Alerts_Subscribe_List)):
+        if Topic in Alerts_Subscribe_List[i]['Targets']:
+            Alert_Message_Check(Topic, Payload, Retained, Alerts_Subscribe_List[i]['id'])
+
+    # Check for MonitorAgent message
+    for i in range(len(MonitorAgent_Subscribe_List)):
+        if Topic in MonitorAgent_Subscribe_List[i]['Targets']:
+            Agent_Message_Check(Topic, Payload, Retained, MonitorAgent_Subscribe_List[i]['id'])
+
+
+# ---------------------------------------- On_MQTT_Message ----------------------------------------
+def On_MQTT_Message(mosq, obj, msg):
+    Msg_Thread = threading.Thread(target=Message_Check, kwargs={"Topic": msg.topic, "Payload": msg.payload, "Retained": msg.retain})
+    Msg_Thread.daemon = True
+    Msg_Thread.start()
+
+
 # ---------------------------------------- MQTT Commands ----------------------------------------
 def MQTT_Commands(Topic, Payload):
     Topic = Topic.replace(System_Header + "/Commands/Dobby/", "")
@@ -335,6 +371,7 @@ def MQTT_Commands_MonitorAgent(Topic, Payload):
             Log("Info", "MonitorAgent", Payload[1], Payload[0])
 
             Close_db(db_MCMAS_Connection, db_MCMAS_Curser)
+            return
 
     Log("Info", "MQTTCommands", "MonitorAgent", "Unknown Agent: " + Payload[1])
     return
@@ -690,16 +727,34 @@ def Build_Alert_Message(Body, Alert_Info, Payload):
 
 
 def Send_Email(To, Message):
-    # Send Email
+
+    # Remove any spaces
+    To = To.replace(" ", "")
+
+    Target_List = []
+
+    # Multiple targets
+    if "," in To:
+        Target_List = To.split(",")
+
+    # Single target
+    else:
+        Target_List.append(To)
+
+    # Connect to mail server
     server = smtplib.SMTP(Alerts_SMTP_Server, Alerts_SMTP_Port)
     server.starttls()
     server.login(Alerts_SMTP_Username, Alerts_SMTP_Password)
 
-    server.sendmail(Alerts_SMTP_Sender, To, str(Message))
+    # Send Email
+    for To_Email in Target_List:
+        server.sendmail(Alerts_SMTP_Sender, To_Email, str(Message))
+
+    # Disconnect from mail server
     server.quit()
 
 
-def Alert_Message_Check(Topic, Payload, Retained):
+def Alert_Message_Check(Topic, Payload, Retained, Alert_id):
     # Dont trigger alerts on retained messages
     # PS: A message send after connecting is not counted as retained even if it is
     if Retained is 0:
@@ -708,13 +763,8 @@ def Alert_Message_Check(Topic, Payload, Retained):
 
         db_AMC_Curser.execute("set autocommit = 1")
 
-        db_AMC_Curser.execute("SELECT id FROM Dobby.Alerts WHERE Enabled='1' AND MQTT_Target='" + str(Topic) + "';")
-        Alert_id = db_AMC_Curser.fetchone()
-        Alert_id = Alert_id[0]
-
         db_AMC_Curser.execute("SELECT Name, Type, Alert_State, MQTT_Payload_Clear, MQTT_Payload_Trigger, Alert_Target, Alert_Subject, Alert_Payload_Clear, Alert_Payload_Trigger FROM Dobby.Alerts WHERE id='" + str(Alert_id) + "';")
-        Alert_Info = db_AMC_Curser.fetchall()
-        Alert_Info = Alert_Info[0]
+        Alert_Info = db_AMC_Curser.fetchone()
 
         Name = Alert_Info[0]
         Type = Alert_Info[1]
@@ -723,42 +773,45 @@ def Alert_Message_Check(Topic, Payload, Retained):
         MQTT_Payload_Trigger = Alert_Info[4]
         Alert_Target = Alert_Info[5]
         # Alert_Subject = Alert_Info[6]
-        # Alert_Payload_Clear = Alert_Info[7]
-        # Alert_Payload_Trigger = Alert_Info[8]
+        Alert_Payload_Clear = Alert_Info[7]
+        Alert_Payload_Trigger = Alert_Info[8]
+
+        # Find out what to do
+        Action = 2
+        # 0 = Clear
+        # 1 = Trigger
+        # 2 = In-between
+
+        Alert_Change = False
+
+        if float(MQTT_Payload_Clear) == float(MQTT_Payload_Trigger):
+            Log("Error", "Alerts", str(Name), 'Clear and Trigger payload is the same value')
+            Close_db(db_AMC_Connection, db_AMC_Curser)
+            return
+
+        # High / Low Check
+        # Value moving from Low to High
+        elif (float(MQTT_Payload_Clear) <= float(MQTT_Payload_Trigger)) is True:
+            # Clear check
+            if float(MQTT_Payload_Clear) >= float(Payload):
+                Action = 0
+
+            # Trigger check
+            elif float(MQTT_Payload_Trigger) <= float(Payload):
+                Action = 1
+
+        # Value moving from High to Low
+        else:
+            # Clear check
+            if float(MQTT_Payload_Clear) <= float(Payload):
+                Action = 0
+
+            # Trigger check
+            elif float(MQTT_Payload_Trigger) >= float(Payload):
+                Action = 1
 
         # Email Alert
         if Type == "Email":
-
-            Action = 2
-            # 0 = Clear
-            # 1 = Trigger
-            # 2 = In-between
-
-            if float(MQTT_Payload_Clear) == float(MQTT_Payload_Trigger):
-                Log("Error", "Alerts", str(Name), 'Clear and Trigger payload is the same value')
-                Close_db(db_AMC_Connection, db_AMC_Curser)
-                return
-
-            # High / Low Check
-            # Value moving from Low to High
-            elif (float(MQTT_Payload_Clear) <= float(MQTT_Payload_Trigger)) is True:
-                # Clear check
-                if float(MQTT_Payload_Clear) >= float(Payload):
-                    Action = 0
-
-                # Trigger check
-                elif float(MQTT_Payload_Trigger) <= float(Payload):
-                    Action = 1
-
-            # Value moving from High to Low
-            else:
-                # Clear check
-                if float(MQTT_Payload_Clear) <= float(Payload):
-                    Action = 0
-
-                # Trigger check
-                elif float(MQTT_Payload_Trigger) >= float(Payload):
-                    Action = 1
 
             # Clear
             if Action == 0:
@@ -766,7 +819,7 @@ def Alert_Message_Check(Topic, Payload, Retained):
                 if Action == Alert_State:
                     Log("Debug", "Alerts", str(Name), 'Already clearted ignoring new clear value: ' + str(Payload))
                 else:
-                    db_AMC_Curser.execute("UPDATE `Dobby`.`Alerts` SET `Alert_State`='0' WHERE `id`='" + str(Alert_id) + "';")
+                    Alert_Change = True
 
                     # Send Email
                     Send_Email(Alert_Target, Build_Alert_Message(0, Alert_Info, Payload))
@@ -778,8 +831,7 @@ def Alert_Message_Check(Topic, Payload, Retained):
                 if Action == Alert_State:
                     Log("Debug", "Alerts", str(Name), 'Already triggered ignoring new trigger value: ' + str(Payload))
                 else:
-                    # Change Alert_State
-                    db_AMC_Curser.execute("UPDATE `Dobby`.`Alerts` SET `Alert_State`='1' WHERE `id`='" + str(Alert_id) + "';")
+                    Alert_Change = True
 
                     # Send Email
                     Send_Email(Alert_Target, Build_Alert_Message(0, Alert_Info, Payload))
@@ -788,6 +840,43 @@ def Alert_Message_Check(Topic, Payload, Retained):
             # In-between value
             elif Action == 2:
                 Log("Debug", "Alerts", str(Name), 'In-between value received: ' + str(Payload))
+
+        # MQTT Alert
+        elif Type == "MQTT":
+
+            # Clear
+            if Action == 0:
+                # Check agains current alert state
+                if Action == Alert_State:
+                    Log("Debug", "Alerts", str(Name), 'Already clearted ignoring new clear value: ' + str(Payload))
+                else:
+                    Alert_Change = True
+
+                    # Publish Message
+                    MQTT_Client.publish(Alert_Target, payload=str(Alert_Payload_Clear) + ";", qos=0, retain=False)
+                    Log("Info", "Alerts", str(Name), 'Cleared at: ' + str(Payload) + " Target: " + str(MQTT_Payload_Clear))
+
+            # Trigger
+            elif Action == 1:
+                # Check agains current alert state
+                if Action == Alert_State:
+                    Log("Debug", "Alerts", str(Name), 'Already triggered ignoring new trigger value: ' + str(Payload))
+                else:
+                    Alert_Change = True
+
+                    # Publish Message
+                    MQTT_Client.publish(Alert_Target, payload=str(Alert_Payload_Trigger) + ";", qos=0, retain=False)
+                    Log("Info", "Alerts", str(Name), 'Triggered at: ' + str(Payload) + " Target: " + str(MQTT_Payload_Trigger))
+
+            # In-between value
+            elif Action == 2:
+                Log("Debug", "Alerts", str(Name), 'In-between value received: ' + str(Payload))
+
+        if Alert_Change is True:
+            # Change Alert_State
+            db_AMC_Curser.execute("UPDATE `Dobby`.`Alerts` SET `Alert_State`='" + str(Action) + "' WHERE `id`='" + str(Alert_id) + "';")
+            # Update Triggered_DateTime
+            db_AMC_Curser.execute("UPDATE `Dobby`.`Alerts` SET `Triggered_DateTime`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(Alert_id) + "';")
 
         Close_db(db_AMC_Connection, db_AMC_Curser)
 
@@ -804,36 +893,31 @@ def Alerts_Subscribe():
     db_AlSub_Connection = Open_db("Dobby")
     db_AlSub_Curser = db_AlSub_Connection.cursor()
 
-    db_AlSub_Curser.execute("SELECT MQTT_Target FROM Dobby.Alerts WHERE Enabled='1';")
-    MQTT_Target_List = db_AlSub_Curser.fetchall()
-
-    db_AlSub_Curser.execute("SELECT Name FROM Dobby.Alerts WHERE Enabled='1';")
-    Name_List = db_AlSub_Curser.fetchall()
+    db_AlSub_Curser.execute("SELECT id, Name, MQTT_Target FROM Dobby.Alerts WHERE Enabled='1';")
+    Alerts_List = db_AlSub_Curser.fetchall()
 
     Close_db(db_AlSub_Connection, db_AlSub_Curser)
 
-    x = 0
+    if Alerts_List is None:
+        # FIR add log message
+        print None
+        return
 
-    for Target in MQTT_Target_List:
-        # Target List
-        if "," in Target[0]:
-            Entry_List = Target[0].replace(" ", "").split(",")
-            for Target in Entry_List:
-                Log("Debug", "Alerts", str(Name_List[x][0]), "Subscribing to topic: " + str(Target))
-                # Subscribe
-                MQTT_Client.subscribe(str(Target))
-                # Register callbacks
-                MQTT_Client.message_callback_add(str(Target), Alert_On_Msg)
+    #     id = 0
+    #   Name = 1
+    # Target = 2
 
-        # Single Target
-        else:
-            Log("Debug", "Alerts", str(Name_List[x][0]), "Subscribing to topic: " + str(Target[0]))
+    for i in range(len(Alerts_List)):
+
+        # Add id and targets to dict for later use
+        Alerts_Subscribe_List.append({'id': Alerts_List[i][0], 'Name': Alerts_List[i][1], 'Targets': Alerts_List[i][2].replace(" ", "").split(",")})
+
+        for Target in Alerts_Subscribe_List[i]["Targets"]:
+            Log("Info", "Alerts", str(Alerts_Subscribe_List[i]["Name"]), "Subscribing to topic: " + str(Target))
             # Subscribe
-            MQTT_Client.subscribe(str(Target[0]))
+            MQTT_Client.subscribe(str(Target))
             # Register callbacks
-            MQTT_Client.message_callback_add(str(Target[0]), Alert_On_Msg)
-
-        x = x + 1
+            MQTT_Client.message_callback_add(str(Target), On_MQTT_Message)
 
 
 # ---------------------------------------- Auto Update ----------------------------------------
@@ -1082,15 +1166,14 @@ def Functions(Payload):
 
 
 # ---------------------------------------- Monitor Agent ----------------------------------------
-def Agent_Message_Check(Topic, Payload, Retained):
+def Agent_Message_Check(Topic, Payload, Retained, id):
     # Dont log retained messages
     if Retained is 0:
 
         db_MAC_Connection = Open_db()
         db_MAC_Curser = db_MAC_Connection.cursor()
 
-        # FIX something is fishely at the %
-        db_MAC_Curser.execute("SELECT Agent_Name FROM Dobby.MonitorAgentConfig WHERE Agent_Enabled='1' AND Agent_Sources LIKE '%" + Topic + "%';")
+        db_MAC_Curser.execute("SELECT Agent_Name FROM Dobby.MonitorAgentConfig WHERE Agent_ID=" + str(id) + ";")
         Agent_Name = db_MAC_Curser.fetchone()
 
         Close_db(db_MAC_Connection, db_MAC_Curser)
@@ -1144,10 +1227,11 @@ def Agent_Log_Source_Value(Agent_Name, Log_Source, Log_Value):
     Close_db(db_ALSV_Connection, db_ALSV_Curser)
 
 
-def Agent_On_Msg(mosq, obj, msg):
-    Agent_Msg_Thread = threading.Thread(target=Agent_Message_Check, kwargs={"Topic": msg.topic, "Payload": msg.payload, "Retained": msg.retain})
-    Agent_Msg_Thread.daemon = True
-    Agent_Msg_Thread.start()
+# No longer used - i think
+# def Agent_On_Msg(mosq, obj, msg):
+#     Agent_Msg_Thread = threading.Thread(target=Agent_Message_Check, kwargs={"Topic": msg.topic, "Payload": msg.payload, "Retained": msg.retain})
+#     Agent_Msg_Thread.daemon = True
+#     Agent_Msg_Thread.start()
 
 
 def MonitorAgent_Show():
@@ -1290,36 +1374,31 @@ def MonitorAgent_Subscribe():
     db_AS_Connection = Open_db("Dobby")
     db_AS_Curser = db_AS_Connection.cursor()
 
-    db_AS_Curser.execute("SELECT Agent_Sources FROM Dobby.MonitorAgentConfig WHERE Agent_Enabled='1';")
-    Agent_Source_List = db_AS_Curser.fetchall()
-
-    db_AS_Curser.execute("SELECT Agent_Name FROM Dobby.MonitorAgentConfig WHERE Agent_Enabled='1';")
-    Agent_Name_List = db_AS_Curser.fetchall()
+    db_AS_Curser.execute("SELECT Agent_ID, Agent_Name, Agent_Sources FROM Dobby.MonitorAgentConfig WHERE Agent_Enabled='1';")
+    Agent_List = db_AS_Curser.fetchall()
 
     Close_db(db_AS_Connection, db_AS_Curser)
 
-    x = 0
+    if Agent_List is None:
+        # FIX add log message
+        print None
+        return
 
-    for Entry in Agent_Source_List:
-        # Target List
-        if "," in Entry[0]:
-            Entry_List = Entry[0].replace(" ", "").split(",")
-            for Target in Entry_List:
-                Log("Debug", "MonitorAgent", str(Agent_Name_List[x][0]), "Subscribing to topic: " + str(Target))
-                # Subscribe
-                MQTT_Client.subscribe(str(Target))
-                # Register callbacks
-                MQTT_Client.message_callback_add(str(Target), Agent_On_Msg)
+    #     id = 0
+    #   Name = 1
+    # Target = 2
 
-        # Single Target
-        else:
-            Log("Debug", "MonitorAgent", str(Agent_Name_List[x][0]), "Subscribing to topic: " + str(Entry[0]))
+    for i in range(len(Agent_List)):
+
+        # Add id and targets to dict for later use
+        MonitorAgent_Subscribe_List.append({'id': Agent_List[i][0], 'Name': Agent_List[i][1], 'Targets': Agent_List[i][2].replace(" ", "").split(",")})
+
+        for Target in MonitorAgent_Subscribe_List[i]["Targets"]:
+            Log("Info", "MonitorAgent", str(MonitorAgent_Subscribe_List[i]["Name"]), "Subscribing to topic: " + str(Target))
             # Subscribe
-            MQTT_Client.subscribe(str(Entry[0]))
+            MQTT_Client.subscribe(str(Target))
             # Register callbacks
-            MQTT_Client.message_callback_add(str(Entry[0]), Agent_On_Msg)
-
-        x = x + 1
+            MQTT_Client.message_callback_add(str(Target), On_MQTT_Message)
 
 
 # ---------------------------------------- Main Script ----------------------------------------
