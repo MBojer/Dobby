@@ -6,9 +6,13 @@
 // -------------------- 101045 --------------------
 // Pin_Monitor - Added support for I2C pins
 //
+// Modified Adafruit-BMP085-Library/Adafruit_BMP085.cpp commented out "wire.begin()" to allow for variable ports
+//
 // Adjusted MPU6050 buffer size based on secound last post:
 // https://arduino.stackexchange.com/questions/10308/how-to-clear-fifo-buffer-on-mpu6050
 // Resoulted in very stable readings
+//
+// NOTE: A Wemos D1 mini Pro seems unable to run a BMP180 and MPU6050 without getting FIFO overflowe from the MPU6050
 //
 // -------------------- 101044 --------------------
 // Improved MPU-6050 readings
@@ -359,32 +363,28 @@ byte Dimmer_Procent[Dimmer_Max_Number_Of];
 byte Dimmer_Fade_Jump = 20;
 byte Dimmer_Fade_Jump_Delay = 40;
 
-// ------------------------------------------------------------ Pin_Monitor ------------------------------------------------------------
-#define Pin_Monitor_Pins_Number_Of 10
-String Pin_Monitor_Pins_Names[Pin_Monitor_Pins_Number_Of] = {"D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "A0"};
-byte Pin_Monitor_Pins_List[Pin_Monitor_Pins_Number_Of] = {D0, D1, D2, D3, D4, D5, D6, D7, D8, A0};
 
-byte Pin_Monitor_Pins_Active[Pin_Monitor_Pins_Number_Of] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+// ------------------------------------------------------------ Pin_Monitor ------------------------------------------------------------
 // 0 = In Use
-// 1 = Free
-// 2 = Free / In Use - I2C - SCL
-// 3 = Free / In Use - I2C - SDA
-// 255 = Error
 #define Pin_In_Use 0
 #define Pin_Free 1
 #define Pin_SCL 2
 #define Pin_SDA 3
 #define Pin_Error 255
-
 // Action
-// 0 = Reserve - Normal Pin
-// 1 = Reserve - I2C SCL
-// 2 = Reserve - I2C SDA
-// 3 = State
 #define Reserve_Normal 0
 #define Reserve_I2C_SCL 1
 #define Reserve_I2C_SDA 2
 #define Check_State 3
+
+#define Pin_Monitor_Pins_Number_Of 10
+String Pin_Monitor_Pins_Names[Pin_Monitor_Pins_Number_Of] = {"D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "A0"};
+byte Pin_Monitor_Pins_List[Pin_Monitor_Pins_Number_Of] = {D0, D1, D2, D3, D4, D5, D6, D7, D8, A0};
+
+byte Pin_Monitor_Pins_Active[Pin_Monitor_Pins_Number_Of] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+
+String Pin_Monitor_State_Text[4] = {"In Use", "Free", "I2C SCL", "I2C SDA"};
+
 
 
 // ------------------------------------------------------------ Button ------------------------------------------------------------
@@ -537,8 +537,10 @@ float BMP180_Altitude = -1337.0;
 
 #define BMP180_RunningAverage_Length 254
 RunningAverage BMP180_RA_Current_Pressure(BMP180_RunningAverage_Length);
-RunningAverage BMP180_RA_Current_Temperature(BMP180_RunningAverage_Length);
 
+
+// ------------------------------------------------------------ Misc ------------------------------------------------------------
+bool Wire_Avtive = false;
 
 // ############################################################ String_To_IP() ############################################################
 IPAddress String_To_IP(String IP_String) {
@@ -764,7 +766,6 @@ bool BMP180_Loop() {
 
     // FIX - check if runnng averidge is full and add the averidge to the list to not just get the averidge of the last 3 sec if you read every 5 min
     BMP180_RA_Current_Pressure.addValue(BMP.readPressure());
-    // BMP180_RA_Current_Temperature.addValue(BMP.readTemperature());
 
     return true;
   }
@@ -791,8 +792,6 @@ bool BMP180_Show(String Topic, String Payload) {
     if (Payload == "?") {
       // Pressure - Current
       Log(MQTT_Topic[Topic_BMP180] + "/Pressure", String(BMP180_RA_Current_Pressure.getAverage()));
-      // Temperature
-      Log(MQTT_Topic[Topic_BMP180] + "/Temperature", String(BMP180_RA_Current_Temperature.getAverage()));
       // Pressure - Sea Level NOTE: Calculated- based on BMP180_Altitude
       // FIX - Add support for updated altitude based on GPS location
       Log(MQTT_Topic[Topic_BMP180] + "/PressureSeaLevel", String((int32_t)(BMP180_RA_Current_Pressure.getAverage() / pow(1.0 - BMP180_Altitude / 44330, 5.255))));
@@ -878,7 +877,6 @@ void MPU6050_Loop() {
       mpu.dmpGetGravity(&MPU6050_Gravity, &MPU6050_Quaternion);
       mpu.dmpGetLinearAccel(&MPU6050_Accelerometer_Real, &MPU6050_Accelerometer, &MPU6050_Gravity);
       mpu.dmpGetLinearAccelInWorld(&MPU6050_Accelerometer_World, &MPU6050_Accelerometer_Real, &MPU6050_Quaternion);
-
   }
 }
 
@@ -1147,7 +1145,7 @@ byte Pin_To_Number(String Pin_Name) {
 
 // ############################################################ Pin_Monitor(Reserve_Normal, ) ############################################################
 // Will return false if pin is in use or invalid
-bool Pin_Monitor(byte Action, byte Pin_Number) {
+byte Pin_Monitor(byte Action, byte Pin_Number) {
   // 0 = In Use
   // 1 = Free
   // 2 = Free / In Use - I2C - SCL
@@ -1266,6 +1264,8 @@ bool Pin_Monitor(byte Action, byte Pin_Number) {
     return Pin_Monitor_Pins_Active[Selected_Pin];
   }
 
+  // FIX - Add error handling for wrong "Action"
+
   // Some error handling
   Log(MQTT_Topic[Topic_Error] + "/PinMonitor", "Reached end of loop with no hit this should not happen");
   return Pin_Error;
@@ -1273,8 +1273,26 @@ bool Pin_Monitor(byte Action, byte Pin_Number) {
 
 
 // Refferance only - Pin Name
-bool Pin_Monitor(byte Action, String Pin_Name) {
+byte Pin_Monitor(byte Action, String Pin_Name) {
   return Pin_Monitor(Action, Pin_To_Number(Pin_Name));
+}
+
+
+// ############################################################ Pin_Monitor_State() ############################################################
+void Pin_Monitor_State() {
+
+  String Return_String;
+
+  for (byte i = 0; i < Pin_Monitor_Pins_Number_Of; i++) {
+    Return_String = Return_String + Pin_Monitor_Pins_Names[i] + ": " + Pin_Monitor_State_Text[Pin_Monitor_Pins_Active[i]];
+
+    if (i != Pin_Monitor_Pins_Number_Of - 1) {
+      Return_String = Return_String + " - ";
+    }
+  }
+
+  Log(MQTT_Topic[Topic_System] + "PinMonitor/State", Return_String);
+
 }
 
 // ############################################################ Pin_Map() ############################################################
@@ -2857,14 +2875,15 @@ bool FS_Config_Load() {
   // ############### MPU6050 ###############
   if (root.get<String>("MPU6050_Pin_SCL") != "") {
     Log(MQTT_Topic[Topic_System] + "/MPU6050", "Configuring");
-    // Set SCL
-    MPU6050_Pin_SCL = Pin_To_Number(root.get<String>("MPU6050_Pin_SCL"));
+    if (Pin_Monitor(Reserve_I2C_SCL, root.get<String>("MPU6050_Pin_SCL")) == Pin_SCL) {
+      MPU6050_Pin_SCL = Pin_To_Number(root.get<String>("MPU6050_Pin_SCL"));
+    }
     // Set SDA
-    if (root.get<String>("MPU6050_Pin_SDA") != "") {
+    if (Pin_Monitor(Reserve_I2C_SDA, root.get<String>("MPU6050_Pin_SDA")) == Pin_SDA) {
       MPU6050_Pin_SDA = Pin_To_Number(root.get<String>("MPU6050_Pin_SDA"));
     }
     // Set Interrupt
-    if (root.get<String>("MPU6050_Pin_Interrupt") != "") {
+    if (Pin_Monitor(Reserve_Normal, root.get<String>("MPU6050_Pin_Interrupt")) == Pin_Free) {
       MPU6050_Pin_Interrupt = Pin_To_Number(root.get<String>("MPU6050_Pin_Interrupt"));
     }
 
@@ -2873,7 +2892,7 @@ bool FS_Config_Load() {
       Log(MQTT_Topic[Topic_System] + "/MPU6050", "All required pins set");
 
       // Reserve pins
-      if (Pin_Monitor(Reserve_I2C_SCL, MPU6050_Pin_SCL) == Pin_Free && Pin_Monitor(Reserve_I2C_SDA, MPU6050_Pin_SDA) == Pin_Free && Pin_Monitor(Reserve_Normal, MPU6050_Pin_Interrupt) == Pin_Free) {
+      if (MPU6050_Pin_SCL != 255 && MPU6050_Pin_SDA != 255 && MPU6050_Pin_Interrupt != 255) {
         // Set pinmode for Interrupt
         pinMode(MPU6050_Pin_Interrupt, INPUT);
 
@@ -2915,20 +2934,20 @@ bool FS_Config_Load() {
     // Pin D5, D6 not used
     else {
       // Set SCL
-      BMP180_Pin_SCL = Pin_Monitor(Reserve_I2C_SCL, root.get<String>("BMP180_Pin_SCL"));
+      if (Pin_Monitor(Reserve_I2C_SCL, root.get<String>("BMP180_Pin_SCL")) == Pin_SCL) {
+        BMP180_Pin_SCL = Pin_To_Number(root.get<String>("BMP180_Pin_SCL"));
+      }
       // Set SDA
-      if (root.get<String>("BMP180_Pin_SDA") != "") {
-        BMP180_Pin_SDA = Pin_Monitor(Reserve_I2C_SDA, root.get<String>("BMP180_Pin_SDA"));
+      if (Pin_Monitor(Reserve_I2C_SDA, root.get<String>("BMP180_Pin_SDA")) == Pin_SDA) {
+        BMP180_Pin_SDA = Pin_To_Number(root.get<String>("BMP180_Pin_SDA"));
       }
 
       if (root.get<String>("BMP180_Altitude") != "") {
         BMP180_Altitude = root.get<float>("BMP180_Altitude");
       }
-      Serial.println("MARKER");
 
-
-      // Check if both pins are free
-      if (Pin_Monitor(Check_State, BMP180_Pin_SCL) == Pin_SCL && Pin_Monitor(Check_State, BMP180_Pin_SDA) == Pin_SDA && BMP180_Altitude != -1337.0) {
+      // Check if requred configuration got done
+      if (BMP180_Pin_SCL != 255 && BMP180_Pin_SDA != 255 && BMP180_Altitude != -1337.0) {
         // Log it all went ok
         Log(MQTT_Topic[Topic_System] + "/BMP180", "Pins SDA: " + Number_To_Pin(BMP180_Pin_SDA) + " SCL: " + Number_To_Pin(BMP180_Pin_SCL) + " Altiture: " + String(BMP180_Altitude));
         // Subscripbe to topic
@@ -2936,7 +2955,6 @@ bool FS_Config_Load() {
 
         // Clear Runnins Averidge
         BMP180_RA_Current_Pressure.clear();
-        BMP180_RA_Current_Temperature.clear();
 
         BMP180_Configured = true;
       }
@@ -3377,6 +3395,11 @@ bool MQTT_Commands(String Topic, String Payload) {
   }
 
 
+  else if (Topic == "PinMonitor") {
+    if (Payload == "State") Pin_Monitor_State();
+  }
+
+
   else if (Topic == "WiFi") {
     if (Payload == "Signal") WiFi_Signal();
   }
@@ -3656,12 +3679,10 @@ void setup() {
   if (MPU6050_Configured == true) {
     Log(MQTT_Topic[Topic_System] + "/MPU6050", "Initializing");
 
-    #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
+    if (Wire_Avtive == false) {
       Wire.begin(MPU6050_Pin_SDA, MPU6050_Pin_SCL);
-      Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
-    #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
-      Fastwire::setup(400, true);
-    #endif
+      Wire_Avtive = true;
+    }
 
     mpu.initialize();
 
@@ -3719,7 +3740,10 @@ void setup() {
   if(BMP180_Configured == true) {
     Log(MQTT_Topic[Topic_System] + "/BMP180", "Initializing");
 
-    Wire.begin(BMP180_Pin_SDA, BMP180_Pin_SCL);
+    if (Wire_Avtive == false) {
+      Wire.begin(BMP180_Pin_SDA, BMP180_Pin_SCL);
+      Wire_Avtive = true;
+    }
 
     // Check connection to BMP
     // Connection OK

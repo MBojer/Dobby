@@ -417,6 +417,25 @@ def render_content(tab, Devices_Tab_Variables, MonitorAgent_Tab_Variables, Users
                 ],
             ),
 
+
+            html.Div(
+                style={
+                    'marginTop': '5px',
+                    'marginLeft': '75px',
+                    'marginRight': '75px',
+                },
+                children=[
+                    # Header text
+                    html.H2('Configuration'),
+                    dcc.Dropdown(
+                        id='MonitorAgent_Dropdown_Agent_State',
+                        options=[{'label': State, 'value': State} for State in 'Start', 'Stop', 'Enable', 'Disable'],
+                        value='',
+                        disabled=True,
+                    ),
+                ],
+            ),
+
         ], className="MonitorAgent", style={
             'height': '100%',
             'width': '100%'
@@ -1045,12 +1064,13 @@ def Devices_Tab_Config_Show(Devices_Tab_Variables, Devices_Config_Table):
         Input('MonitorAgent_Dropdown', 'value'),
         Input('MonitorAgent_Slider', 'value'),
         Input('MonitorAgent_Button_Live', 'n_clicks'),
+        Input('MonitorAgent_Dropdown_Agent_State', 'value'),
         ],
     [
         State('MonitorAgent_Tab_Variables', 'children')
         ]
     )
-def MonitorAgent_Tab_Buttons(MonitorAgent_Dropdown, MonitorAgent_Slider, MonitorAgent_Button_Live, MonitorAgent_Tab_Variables):
+def MonitorAgent_Tab_Buttons(MonitorAgent_Dropdown, MonitorAgent_Slider, MonitorAgent_Button_Live, MonitorAgent_Dropdown_Agent_State, MonitorAgent_Tab_Variables):
 
     # Convert children to dict
     MonitorAgent_Tab_Variables = Generate_Variable_Dict(MonitorAgent_Tab_Variables)
@@ -1072,6 +1092,13 @@ def MonitorAgent_Tab_Buttons(MonitorAgent_Dropdown, MonitorAgent_Slider, Monitor
     MonitorAgent_Tab_Variables['MonitorAgent_Dropdown'] = MonitorAgent_Dropdown
 
     if MonitorAgent_Dropdown is not None:
+        # MonitorAgent_Dropdown_Agent_State
+        # Controls the MonitorAgent
+        if MonitorAgent_Tab_Variables.get('MonitorAgent_Dropdown_Agent_State', 'None') != MonitorAgent_Dropdown_Agent_State:
+            # Set current state
+            MonitorAgent_Tab_Variables['MonitorAgent_Dropdown_Agent_State'] = MonitorAgent_Dropdown_Agent_State
+            print "State changed to: " + str(MonitorAgent_Dropdown_Agent_State)
+
         # Get min/max dates for slider
         db_MTB_Connection = Open_db('')
         db_MTB_Curser = db_MTB_Connection.cursor()
@@ -1085,42 +1112,65 @@ def MonitorAgent_Tab_Buttons(MonitorAgent_Dropdown, MonitorAgent_Slider, Monitor
         # Close db connection
         Close_db(db_MTB_Connection, db_MTB_Curser)
 
-        Min_Date = Min_Date[0]
-        Max_Date = Max_Date[0]
+        if Min_Date is None or Max_Date is None:
+            pass
 
-        # Save min/max
-        MonitorAgent_Tab_Variables['Slider_Min_Date'] = Min_Date
-        MonitorAgent_Tab_Variables['Slider_Max_Date'] = Max_Date
-
-        Time_Span = Max_Date - Min_Date
-        Time_Jumps = Time_Span / 100
-
-        # Save Low value
-        if MonitorAgent_Slider[0] == 0:
-            MonitorAgent_Tab_Variables['Slider_Value_Low'] = Min_Date
-        elif MonitorAgent_Slider[0] == 100:
-            MonitorAgent_Tab_Variables['Slider_Value_Low'] = Max_Date
         else:
-            MonitorAgent_Tab_Variables['Slider_Value_Low'] = Min_Date + Time_Jumps * MonitorAgent_Slider[0]
+            Min_Date = Min_Date[0]
+            Max_Date = Max_Date[0]
 
-        # removes ".######" from the datetime string
-        if len(str(MonitorAgent_Tab_Variables['Slider_Value_Low'])) > 19:
-            MonitorAgent_Tab_Variables['Slider_Value_Low'] = str(MonitorAgent_Tab_Variables['Slider_Value_Low'])[:-7]
+            # Save min/max
+            MonitorAgent_Tab_Variables['Slider_Min_Date'] = Min_Date
+            MonitorAgent_Tab_Variables['Slider_Max_Date'] = Max_Date
 
-        # Save high value
-        if MonitorAgent_Slider[1] == 0:
-            MonitorAgent_Tab_Variables['Slider_Value_High'] = Min_Date
-        elif MonitorAgent_Slider[1] == 100:
-            MonitorAgent_Tab_Variables['Slider_Value_High'] = Max_Date
-        else:
-            MonitorAgent_Tab_Variables['Slider_Value_High'] = Min_Date + Time_Jumps * MonitorAgent_Slider[1]
+            Time_Span = Max_Date - Min_Date
+            Time_Jumps = Time_Span / 100
 
-        # removes ".######" from the datetime string
-        if len(str(MonitorAgent_Tab_Variables['Slider_Value_High'])) > 19:
-            MonitorAgent_Tab_Variables['Slider_Value_High'] = str(MonitorAgent_Tab_Variables['Slider_Value_High'])[:-7]
+            # Save Low value
+            if MonitorAgent_Slider[0] == 0:
+                MonitorAgent_Tab_Variables['Slider_Value_Low'] = Min_Date
+            elif MonitorAgent_Slider[0] == 100:
+                MonitorAgent_Tab_Variables['Slider_Value_Low'] = Max_Date
+            else:
+                MonitorAgent_Tab_Variables['Slider_Value_Low'] = Min_Date + Time_Jumps * MonitorAgent_Slider[0]
+
+                # removes ".######" from the datetime string
+                if len(str(MonitorAgent_Tab_Variables['Slider_Value_Low'])) > 19:
+                    MonitorAgent_Tab_Variables['Slider_Value_Low'] = str(MonitorAgent_Tab_Variables['Slider_Value_Low'])[:-7]
+
+                    # Save high value
+                    if MonitorAgent_Slider[1] == 0:
+                        MonitorAgent_Tab_Variables['Slider_Value_High'] = Min_Date
+                    elif MonitorAgent_Slider[1] == 100:
+                        MonitorAgent_Tab_Variables['Slider_Value_High'] = Max_Date
+                    else:
+                        MonitorAgent_Tab_Variables['Slider_Value_High'] = Min_Date + Time_Jumps * MonitorAgent_Slider[1]
+
+                        # removes ".######" from the datetime string
+                        if len(str(MonitorAgent_Tab_Variables['Slider_Value_High'])) > 19:
+                            MonitorAgent_Tab_Variables['Slider_Value_High'] = str(MonitorAgent_Tab_Variables['Slider_Value_High'])[:-7]
 
     # Convert dict to children
     return Generate_Variable_String(MonitorAgent_Tab_Variables)
+
+
+# ======================================== MonitorAgent - MonitorAgent_Update_Dropdown_Agent_State ========================================
+@app.callback(
+    Output('MonitorAgent_Dropdown_Agent_State', 'disabled'),
+    [
+        Input('MonitorAgent_Tab_Variables', 'children'),
+        ],
+    )
+def MonitorAgent_Update_Dropdown_Agent_State(MonitorAgent_Tab_Variables):
+
+    # Convert children to dict
+    MonitorAgent_Tab_Variables = Generate_Variable_Dict(MonitorAgent_Tab_Variables)
+
+    # MonitorAgent_Dropdown_Agent_State
+    if MonitorAgent_Tab_Variables.get('MonitorAgent_Dropdown_Agent_State', 'None') != 'None':
+        return False
+    else:
+        return True
 
 
 # ======================================== MonitorAgent - Live button text ========================================
