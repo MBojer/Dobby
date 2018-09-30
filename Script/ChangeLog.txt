@@ -1,0 +1,71 @@
+-------------------- 101048 --------------------
+Added support for multiple load cells
+
+Added json responce containing current value and min max since last poll to MQ2
+
+NOTE: LoadCell currently under construction
+
+-------------------- 101047 --------------------
+Added support for MQ2
+
+Did major update to Distance sensor
+Removed soft reset error by adding timeout to pulsin in Echo()
+The sensor now reads continuesly and you get the averidge of the last 25 readings over the last 2.5 sec
+
+
+-------------------- 101046 --------------------
+Tried to add RunningAverage but the MPU is stable enough for it not to be needed
+
+Adding Min/Max mosurements to be able to log divertions between polls
+
+Added Topic_Warning
+
+Updated Log() so it keeps saves entries when offline and printes then when online again
+
+-------------------- 101045 --------------------
+Pin_Monitor - Added support for I2C pins
+
+Modified Adafruit-BMP085-Library/Adafruit_BMP085.cpp commented out "wire.begin()" to allow for variable ports
+
+Adjusted MPU6050 buffer size based on secound last post:
+https://arduino.stackexchange.com/questions/10308/how-to-clear-fifo-buffer-on-mpu6050
+Resoulted in very stable readings
+
+NOTE: A Wemos D1 mini Pro seems unable to run a BMP180 and MPU6050 without getting FIFO overflowe from the MPU6050
+
+-------------------- 101044 --------------------
+Improved MPU-6050 readings
+
+-------------------- 101043 --------------------
+Added support for BMP180
+Fied issue in pin monitor where it didnt log the right pins and added D0
+Added pin monitor state
+
+-------------------- 101042 --------------------
+Added support for MPU-6050
+
+-------------------- 101041 --------------------
+Converted software version from float to unsigned int
+
+-------------------- 1.40 --------------------
+Added support for pasting JSON string in CLI
+Moved Serial CLI before FS_Config_Load
+
+-------------------- 1.39 --------------------
+Disabled KeepAlive during OTA updates
+Commented out "MQTT_Settings" - No longer needed
+Added MQTT Command Power - Shutdown
+
+-------------------- 1.38 --------------------
+Added Button support
+Added Switch support
+Removed Device_Config() - Moved to json so its no longer needed
+
+-------------------- 1.37 --------------------
+Added IP to KeepAlive
+
+-------------------- 1.36 --------------------
+Added DC Voltmeter
+
+-------------------- 1.35 --------------------
+Added RSSI to keepalive and WiFi Signal to show signal strength

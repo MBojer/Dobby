@@ -1185,10 +1185,24 @@ def Agent_Message_Check(Topic, Payload, Retained, id):
         Agent_Log_Source_Value(Agent_Name[0], Topic, Payload)
 
 
-def Agent_Log_Source_Value(Agent_Name, Log_Source, Log_Value):
-    db_ALSV_Connection = Open_db(Log_db)
-    db_ALSV_Curser = db_ALSV_Connection.cursor()
+def Is_json(myjson):
+    # A single entry is not consider a json sitring
+    if "{" not in myjson:
+        return False
 
+    try:
+        myjson = json.loads(myjson)
+    except ValueError, e:
+        myjson = e
+        return False
+
+    return True
+
+
+def Agent_Log_Source_Value_Run(Agent_Name, Log_Source, Log_Value, db_ALSV_Curser):
+
+    # Make sure Log_Value is string
+    Log_Value = str(Log_Value)
     try:
         db_ALSV_Curser.execute("INSERT INTO `" + Log_db + "`.`MonitorAgent` (Agent, Source, Value) Values('" + Agent_Name + "', '" + Log_Source + "', '" + Log_Value + "');")
     except (MySQLdb.Error, MySQLdb.Warning) as e:
@@ -1210,6 +1224,23 @@ def Agent_Log_Source_Value(Agent_Name, Log_Source, Log_Value):
             return
 
     Log("Debug", "MonitorAgent", Agent_Name, "Valure capured - Topic: " + Log_Source + " Value: " + Log_Value)
+
+
+def Agent_Log_Source_Value(Agent_Name, Log_Source, Log_Value):
+    db_ALSV_Connection = Open_db(Log_db)
+    db_ALSV_Curser = db_ALSV_Connection.cursor()
+
+    # json value
+    if Is_json(Log_Value) is True:
+
+        root_Gyro = json.loads(Log_Value)
+
+        # Split headers into seperate topics
+        for json_Log_Source, json_Log_Value in root_Gyro.items():
+            Agent_Log_Source_Value_Run(Agent_Name, Log_Source + "/" + json_Log_Source, json_Log_Value, db_ALSV_Curser)
+
+    else:
+        Agent_Log_Source_Value_Run(Agent_Name, Log_Source, Log_Value, db_ALSV_Curser)
 
     # Delete rows > max
     db_ALSV_Curser.execute("SELECT count(*) FROM `" + Log_db + "`.`MonitorAgent` WHERE Agent='" + Agent_Name + "';")
@@ -1337,12 +1368,6 @@ def MonitorAgent(Agent_ID):
 
                 x = x + 1
 
-        # Sleep a little to prevent cpu drain
-        # if (Agent_Info[0][3] - datetime.datetime.now()).seconds < 5:
-        #     while Agent_Info[0][3] < datetime.datetime.now():
-        #         time.sleep(0.1337)
-        #
-        # else:
         time.sleep(1)
 
 

@@ -45,7 +45,7 @@ import pandas as pd
 import json
 
 # MISC
-Version = 101003
+Version = 101004
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
@@ -353,6 +353,7 @@ def render_content(tab, Devices_Tab_Variables, MonitorAgent_Tab_Variables, Users
     if tab == 'MonitorAgent_Tab':
         return html.Div([
 
+            # ================================================== Dropdown and live button ==================================================
             # Div for Dropdown and live button
             html.Div(
                 style={
@@ -386,55 +387,93 @@ def render_content(tab, Devices_Tab_Variables, MonitorAgent_Tab_Variables, Users
                 ],
             ),
 
+            # ================================================== Graph ==================================================
             # Main graph
-            dcc.Graph(
-                id='MonitorAgent_Graph',
-                style={
-                    'height': '70vh',
-                    'width': '100%'
-                },
-            ),
-            dcc.Interval(
-                id='MonitorAgent_Graph_Live_Interval',
-                interval=int(MonitorAgent_Tab_Variables.get('Live_Graph_Interval', '1800000')),
-                n_intervals=0
-            ),
-
             html.Div(
                 style={
-                    'marginLeft': '75px',
-                    'marginRight': '75px',
+                    # 'width': '100%',
+                    # 'display': 'table-cell',
+                    # 'margin-right': 'auto',
+                    # 'margin-left': 'auto',
                 },
                 children=[
-                    dcc.RangeSlider(
-                        id='MonitorAgent_Slider',
-                        min=0,
-                        max=100,
-                        step=1,
-                        value=[95, 100],
-                        marks={},
+                    dcc.Graph(
+                        id='MonitorAgent_Graph',
+                        style={
+                            'height': '70vh',
+                            'width': '100%'
+                        },
+                    ),
+                    dcc.Interval(
+                        id='MonitorAgent_Graph_Live_Interval',
+                        interval=int(MonitorAgent_Tab_Variables.get('Live_Graph_Interval', '7200000')),
+                        n_intervals=0
+                    ),
+
+                    html.Div(
+                        style={
+                            'marginLeft': '75px',
+                            'marginRight': '75px',
+                        },
+                        children=[
+                            dcc.RangeSlider(
+                                id='MonitorAgent_Slider',
+                                min=0,
+                                max=100,
+                                step=1,
+                                value=[95, 100],
+                                marks={},
+                            ),
+                        ],
                     ),
                 ],
             ),
 
-
+            # ================================================== Configuration ==================================================
+            # Main Div
             html.Div(
+                id='MonitorAgent_Configuration_Main_Div',
                 style={
-                    'marginTop': '5px',
+                    # 'marginTop': '200px',
                     'marginLeft': '75px',
                     'marginRight': '75px',
+                    'display': 'none',
+                    # 'width': '100vw',
                 },
                 children=[
-                    # Header text
+
                     html.H2('Configuration'),
-                    dcc.Dropdown(
-                        id='MonitorAgent_Dropdown_Agent_State',
-                        options=[{'label': State, 'value': State} for State in 'Start', 'Stop', 'Enable', 'Disable'],
-                        value='',
-                        disabled=True,
+
+                    html.Div(
+                        style={
+                            # 'hight': '100px',
+                            # 'width': '50vw',
+                            'marginRight': '10px',
+                            'display': 'inline',
+                        },
+                        children=[
+                            html.Button('Current state: --Loading--', id='MonitorAgent_Current_State', style={'marginRight': '20px'}, n_clicks=0),
+                            html.Button('Change state to: ', id='MonitorAgent_Change_State', n_clicks=0),
+                        ],
+                    ),
+                    html.Div(
+                        style={
+                            'width': '200px',
+                            'display': 'table-cell',
+                        },
+                        children=[
+                            dcc.Dropdown(
+                                id='MonitorAgent_Dropdown_Agent_State',
+                                options=[{'label': State, 'value': State} for State in 'Running', 'Stopped', 'Disable'],
+                                value='',
+                                clearable=False,
+                            ),
+                        ],
                     ),
                 ],
             ),
+
+
 
         ], className="MonitorAgent", style={
             'height': '100%',
@@ -972,6 +1011,11 @@ def Devices_Tab_KeepAlive_Show(Devices_Tab_Variables, Devices_KeepAlive_Slider):
             'y': df.RSSI, 'name': "WiFi Signal Strenght (RSSI)",
             'line': {"shape": 'spline'}
         })
+        Return_Data["data"].append({
+            'x': df.LastKeepAlive,
+            'y': df.SoftwareVersion, 'name': "Software Version",
+            'line': {"shape": 'spline'}
+        })
 
         return {'data': Return_Data}
 
@@ -1094,14 +1138,52 @@ def MonitorAgent_Tab_Buttons(MonitorAgent_Dropdown, MonitorAgent_Slider, Monitor
     if MonitorAgent_Dropdown is not None:
         # MonitorAgent_Dropdown_Agent_State
         # Controls the MonitorAgent
+
+        # Open db connection
+        db_MTB_Connection = Open_db('')
+        db_MTB_Curser = db_MTB_Connection.cursor()
+
         if MonitorAgent_Tab_Variables.get('MonitorAgent_Dropdown_Agent_State', 'None') != MonitorAgent_Dropdown_Agent_State:
             # Set current state
             MonitorAgent_Tab_Variables['MonitorAgent_Dropdown_Agent_State'] = MonitorAgent_Dropdown_Agent_State
+
+            # Get current agent state
+            db_MTB_Curser.execute("SELECT Agent_ID, Agent_Enabled, Agent_State FROM Dobby.MonitorAgentConfig WHERE Agent_Name='" + str(MonitorAgent_Dropdown) + "';")
+            SQL_Return = db_MTB_Curser.fetchone()
+
+            print "SQL_Return"
+            print SQL_Return
+
+            # Check if agent is enabled
+            # Disabled
+            if MonitorAgent_Dropdown_Agent_State == 'Disable':
+                # Disable agent
+                if SQL_Return[1] is not 0:
+                    db_MTB_Curser.execute("UPDATE `Dobby`.`MonitorAgentConfig` SET `Agent_Enabled`='0' WHERE `Agent_ID`='" + str(SQL_Return[0]) + "';")
+
+            elif SQL_Return[2] == 'Running':
+                # Enable agent if disabled
+                if SQL_Return[1] is 0:
+                    db_MTB_Curser.execute("UPDATE `Dobby`.`MonitorAgentConfig` SET `Agent_Enabled`='1' WHERE `Agent_ID`='" + str(SQL_Return[0]) + "';")
+
+                # Change state
+                db_MTB_Curser.execute("UPDATE `Dobby`.`MonitorAgentConfig` SET `Agent_State`='Start' WHERE `Agent_ID`='" + str(SQL_Return[0]) + "';")
+
+            elif SQL_Return[0][1] == 'Stopped':
+                db_MTB_Curser.execute("UPDATE `Dobby`.`MonitorAgentConfig` SET `Agent_State`='Stop' WHERE `Agent_ID`='" + str(SQL_Return[0]) + "';")
+
+            # Change Agent State
             print "State changed to: " + str(MonitorAgent_Dropdown_Agent_State)
 
+            if MonitorAgent_Dropdown_Agent_State == 'Running':
+                print 'MARKER RUNNING'
+
+            if MonitorAgent_Dropdown_Agent_State == 'Stopped':
+                print 'MARKER STOPPED'
+
+                print 'MARKER DISABLE'
+
         # Get min/max dates for slider
-        db_MTB_Connection = Open_db('')
-        db_MTB_Curser = db_MTB_Connection.cursor()
 
         db_MTB_Curser.execute("SELECT DateTime FROM DobbyLog.MonitorAgent WHERE Agent = '" + str(MonitorAgent_Dropdown) + "' ORDER BY id ASC LIMIT 1;")
         Min_Date = db_MTB_Curser.fetchone()
@@ -1156,10 +1238,13 @@ def MonitorAgent_Tab_Buttons(MonitorAgent_Dropdown, MonitorAgent_Slider, Monitor
 
 # ======================================== MonitorAgent - MonitorAgent_Update_Dropdown_Agent_State ========================================
 @app.callback(
-    Output('MonitorAgent_Dropdown_Agent_State', 'disabled'),
+    Output('MonitorAgent_Configuration_Main_Div', 'style'),
     [
         Input('MonitorAgent_Tab_Variables', 'children'),
         ],
+    [
+        # State('MonitorAgent_Configuration_Main_Div', 'hidden'),
+    ]
     )
 def MonitorAgent_Update_Dropdown_Agent_State(MonitorAgent_Tab_Variables):
 
@@ -1167,10 +1252,44 @@ def MonitorAgent_Update_Dropdown_Agent_State(MonitorAgent_Tab_Variables):
     MonitorAgent_Tab_Variables = Generate_Variable_Dict(MonitorAgent_Tab_Variables)
 
     # MonitorAgent_Dropdown_Agent_State
-    if MonitorAgent_Tab_Variables.get('MonitorAgent_Dropdown_Agent_State', 'None') != 'None':
-        return False
+    if MonitorAgent_Tab_Variables.get('MonitorAgent_Dropdown_Agent_State', 'None') == 'None' or None:
+        return {'display': 'none'}
     else:
-        return True
+        return {'display': 'inline'}
+
+
+# ======================================== MonitorAgent - MonitorAgent_Current_State ========================================
+@app.callback(
+    Output('MonitorAgent_Current_State', 'children'),
+    [
+        Input('MonitorAgent_Tab_Variables', 'children')
+        ],
+    [
+        State('MonitorAgent_Dropdown', 'value'),
+        ]
+    )
+def MonitorAgent_Update_State(MonitorAgent_Tab_Variables, MonitorAgent_Dropdown):
+
+    # Do nothing if no agent is selected
+    if MonitorAgent_Dropdown is None:
+        return "Current State: "
+
+    SQL_Return = SQL_Read("SELECT Agent_Enabled, Agent_State FROM Dobby.MonitorAgentConfig WHERE Agent_Name='" + str(MonitorAgent_Dropdown) + "';")
+
+    Return_String = "Current State: "
+
+    # Check if agent is enabled
+    # Disabled
+    if SQL_Return[0][0] is 0:
+        Return_String = Return_String + 'Disabled'
+
+    elif SQL_Return[0][1] == 'Running':
+        Return_String = Return_String + 'Running'
+
+    elif SQL_Return[0][1] == 'Stopped':
+        Return_String = Return_String + 'Stopped'
+
+    return Return_String
 
 
 # ======================================== MonitorAgent - Live button text ========================================

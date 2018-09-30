@@ -14,7 +14,7 @@ extern "C" {
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 101048
+#define Version 101047
 // First didget = Software type 1-Production 2-Beta 3-Alpha
 // Secound and third didget = Major version number
 // Fourth to sixth = Minor version number
@@ -31,7 +31,6 @@ bool Wire_Avtive = false;
 // For smoothing
 #include <RunningAverage.h>
 
-bool Boot_Compleate = false;
 
 // -------------------------------- -------- ArduinoOTA_Setup() ----------------------------------------
 bool ArduinoOTA_Active = false;
@@ -329,7 +328,7 @@ unsigned long Distnace_Sensor_Read_At[Distance_Max_Number_Of] = {0, 0, 0};
 RunningAverage Distance_RA_1(Distance_RunningAverage_Length);
 RunningAverage Distance_RA_2(Distance_RunningAverage_Length);
 RunningAverage Distance_RA_3(Distance_RunningAverage_Length);
-float Distance_Last_Reading[Distance_Max_Number_Of];
+int Distance_Last_Reading[Distance_Max_Number_Of];
 byte Distance_Error_Count[Distance_Max_Number_Of];
 
 
@@ -438,14 +437,10 @@ bool CLI_Command_Complate = false;
 // ------------------------------------------------------------ Load Cell ------------------------------------------------------------
 #include "HX711.h"
 
-#define Load_Cell_Max_Number_Of 4
-byte LoadCell_Pins_DT[Load_Cell_Max_Number_Of] = {255, 255, 255, 255};
-byte LoadCell_Pins_SCK[Load_Cell_Max_Number_Of] = {255, 255, 255, 255};
-
 HX711 Load_Cell;
-float LoadCell_Calibration[Load_Cell_Max_Number_Of] = {-1337, -1337, -1337, -1337};
-
-bool Load_Cell_Configurated = false;
+byte LoadCell_Pins_DT = 255;
+byte LoadCell_Pins_SCK = 255;
+float LoadCell_Calibration;
 
 
 // ------------------------------------------------------------ DC Voltmeter ------------------------------------------------------------
@@ -541,14 +536,8 @@ MB_Queue Log_Queue_Log_Text(Log_Max_Queue_Size);
 // ------------------------------------------------------------ MQ2 ------------------------------------------------------------
 byte MQ2_Pin_A0 = 255;
 
-int MQ2_Current_Value = -1;
-int MQ2_Value_Min = -1;
-int MQ2_Value_Max = -1;
-
 bool MQ2_Configured = false;
 
-Ticker MQ2_Ticker;
-#define MQ2_Refresh_Rate 100
 
 
 // ############################################################ String_To_IP() ############################################################
@@ -800,24 +789,6 @@ void Indicator_LED(float Hertz) {
 } // Indicator_LED()
 
 
-// ############################################################ MQ2_Loop() ############################################################
-void MQ2_Loop() {
-
-  // Do nothing if its not configured
-  if (MQ2_Configured == false) {
-    return;
-  }
-
-  // // Set currernt value
-  MQ2_Current_Value = analogRead(MQ2_Pin_A0);
-  // // Check min/max
-  MQ2_Value_Min = min(MQ2_Current_Value, MQ2_Value_Min);
-  MQ2_Value_Max = max(MQ2_Current_Value, MQ2_Value_Max);;
-
-
-}  // MQ2_Loop()
-
-
 // ############################################################ MQ2() ############################################################
 bool MQ2(String Topic, String Payload) {
 
@@ -826,51 +797,14 @@ bool MQ2(String Topic, String Payload) {
     return false;
   }
 
-  // If Values = -1 no readings resived form sensor so disabling it
-  else if (MQ2_Current_Value == -1) {
-    // Disable sensor
-    MQ2_Configured = false;
-    // Log Error
-    Log(MQTT_Topic[Topic_Error] + "/MQ2", "Never got a readings from the sensor disabling it.");
-    // Detatch ticket
-    MQ2_Ticker.detach();
-    // Return
-    return false;
-  }
-
   // Check topic
   else if (Topic == MQTT_Topic[Topic_MQ2]) {
 
-    // Trim Payload from garbage chars
-    Payload = Payload.substring(0, Payload.indexOf(";"));
+    if (Payload.length() > 1) Payload = Payload.substring(0, 1); // "Trim" length to avoid some wird error
 
     // State request
     if (Payload == "?") {
-      Log(MQTT_Topic[Topic_MQ2] + "/State", String(MQ2_Current_Value));
-      return true;
-    }
-    // Min/Max request
-    else if (Payload == "json") {
-
-      // Create json buffer
-      DynamicJsonBuffer jsonBuffer(80);
-      JsonObject& root_MQ2 = jsonBuffer.createObject();
-
-      // encode json string
-      root_MQ2.set("Current", MQ2_Current_Value);
-      root_MQ2.set("Min", MQ2_Value_Min);
-      root_MQ2.set("Max", MQ2_Value_Max);
-
-      // Reset values
-      MQ2_Value_Min = MQ2_Current_Value;
-      MQ2_Value_Max = MQ2_Current_Value;
-
-      String MQ2_String;
-
-      root_MQ2.printTo(MQ2_String);
-
-      Log(MQTT_Topic[Topic_MQ2] + "/json/State", MQ2_String);
-
+      Log(MQTT_Topic[Topic_MQ2] + "/State", String(analogRead(MQ2_Pin_A0)));
       return true;
     }
   }
@@ -1732,10 +1666,6 @@ bool Dimmer(String Topic, String Payload) {
 // ############################################################ LoadCell() ############################################################
 bool LoadCell(String Topic, String Payload) {
 
-  if (Load_Cell_Configurated == false) {
-    return false;
-  }
-
   if (Topic.indexOf(MQTT_Topic[Topic_LoadCell]) != -1) {
     if (Payload.indexOf("?") != -1) {
       Log(MQTT_Topic[Topic_LoadCell] + "/State", String(Load_Cell.get_units(1)));
@@ -1782,7 +1712,7 @@ bool DC_Voltmeter(String Topic, String Payload) {
 
 // ############################################################ Echo() ############################################################
 // Reads the distance
-float Echo(byte Echo_Pin_Trigger, byte Echo_Pin_Echo) {
+int Echo(byte Echo_Pin_Trigger, byte Echo_Pin_Echo) {
 
   // Clears the Echo_Pin_Trigger
   digitalWrite(Echo_Pin_Trigger, LOW);
@@ -3017,34 +2947,23 @@ bool FS_Config_Load() {
 
   // ############### Load_Cell ###############
   if (root.get<String>("LoadCell_Pins_DT") != "") {
-    Log(MQTT_Topic[Topic_System] + "/LoadCell", "Configuring FIX ME");
+    LoadCell_Pins_DT = Pin_To_Number(root.get<String>("LoadCell_Pins_DT"));
+  }
 
-    // MQTT_Settings_Set(LoadCell_Pins_DT, Load_Cell_Max_Number_Of, root.get<String>("LoadCell_Pins_DT"), MQTT_Topic[Topic_System] + "/LoadCell", "LoadCell DT Pins");
-    //
-    // if (Pin_Monitor(Reserve_Normal, root.get<String>("LoadCell_Pins_SCK")) == Pin_Free) {
-    //   MQTT_Settings_Set(LoadCell_Pins_SCK, Load_Cell_Max_Number_Of, root.get<String>("LoadCell_Pins_SCK"), MQTT_Topic[Topic_System] + "/LoadCell", "LoadCell SCK Pins");
-    // }
-    //
-    // if (Pin_Monitor(Reserve_Normal, root.get<String>("LoadCell_Pins_SCK")) == Pin_Free) {
-    //   MQTT_Settings_Set(LoadCell_Calibration, Load_Cell_Max_Number_Of, root.get<String>("LoadCell_Calibration"), MQTT_Topic[Topic_System] + "/LoadCell", "LoadCell Calibration");
-    // }
-    //
-    // Load_Cell.set_scale(LoadCell_Calibration);                      // this value is obtained by calibrating the scale with known weights; see the README for details
-    //
-    // // Setup the LoadCell if both pins is configured
-    // for (byte i = 0; i < Load_Cell_Max_Number_Of; i++) {
-    //   if (LoadCell_Pins_DT[i] != 255 && LoadCell_Pins_SCK[i] != 255 && LoadCell_Calibration[i] != -1337) {
-    //     Load_Cell_Configurated = true;
-    //     MQTT_Subscribe(MQTT_Topic[Topic_LoadCell], true, PLUS);
-    //     Load_Cell.begin(LoadCell_Pins_DT[i], LoadCell_Pins_SCK[i]);
-    //     Load_Cell.tare();				        // reset the scale to 0
-    //     Log(MQTT_Topic[Topic_System] + "/LoadCell", "Configuration compleate");
-    //   }
-    //   else {
-    //     // FIX - Add better error messages
-    //     Log(MQTT_Topic[Topic_System] + "/LoadCell", "Configuration failed");
-    //   }
-    // }
+  if (root.get<String>("LoadCell_Pins_SCK") != "") {
+    LoadCell_Pins_SCK = Pin_To_Number(root.get<String>("LoadCell_Pins_SCK"));
+  }
+
+  if (root.get<String>("LoadCell_Calibration") != "") {
+    LoadCell_Calibration = root.get<float>("LoadCell_Calibration");
+    Load_Cell.set_scale(LoadCell_Calibration);                      // this value is obtained by calibrating the scale with known weights; see the README for details
+  }
+
+  // Setup the LoadCell if both pins is configured
+  if (LoadCell_Pins_DT != 255 && LoadCell_Pins_SCK != 255) {
+    MQTT_Subscribe(MQTT_Topic[Topic_LoadCell], true, NONE);
+    Load_Cell.begin(LoadCell_Pins_DT, LoadCell_Pins_SCK);
+    Load_Cell.tare();				        // reset the scale to 0
   }
 
 
@@ -3243,15 +3162,8 @@ bool FS_Config_Load() {
         MQTT_Subscribe(MQTT_Topic[Topic_MQ2], true, NONE);
         // Set configured to true
         MQ2_Configured = true;
-        // Read once to set Min/Max referance
-        MQ2_Loop();
-        // Set min max to current
-        MQ2_Value_Min = MQ2_Current_Value;
-        MQ2_Value_Max = MQ2_Current_Value;
-        // Start ticker
-        MQ2_Ticker.attach_ms(MQ2_Refresh_Rate, MQ2_Loop);
         // Log configuration compleate
-        Log(MQTT_Topic[Topic_MQ2] + "/MQ2", "Configuration compleate");
+        Log(MQTT_Topic[Topic_Error] + "/MQ2", "Configuration compleate");
       }
       else {
         Log(MQTT_Topic[Topic_Error] + "/MQ2", "Configuration failed pin in use");
@@ -4046,8 +3958,6 @@ void setup() {
   connectToWifi();
 
   if (Indicator_LED_Configured == true) Indicator_LED(LED_OFF);
-
-  Boot_Compleate = true;
 
 } // setup()
 

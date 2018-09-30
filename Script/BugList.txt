@@ -1,0 +1,3 @@
+LoadCell = If the loadcell is configured but not connected the device will go into a reboot loop.
+
+A Wemos D1 mini Pro seems unable to run a BMP180 and MPU6050 without getting FIFO overflowe from the MPU6050

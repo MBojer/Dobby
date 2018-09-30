@@ -14,7 +14,7 @@ extern "C" {
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 101048
+#define Version 101046
 // First didget = Software type 1-Production 2-Beta 3-Alpha
 // Secound and third didget = Major version number
 // Fourth to sixth = Minor version number
@@ -31,7 +31,6 @@ bool Wire_Avtive = false;
 // For smoothing
 #include <RunningAverage.h>
 
-bool Boot_Compleate = false;
 
 // -------------------------------- -------- ArduinoOTA_Setup() ----------------------------------------
 bool ArduinoOTA_Active = false;
@@ -116,7 +115,6 @@ unsigned long MQTT_KeepAlive_Interval = 60000;
 #define Topic_MPU6050 18
 #define Topic_BMP180 19
 #define Topic_Warning 20
-#define Topic_MQ2 21
 
 #define Topic_Settings_Text "/Settings/"
 #define Topic_Config_Text "/Config/"
@@ -139,9 +137,8 @@ unsigned long MQTT_KeepAlive_Interval = 60000;
 #define Topic_MPU6050_Text "/MPU6050/"
 #define Topic_BMP180_Text "/BMP180/"
 #define Topic_Warning_Text "/Warning/"
-#define Topic_MQ2_Text "/MQ2/"
 
-const byte MQTT_Topic_Number_Of = 22;
+const byte MQTT_Topic_Number_Of = 21;
 String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + Topic_Settings_Text + Hostname,
   System_Header + Topic_Config_Text + Hostname,
@@ -157,14 +154,13 @@ String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + System_Sub_Header + Topic_Button_Text + Hostname,
   System_Header + Topic_Dobby_Text,
   System_Header + Topic_System_Text + Hostname,
-  System_Header + System_Sub_Header + Topic_LoadCell_Text + Hostname,
-  System_Header + System_Sub_Header + Topic_DC_Voltmeter_Text + Hostname,
-  System_Header + System_Sub_Header + Topic_Ammeter_Text + Hostname,
-  System_Header + System_Sub_Header + Topic_Switch_Text + Hostname,
-  System_Header + System_Sub_Header + Topic_MPU6050_Text + Hostname,
-  System_Header + System_Sub_Header + Topic_BMP180_Text + Hostname,
-  System_Header + Topic_Warning_Text + Hostname,
-  System_Header + System_Sub_Header + Topic_MQ2_Text + Hostname
+  System_Header + Topic_LoadCell_Text + Hostname,
+  System_Header + Topic_DC_Voltmeter_Text + Hostname,
+  System_Header + Topic_Ammeter_Text + Hostname,
+  System_Header + Topic_Switch_Text + Hostname,
+  System_Header + Topic_MPU6050_Text + Hostname,
+  System_Header + Topic_BMP180_Text + Hostname,
+  System_Header + Topic_Warning_Text + Hostname
 };
 
 bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
@@ -182,7 +178,6 @@ bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
   false,
   false,
   true,
-  false,
   false,
   false,
   false,
@@ -211,7 +206,6 @@ byte MQTT_Topic_Subscribe_Subtopic[MQTT_Topic_Number_Of] = {
   NONE,
   PLUS,
   PLUS,
-  NONE,
   NONE,
   NONE
 };
@@ -301,7 +295,6 @@ bool Relay_Auto_OFF_Active[Relay_Max_Number_Of];
 
 // ------------------------------------------------------------ Distance ------------------------------------------------------------
 #define Distance_Max_Number_Of 3
-
 bool Distance_Configured = false;
 byte Distance_Pins_Echo[Distance_Max_Number_Of] = {255, 255, 255};
 byte Distance_Pins_Trigger[Distance_Max_Number_Of] = {255, 255, 255};
@@ -313,8 +306,6 @@ String Distance_Target_OFF[Distance_Max_Number_Of];
 
 unsigned long Distance_Refresh_Rate[Distance_Max_Number_Of];
 
-Ticker Distance_Refresh_Ticker;
-
 bool Distance_Sensor_State[Distance_Max_Number_Of];
 
 unsigned long Distance_Auto_OFF_At[Distance_Max_Number_Of] = {0, 0, 0};
@@ -322,15 +313,6 @@ unsigned long Distance_Auto_OFF_Delay[Distance_Max_Number_Of];
 bool Distance_Auto_OFF_Active[Distance_Max_Number_Of];
 
 unsigned long Distnace_Sensor_Read_At[Distance_Max_Number_Of] = {0, 0, 0};
-
-// New
-#define Distance_Read_Rate 100
-#define Distance_RunningAverage_Length 25
-RunningAverage Distance_RA_1(Distance_RunningAverage_Length);
-RunningAverage Distance_RA_2(Distance_RunningAverage_Length);
-RunningAverage Distance_RA_3(Distance_RunningAverage_Length);
-float Distance_Last_Reading[Distance_Max_Number_Of];
-byte Distance_Error_Count[Distance_Max_Number_Of];
 
 
 // ------------------------------------------------------------ Dimmer ------------------------------------------------------------
@@ -438,14 +420,10 @@ bool CLI_Command_Complate = false;
 // ------------------------------------------------------------ Load Cell ------------------------------------------------------------
 #include "HX711.h"
 
-#define Load_Cell_Max_Number_Of 4
-byte LoadCell_Pins_DT[Load_Cell_Max_Number_Of] = {255, 255, 255, 255};
-byte LoadCell_Pins_SCK[Load_Cell_Max_Number_Of] = {255, 255, 255, 255};
-
 HX711 Load_Cell;
-float LoadCell_Calibration[Load_Cell_Max_Number_Of] = {-1337, -1337, -1337, -1337};
-
-bool Load_Cell_Configurated = false;
+byte LoadCell_Pins_DT = 255;
+byte LoadCell_Pins_SCK = 255;
+float LoadCell_Calibration;
 
 
 // ------------------------------------------------------------ DC Voltmeter ------------------------------------------------------------
@@ -537,20 +515,6 @@ RunningAverage BMP180_RA_Current_Pressure(BMP180_RunningAverage_Length);
 MB_Queue Log_Queue_Topic(Log_Max_Queue_Size);
 MB_Queue Log_Queue_Log_Text(Log_Max_Queue_Size);
 
-
-// ------------------------------------------------------------ MQ2 ------------------------------------------------------------
-byte MQ2_Pin_A0 = 255;
-
-int MQ2_Current_Value = -1;
-int MQ2_Value_Min = -1;
-int MQ2_Value_Max = -1;
-
-bool MQ2_Configured = false;
-
-Ticker MQ2_Ticker;
-#define MQ2_Refresh_Rate 100
-
-
 // ############################################################ String_To_IP() ############################################################
 IPAddress String_To_IP(String IP_String) {
 
@@ -605,14 +569,13 @@ void Rebuild_MQTT_Topics() {
   MQTT_Topic[Topic_Button] = System_Header + System_Sub_Header + Topic_Button_Text + Hostname;
   MQTT_Topic[Topic_Dobby] = System_Header + Topic_Dobby_Text;
   MQTT_Topic[Topic_System] = System_Header + Topic_System_Text + Hostname;
-  MQTT_Topic[Topic_LoadCell] = System_Header + System_Sub_Header + Topic_LoadCell_Text + Hostname;
-  MQTT_Topic[Topic_DC_Voltmeter] = System_Header + System_Sub_Header + Topic_DC_Voltmeter_Text + Hostname;
-  MQTT_Topic[Topic_Ammeter] = System_Header + System_Sub_Header + Topic_Ammeter_Text + Hostname;
-  MQTT_Topic[Topic_Switch] = System_Header + System_Sub_Header + Topic_Switch_Text + Hostname;
-  MQTT_Topic[Topic_MPU6050] = System_Header + System_Sub_Header + Topic_MPU6050_Text + Hostname;
-  MQTT_Topic[Topic_BMP180] = System_Header + System_Sub_Header + Topic_BMP180_Text + Hostname;
+  MQTT_Topic[Topic_LoadCell] = System_Header + Topic_LoadCell_Text + Hostname;
+  MQTT_Topic[Topic_DC_Voltmeter] = System_Header + Topic_DC_Voltmeter_Text + Hostname;
+  MQTT_Topic[Topic_Ammeter] = System_Header + Topic_Ammeter_Text + Hostname;
+  MQTT_Topic[Topic_Switch] = System_Header + Topic_Switch_Text + Hostname;
+  MQTT_Topic[Topic_MPU6050] = System_Header + Topic_MPU6050_Text + Hostname;
+  MQTT_Topic[Topic_BMP180] = System_Header + Topic_BMP180_Text + Hostname;
   MQTT_Topic[Topic_Warning] = System_Header + Topic_Warning_Text + Hostname;
-  MQTT_Topic[Topic_MQ2] = System_Header + System_Sub_Header + Topic_MQ2_Text + Hostname;
 }
 
 
@@ -800,87 +763,7 @@ void Indicator_LED(float Hertz) {
 } // Indicator_LED()
 
 
-// ############################################################ MQ2_Loop() ############################################################
-void MQ2_Loop() {
-
-  // Do nothing if its not configured
-  if (MQ2_Configured == false) {
-    return;
-  }
-
-  // // Set currernt value
-  MQ2_Current_Value = analogRead(MQ2_Pin_A0);
-  // // Check min/max
-  MQ2_Value_Min = min(MQ2_Current_Value, MQ2_Value_Min);
-  MQ2_Value_Max = max(MQ2_Current_Value, MQ2_Value_Max);;
-
-
-}  // MQ2_Loop()
-
-
-// ############################################################ MQ2() ############################################################
-bool MQ2(String Topic, String Payload) {
-
-  // Do nothing if its not configured
-  if (MQ2_Configured == false) {
-    return false;
-  }
-
-  // If Values = -1 no readings resived form sensor so disabling it
-  else if (MQ2_Current_Value == -1) {
-    // Disable sensor
-    MQ2_Configured = false;
-    // Log Error
-    Log(MQTT_Topic[Topic_Error] + "/MQ2", "Never got a readings from the sensor disabling it.");
-    // Detatch ticket
-    MQ2_Ticker.detach();
-    // Return
-    return false;
-  }
-
-  // Check topic
-  else if (Topic == MQTT_Topic[Topic_MQ2]) {
-
-    // Trim Payload from garbage chars
-    Payload = Payload.substring(0, Payload.indexOf(";"));
-
-    // State request
-    if (Payload == "?") {
-      Log(MQTT_Topic[Topic_MQ2] + "/State", String(MQ2_Current_Value));
-      return true;
-    }
-    // Min/Max request
-    else if (Payload == "json") {
-
-      // Create json buffer
-      DynamicJsonBuffer jsonBuffer(80);
-      JsonObject& root_MQ2 = jsonBuffer.createObject();
-
-      // encode json string
-      root_MQ2.set("Current", MQ2_Current_Value);
-      root_MQ2.set("Min", MQ2_Value_Min);
-      root_MQ2.set("Max", MQ2_Value_Max);
-
-      // Reset values
-      MQ2_Value_Min = MQ2_Current_Value;
-      MQ2_Value_Max = MQ2_Current_Value;
-
-      String MQ2_String;
-
-      root_MQ2.printTo(MQ2_String);
-
-      Log(MQTT_Topic[Topic_MQ2] + "/json/State", MQ2_String);
-
-      return true;
-    }
-  }
-
-  return false;
-
-} // MQ2
-
-
-// ############################################################ BMP180_Loop() ############################################################
+// ############################################################ BMP180() ############################################################
 bool BMP180_Loop() {
 
   if (BMP180_Configured == true) {
@@ -1732,10 +1615,6 @@ bool Dimmer(String Topic, String Payload) {
 // ############################################################ LoadCell() ############################################################
 bool LoadCell(String Topic, String Payload) {
 
-  if (Load_Cell_Configurated == false) {
-    return false;
-  }
-
   if (Topic.indexOf(MQTT_Topic[Topic_LoadCell]) != -1) {
     if (Payload.indexOf("?") != -1) {
       Log(MQTT_Topic[Topic_LoadCell] + "/State", String(Load_Cell.get_units(1)));
@@ -1782,7 +1661,7 @@ bool DC_Voltmeter(String Topic, String Payload) {
 
 // ############################################################ Echo() ############################################################
 // Reads the distance
-float Echo(byte Echo_Pin_Trigger, byte Echo_Pin_Echo) {
+int Echo(byte Echo_Pin_Trigger, byte Echo_Pin_Echo) {
 
   // Clears the Echo_Pin_Trigger
   digitalWrite(Echo_Pin_Trigger, LOW);
@@ -1794,73 +1673,44 @@ float Echo(byte Echo_Pin_Trigger, byte Echo_Pin_Echo) {
   digitalWrite(Echo_Pin_Trigger, LOW);
 
   // Reads the Echo_Pin_Echo, returns the sound wave travel time in microseconds
-  unsigned long Duration = pulseIn(Echo_Pin_Echo, HIGH, 75000);
+  float Duration = pulseIn(Echo_Pin_Echo, HIGH);
 
   // Calculating the distance
   float Distance = (Duration / 2) * 0.0343;
 
-  return Distance;
+  if (Distance > 400) return -1;
 
+  return Distance;
 
 } // Echo
 
-
-// ############################################################ Distance_Loop() ############################################################
-void Distance_Loop() {
-
-  for (byte i = 0; i < Distance_Max_Number_Of; i++) {
-
-    // Check if both pns is set
-    if (Distance_Pins_Trigger[i] != 255 || Distance_Pins_Echo[i] != 255) {
-
-      // Read distance
-      Distance_Last_Reading[i] = Echo(Distance_Pins_Trigger[i], Distance_Pins_Echo[i]);
-
-      if (i == 0) Distance_RA_1.addValue(Distance_Last_Reading[i]);
-      if (i == 1) Distance_RA_2.addValue(Distance_Last_Reading[i]);
-      if (i == 2) Distance_RA_3.addValue(Distance_Last_Reading[i]);
-    }
-  }
-}
 
 // ############################################################ Distance() ############################################################
 // Handles MQTT Read request
 bool Distance(String Topic, String Payload) {
 
-  if (Topic.indexOf(MQTT_Topic[Topic_Distance]) != -1) {
-    // Ignore state publish from localhost
-    if (Topic.indexOf("/State") == -1)  {
+    if (Topic.indexOf(MQTT_Topic[Topic_Distance]) != -1 && Payload.indexOf("?") != -1) {
+      // Ignore state publish from localhost
+      if (Topic.indexOf("/State") == -1)  {
 
-      Topic.replace(MQTT_Topic[Topic_Distance] + "/", "");
+        Topic.replace(MQTT_Topic[Topic_Distance] + "/", "");
 
-      if (Topic.toInt() <= 0 || Topic.toInt() > Distance_Max_Number_Of) {
-        Log(MQTT_Topic[Topic_Error] + "/Distance", "Distance Sensor " + Topic + " is not a valid distance sensor");
-        return true;
-      }
+        if (Topic.toInt() == 0 || Topic.toInt() > Distance_Max_Number_Of) {
+          Log(MQTT_Topic[Topic_Error] + "/Distance", "Distance Sensor " + Topic + " is not a valid distance sensor");
+          return true;
+        }
 
-      if (Distance_Pins_Trigger[Topic.toInt() - 1] == 255 || Distance_Pins_Echo[Topic.toInt() - 1] == 255) {
-        Log(MQTT_Topic[Topic_Error] + "/Distance", "Distance Sensor " + Topic + " is not configured");
-        return true;
-      }
+        if (Distance_Pins_Trigger[Topic.toInt() - 1] == 0 || Distance_Pins_Echo[Topic.toInt() - 1] == 0) {
+          Log(MQTT_Topic[Topic_Error] + "/Distance", "Distance Sensor " + Topic + " is not configured");
+          return true;
+        }
 
-      // Returns RunningAveridge
-      if (Payload.indexOf("?") != -1) {
-        float Distance = 0;
-
-        if (Topic.toInt() == 1) Distance = Distance_RA_1.getAverage();
-        else if (Topic.toInt() == 2) Distance = Distance_RA_2.getAverage();
-        else if (Topic.toInt() == 3) Distance = Distance_RA_3.getAverage();
+        int Distance = Echo(Distance_Pins_Trigger[Topic.toInt() - 1], Distance_Pins_Echo[Topic.toInt() - 1]);
 
         Log(MQTT_Topic[Topic_Distance] + "/" + Topic + "/State", String(Distance));
         return true;
       }
-      // Returns only last reading
-      else if (Payload.indexOf("Raw") != -1) {
-        Log(MQTT_Topic[Topic_Distance] + "/" + Topic + "/Raw/State", String(Distance_Last_Reading[Topic.toInt() - 1]));
-        return true;
-      }
     }
-  }
 
   return false;
 } // Distance()
@@ -1897,11 +1747,7 @@ void Distance_Sensor() {
 
     if (Distnace_Sensor_Read_At[i] < millis() && Distance_Refresh_Rate[i] != 0) {
 
-      float Distance;
-
-      if (i == 0) Distance = Distance_RA_1.getAverage();
-      else if (i == 1) Distance = Distance_RA_2.getAverage();
-      else if (i == 2) Distance = Distance_RA_3.getAverage();
+      int Distance = Echo(Distance_Pins_Trigger[i], Distance_Pins_Echo[i]);
 
       if (Distance == -1) {
         Log(MQTT_Topic[Topic_Error] + "/Distance", "Distance Sensor - Echo mesure off");
@@ -2950,7 +2796,7 @@ bool FS_Config_Load() {
   // ############### Distance ###############
   // FIX - Pretty up below
   if (root.get<String>("Distance_Pins_Trigger") != "") {
-    Log(MQTT_Topic[Topic_System] + "/Distance", "Configuring");
+    MQTT_Subscribe(MQTT_Topic[Topic_Distance], true, PLUS);
     MQTT_Settings_Set(Distance_Pins_Trigger, Distance_Max_Number_Of, root.get<String>("Distance_Pins_Trigger"), MQTT_Topic[Topic_System] + "/Distance", "Distance Pins Trigger");
     // Set pinMode
     for (byte i = 0; i < Distance_Max_Number_Of; i++) {
@@ -2959,42 +2805,35 @@ bool FS_Config_Load() {
         Distance_Configured = true;
       }
     }
+  }
 
-    if (root.get<String>("Distance_Pins_Echo") != "") {
-      MQTT_Settings_Set(Distance_Pins_Echo, Distance_Max_Number_Of, root.get<String>("Distance_Pins_Echo"), MQTT_Topic[Topic_System] + "/Distance", "Distance Pins Echo");
-      // Set pinMode
-      for (byte i = 0; i < Distance_Max_Number_Of; i++) {
-        if (Distance_Pins_Echo[i] != 255 && Pin_Monitor(Reserve_Normal, Distance_Pins_Echo[i]) == Pin_Free) {
-          pinMode(Distance_Pins_Echo[i], INPUT);
-        }
+  if (root.get<String>("Distance_Pins_Echo") != "") {
+    MQTT_Settings_Set(Distance_Pins_Echo, Distance_Max_Number_Of, root.get<String>("Distance_Pins_Echo"), MQTT_Topic[Topic_System] + "/Distance", "Distance Pins Echo");
+    // Set pinMode
+    for (byte i = 0; i < Distance_Max_Number_Of; i++) {
+      if (Distance_Pins_Echo[i] != 255 && Pin_Monitor(Reserve_Normal, Distance_Pins_Echo[i]) == Pin_Free) {
+        pinMode(Distance_Pins_Echo[i], INPUT);
       }
     }
+  }
 
-    if (root.get<String>("Distance_Trigger_At") != "") {
-      MQTT_Settings_Set(Distance_Trigger_At, Distance_Max_Number_Of, root.get<String>("Distance_Trigger_At"), MQTT_Topic[Topic_System] + "/Distance", "Distance Trigger At");
-    }
-    if (root.get<String>("Distance_Target_ON") != "") {
-      MQTT_Settings_Set(Distance_Target_ON, Distance_Max_Number_Of, root.get<String>("Distance_Target_ON"), MQTT_Topic[Topic_System] + "/Distance", "Distance Target ON");
-    }
-    if (root.get<String>("Distance_Target_OFF") != "") {
-      MQTT_Settings_Set(Distance_Target_OFF, Distance_Max_Number_Of, root.get<String>("Distance_Target_OFF"), MQTT_Topic[Topic_System] + "/Distance", "Distance Target OFF");
-    }
-    if (root.get<String>("Distance_Refresh_Rate") != "") {
-      MQTT_Settings_Set(Distance_Refresh_Rate, Distance_Max_Number_Of, root.get<String>("Distance_Refresh_Rate"), MQTT_Topic[Topic_System] + "/Distance", "Distance Refresh Rate");
-    }
-    if (root.get<String>("Distance_Auto_OFF_Delay") != "") {
-      MQTT_Settings_Set(Distance_Auto_OFF_Delay, Distance_Max_Number_Of, root.get<String>("Distance_Auto_OFF_Delay"), MQTT_Topic[Topic_System] + "/Distance", "Distance Auto OFF Delay");
-    }
-    if (root.get<String>("Distance_Auto_OFF_Active") != "") {
-      MQTT_Settings_Set(Distance_Auto_OFF_Active, Distance_Max_Number_Of, root.get<String>("Distance_Auto_OFF_Active"), MQTT_Topic[Topic_System] + "/Distance", "Distance Auto OFF Active");
-    }
-
-    // Atach the ticket to start reading the distance sensor
-    Distance_Refresh_Ticker.attach_ms(Distance_Read_Rate, Distance_Loop);
-
-    // Subscribe to topic
-    MQTT_Subscribe(MQTT_Topic[Topic_Distance], true, PLUS);
-    Log(MQTT_Topic[Topic_System] + "/Distance", "Configuration compleate");
+  if (root.get<String>("Distance_Trigger_At") != "") {
+    MQTT_Settings_Set(Distance_Trigger_At, Distance_Max_Number_Of, root.get<String>("Distance_Trigger_At"), MQTT_Topic[Topic_System] + "/Distance", "Distance Trigger At");
+  }
+  if (root.get<String>("Distance_Target_ON") != "") {
+    MQTT_Settings_Set(Distance_Target_ON, Distance_Max_Number_Of, root.get<String>("Distance_Target_ON"), MQTT_Topic[Topic_System] + "/Distance", "Distance Target ON");
+  }
+  if (root.get<String>("Distance_Target_OFF") != "") {
+    MQTT_Settings_Set(Distance_Target_OFF, Distance_Max_Number_Of, root.get<String>("Distance_Target_OFF"), MQTT_Topic[Topic_System] + "/Distance", "Distance Target OFF");
+  }
+  if (root.get<String>("Distance_Refresh_Rate") != "") {
+    MQTT_Settings_Set(Distance_Refresh_Rate, Distance_Max_Number_Of, root.get<String>("Distance_Refresh_Rate"), MQTT_Topic[Topic_System] + "/Distance", "Distance Refresh Rate");
+  }
+  if (root.get<String>("Distance_Auto_OFF_Delay") != "") {
+    MQTT_Settings_Set(Distance_Auto_OFF_Delay, Distance_Max_Number_Of, root.get<String>("Distance_Auto_OFF_Delay"), MQTT_Topic[Topic_System] + "/Distance", "Distance Auto OFF Delay");
+  }
+  if (root.get<String>("Distance_Auto_OFF_Active") != "") {
+    MQTT_Settings_Set(Distance_Auto_OFF_Active, Distance_Max_Number_Of, root.get<String>("Distance_Auto_OFF_Active"), MQTT_Topic[Topic_System] + "/Distance", "Distance Auto OFF Active");
   }
 
   // ############### Dimmer ###############
@@ -3017,34 +2856,23 @@ bool FS_Config_Load() {
 
   // ############### Load_Cell ###############
   if (root.get<String>("LoadCell_Pins_DT") != "") {
-    Log(MQTT_Topic[Topic_System] + "/LoadCell", "Configuring FIX ME");
+    LoadCell_Pins_DT = Pin_To_Number(root.get<String>("LoadCell_Pins_DT"));
+  }
 
-    // MQTT_Settings_Set(LoadCell_Pins_DT, Load_Cell_Max_Number_Of, root.get<String>("LoadCell_Pins_DT"), MQTT_Topic[Topic_System] + "/LoadCell", "LoadCell DT Pins");
-    //
-    // if (Pin_Monitor(Reserve_Normal, root.get<String>("LoadCell_Pins_SCK")) == Pin_Free) {
-    //   MQTT_Settings_Set(LoadCell_Pins_SCK, Load_Cell_Max_Number_Of, root.get<String>("LoadCell_Pins_SCK"), MQTT_Topic[Topic_System] + "/LoadCell", "LoadCell SCK Pins");
-    // }
-    //
-    // if (Pin_Monitor(Reserve_Normal, root.get<String>("LoadCell_Pins_SCK")) == Pin_Free) {
-    //   MQTT_Settings_Set(LoadCell_Calibration, Load_Cell_Max_Number_Of, root.get<String>("LoadCell_Calibration"), MQTT_Topic[Topic_System] + "/LoadCell", "LoadCell Calibration");
-    // }
-    //
-    // Load_Cell.set_scale(LoadCell_Calibration);                      // this value is obtained by calibrating the scale with known weights; see the README for details
-    //
-    // // Setup the LoadCell if both pins is configured
-    // for (byte i = 0; i < Load_Cell_Max_Number_Of; i++) {
-    //   if (LoadCell_Pins_DT[i] != 255 && LoadCell_Pins_SCK[i] != 255 && LoadCell_Calibration[i] != -1337) {
-    //     Load_Cell_Configurated = true;
-    //     MQTT_Subscribe(MQTT_Topic[Topic_LoadCell], true, PLUS);
-    //     Load_Cell.begin(LoadCell_Pins_DT[i], LoadCell_Pins_SCK[i]);
-    //     Load_Cell.tare();				        // reset the scale to 0
-    //     Log(MQTT_Topic[Topic_System] + "/LoadCell", "Configuration compleate");
-    //   }
-    //   else {
-    //     // FIX - Add better error messages
-    //     Log(MQTT_Topic[Topic_System] + "/LoadCell", "Configuration failed");
-    //   }
-    // }
+  if (root.get<String>("LoadCell_Pins_SCK") != "") {
+    LoadCell_Pins_SCK = Pin_To_Number(root.get<String>("LoadCell_Pins_SCK"));
+  }
+
+  if (root.get<String>("LoadCell_Calibration") != "") {
+    LoadCell_Calibration = root.get<float>("LoadCell_Calibration");
+    Load_Cell.set_scale(LoadCell_Calibration);                      // this value is obtained by calibrating the scale with known weights; see the README for details
+  }
+
+  // Setup the LoadCell if both pins is configured
+  if (LoadCell_Pins_DT != 255 && LoadCell_Pins_SCK != 255) {
+    MQTT_Subscribe(MQTT_Topic[Topic_LoadCell], true, NONE);
+    Load_Cell.begin(LoadCell_Pins_DT, LoadCell_Pins_SCK);
+    Load_Cell.tare();				        // reset the scale to 0
   }
 
 
@@ -3226,36 +3054,6 @@ bool FS_Config_Load() {
     }
 
     Log(MQTT_Topic[Topic_System] + "/BMP180", "Configuration compleate");
-  }
-
-
-  // ############### MQ2 ###############
-  if (root.get<String>("MQ2_Pin_A0") != "") {
-    Log(MQTT_Topic[Topic_System] + "/MQ2", "Configuring");
-
-    // Check if pin is free
-    if (Pin_Monitor(Reserve_Normal, root.get<String>("MQ2_Pin_A0")) == Pin_Free) {
-        // Set variable
-        MQ2_Pin_A0 = Pin_To_Number(root.get<String>("MQ2_Pin_A0"));
-        // Set pinmode
-        pinMode(MQ2_Pin_A0, INPUT);
-        // Subscribe to topic
-        MQTT_Subscribe(MQTT_Topic[Topic_MQ2], true, NONE);
-        // Set configured to true
-        MQ2_Configured = true;
-        // Read once to set Min/Max referance
-        MQ2_Loop();
-        // Set min max to current
-        MQ2_Value_Min = MQ2_Current_Value;
-        MQ2_Value_Max = MQ2_Current_Value;
-        // Start ticker
-        MQ2_Ticker.attach_ms(MQ2_Refresh_Rate, MQ2_Loop);
-        // Log configuration compleate
-        Log(MQTT_Topic[Topic_MQ2] + "/MQ2", "Configuration compleate");
-      }
-      else {
-        Log(MQTT_Topic[Topic_Error] + "/MQ2", "Configuration failed pin in use");
-      }
   }
 
   // '#################### Indicator LED '####################
@@ -3774,8 +3572,6 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
 
   else if (BMP180_Show(topic, payload)) return;
 
-  else if (MQ2(topic, payload)) return;
-
   else if (FS_Config_Set(topic, payload)) return;
 
   else if (MQTT_Commands(topic, payload)) return;
@@ -4046,8 +3842,6 @@ void setup() {
   connectToWifi();
 
   if (Indicator_LED_Configured == true) Indicator_LED(LED_OFF);
-
-  Boot_Compleate = true;
 
 } // setup()
 
