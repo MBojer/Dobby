@@ -14,7 +14,7 @@ extern "C" {
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 101053
+#define Version 101052
 // First didget = Software type 1-Production 2-Beta 3-Alpha
 // Secound and third didget = Major version number
 // Fourth to sixth = Minor version number
@@ -638,12 +638,10 @@ int LDR_Current_Value = -1;
 int LDR_Value_Min = -1;
 int LDR_Value_Max = -1;
 
-byte LDR_Dead_Band = 10;
-
 Ticker LDR_Ticker;
 #define LDR_Refresh_Rate 100
 
-int LDR_Dark_At = -1;
+int LDR_Dark_At = -1337;
 
 bool LDR_State = false;
 // false = no light
@@ -978,17 +976,10 @@ void LDR_Loop() {
     // 0 = light
     bool LDR_New_State;
     // Check if ligh level is below of above the trigger
-    if (LDR_Dark_At == -1) {
-      Log(MQTT_Topic[Topic_Log_Error] + "/LDR", "Disabling LDR, never got a reading from the sensor");
-      LDR_Configured = false;
-    }
     // Higher than = on
-    else if (LDR_Current_Value < LDR_Dark_At && LDR_New_State == false) {
+    if (LDR_Current_Value < LDR_Dark_At) {
       LDR_New_State = true;
     }
-    // else if (LDR_Current_Value - LDR_Dead_Band < LDR_Dark_At) {
-    //   // Do nothing withing dead band
-    // }
     else {
       LDR_New_State = false;
     }
@@ -997,7 +988,7 @@ void LDR_Loop() {
     if (LDR_New_State != LDR_State) {
       LDR_State = LDR_New_State;
       // Publish state to Dobby PIR
-      MQTT_Client.publish(LDR_Target_Topic.c_str(), 0, false, String("LDR " + String(LDR_State) + ";").c_str());
+        MQTT_Client.publish(LDR_Target_Topic.c_str(), 0, false, (String(LDR_State) + ";").c_str());
     }
 
   }
@@ -1925,11 +1916,11 @@ void FS_Format() {
 void PIR_Loop() {
 
   // The PIR needs 60 seconds to worm up
-    if (PIR_Configured == false || millis() < 60000 || ArduinoOTA_Active == true || Boot_Compleate == false) {
+    if (PIR_Configured == false || millis() < 60 || ArduinoOTA_Active == true || Boot_Compleate == false) {
+    // if (PIR_Configured == false || millis() < 60000 || ArduinoOTA_Active == true || Boot_Compleate == false) {
     return;
   }
 
-  // Disable PIR Warmup blink
   if (Indicator_LED_Configured == true) Indicator_LED(LED_PIR, false);
 
   // Check each PIR
@@ -1939,11 +1930,6 @@ void PIR_Loop() {
 
       // If LDR is on aka its brigh or the PIR is desabled then return
       if (PIR_Disabled[i] == true || PIR_LDR_ON[i] == true) {
-        if (PIR_ON_Send[i] == true) {
-          MQTT_Client.publish(PIR_Topic[i].c_str(), 0, false, String(PIR_OFF_Payload[i] + ";").c_str());
-          PIR_ON_Send[i] = false;
-        }
-
         return;
       }
 
@@ -4083,18 +4069,18 @@ bool FS_Config_Load() {
   if (root.get<String>("LDR_Pin_A0") != "") {
     Log(MQTT_Topic[Topic_System] + "/LDR", "Configuring");
 
-    if (root.get<String>("LDR_Target_Topic") != "") {
-      LDR_Target_Topic = root.get<String>("LDR_Target_Topic");
+    if (root.get<String>("LDR_Dobby_PIR_Name") != "") {
+      LDR_Target_Topic = root.get<String>("LDR_Dobby_PIR_Name");
     }
 
     if (root.get<String>("LDR_Dark_At") != "") {
       LDR_Dark_At = root.get<int>("LDR_Dark_At");
     }
 
-    if (LDR_Target_Topic == "" || LDR_Dark_At == -1) {
+    if (LDR_Target_Topic == "" || LDR_Dark_At == -1337) {
       Log(MQTT_Topic[Topic_Log_Error] + "/LDR", "Disabling Dobby PIR missing setting got. LDR_Target_Topic: " + String(LDR_Target_Topic) + " LDR_Dark_At: " + String(LDR_Dark_At));
       LDR_Target_Topic = "";
-      LDR_Dark_At = -1;
+      LDR_Dark_At = -1337;
     }
 
 

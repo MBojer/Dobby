@@ -1,0 +1,27 @@
+######################################## 101013 ########################################
+
+Rewrote Spammer
+Rewrote Log Trigger
+
+
+
+######################################## 101012 ########################################
+
+Added Spammer
+Added Trigger_Log
+
+Commented MonitorAgent
+
+Renamed Alerts to Mail_Trigger
+
+
+
+# -- 101011
+# - Added MQTT Alerts
+#
+# -- 101010
+# - Changed MonitorAgent and Alerts callback to be single in stead of multiple.
+#   If two callbacks is registered on the same topic the latest will win
+#
+# -- 101009
+# - Added support for email alerts

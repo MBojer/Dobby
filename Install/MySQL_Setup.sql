@@ -22,12 +22,12 @@ CREATE TABLE `Dobby`.`Users` (
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4;
 
 
-CREATE TABLE `Dobby`.`Alerts` (
+CREATE TABLE `Dobby`.`Mail_Trigger` (
   `id` int(11) NOT NULL,
   `Name` varchar(45) NOT NULL,
   `Type` varchar(45) NOT NULL,
   `Enabled` tinyint(1) NOT NULL,
-  `Alert_State` tinyint(1) NOT NULL DEFAULT '0',
+  `Trigger_State` tinyint(1) NOT NULL DEFAULT '0',
   `MQTT_Target` varchar(45) NOT NULL,
   `MQTT_Payload_Clear` decimal(6,2) NOT NULL,
   `MQTT_Payload_Trigger` decimal(6,2) NOT NULL,
@@ -37,6 +37,7 @@ CREATE TABLE `Dobby`.`Alerts` (
   `Alert_Payload_Trigger` varchar(45) NOT NULL,
   `Triggered_DateTime` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `id_UNIQUE` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4;
 
 
@@ -111,6 +112,35 @@ CREATE TABLE `Dobby`.`DeviceConfig` (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
 
 
+CREATE TABLE `Dobby`.`Log_Trigger` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `Name` varchar(45) NOT NULL,
+  `Tags` varchar(100),
+  `Enabled` tinyint(1) NOT NULL DEFAULT '0',
+  `State` varchar(45) DEFAULT NULL,
+  `Topic` varchar(45) NOT NULL,
+  `Last_Trigger` datetime DEFAULT NULL,
+  `Last_Modified` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `id_UNIQUE` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `Dobby`.`Spammer` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `Name` varchar(45) NOT NULL,
+  `Enabled` tinyint(1) NOT NULL DEFAULT '0',
+  `State` varchar(45) DEFAULT NULL,
+  `Interval` decimal(10,4) NOT NULL DEFAULT '300.0000',
+  `Topic` varchar(45) NOT NULL,
+  `Payload` varchar(45) NOT NULL,
+  `Next_Ping` datetime DEFAULT NULL CURRENT_TIMESTAMP,
+  `Last_Ping` datetime DEFAULT NULL,
+  `Last_Modified` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `id_UNIQUE` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+
+
 CREATE TABLE `Dobby`.`MonitorAgentConfig` (
   `Agent_ID` tinyint(3) unsigned NOT NULL AUTO_INCREMENT,
   `Agent_Name` varchar(25) NOT NULL,
@@ -125,6 +155,23 @@ CREATE TABLE `Dobby`.`MonitorAgentConfig` (
   `Agent_Next_Ping` timestamp NOT NULL DEFAULT '1984-09-24 00:00:01',
   `Date_Modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`Agent_ID`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+
+
+CREATE TABLE `Dobby`.`PIR` (
+  `id` int(16) NOT NULL AUTO_INCREMENT,
+  `Name` VARCHAR(45) NOT NULL,
+  `State` tinyint(1) NOT NULL DEFAULT 1,
+  `PIR_Source_Topic` VARCHAR(45) NOT NULL,
+  `LDR_Source_Topic` VARCHAR(45) NOT NULL,
+  `LDR_Trigger_At` tinyint(4) NOT NULL,
+  `Target_Topic` VARCHAR(45) NOT NULL,
+  `Target_Payload_1` VARCHAR(45) NOT NULL,
+  `Target_Payload_2` VARCHAR(45) NOT NULL,
+  `Target_Payload_3` VARCHAR(45) NOT NULL,
+  `Target_State` tinyint(1) NOT NULL DEFAULT 0,
+  `DateModified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
 
 
@@ -148,25 +195,41 @@ CREATE TABLE `Dobby`.`SystemConfig` (
   `Value` varchar(200) NOT NULL,
   `DateModified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='Contains settings';
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Log", "db", "DobbyLog");
-INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Log", "Length", "250000");
-INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Log", "Level", "Info");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "System", "Header", "/Test");
+
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "MQTT", "Broker", "localhost");
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "MQTT", "Password", "NoSinking");
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "MQTT", "PublishDelay", "0.5");
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "MQTT", "Username", "DasBoot");
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "MQTT", "Port", "1883");
-INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "System", "Header", "/Test");
-INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Dir", "Root", "/etc/Dobby");
-INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Dir", "Script", "/home/dobby/Dobby");
-INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Dir", "URL", "https://github.com/MBojer/Dobby/blob/master/.pioenvs/d1_mini/firmware.bin?raw=true");
-INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("KeepAliveMonitor", "Log", "Length", "250");
-INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MonitorAgent", "Log", "Length", "25000");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MQTT", "Log", "Level", "Info");
+
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "MQTTKeepAlive", "Interval", "60");
+
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Mail_Trigger", "SMTP", "Server", "smtp.gmail.com");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Mail_Trigger", "SMTP", "Port", "587");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Mail_Trigger", "SMTP", "Sender", "dobbysystemalerts@gmail.com");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Mail_Trigger", "SMTP", "Username", "dobbysystemalerts");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Mail_Trigger", "SMTP", "Password", "NoMailsSend");
+
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Log", "db", "DobbyLog");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Log", "Length", "250000");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Log", "Level", "Info");
+
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MonitorAgent", "Log", "Level", "Info");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MonitorAgent", "Log", "Length", "25000");
+
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("KeepAliveMonitor", "Log", "Level", "Info");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("KeepAliveMonitor", "Log", "Length", "2500");
+
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MQTTConfig", "Log", "Level", "Info");
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MQTTFunctions", "Log", "Level", "Info");
-INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MQTT", "Log", "Level", "Info");
+
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Mail_Trigger", "Log", "Level", "Info");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Mail_Trigger", "Log", "Length", "5000");
+
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Log_Trigger", "Log", "Level", "Info");
+
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Spammer", "Log", "Level", "Info");

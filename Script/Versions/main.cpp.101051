@@ -14,7 +14,7 @@ extern "C" {
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 101053
+#define Version 101051
 // First didget = Software type 1-Production 2-Beta 3-Alpha
 // Secound and third didget = Major version number
 // Fourth to sixth = Minor version number
@@ -124,6 +124,7 @@ unsigned long MQTT_KeepAlive_Interval = 60000;
 #define Topic_RFID 25
 #define Topic_PIR 26
 #define Topic_LDR 27
+#define Topic_Dobby_PIR 28
 
 #define Topic_Settings_Text "/Settings/"
 #define Topic_Config_Text "/Config/"
@@ -153,8 +154,9 @@ unsigned long MQTT_KeepAlive_Interval = 60000;
 #define Topic_RFID_Text "/RFID/"
 #define Topic_PIR_Text "/PIR/"
 #define Topic_LDR_Text "/LDR/"
+#define Topic_Dobby_PIR_Text "/PIR/Dobby/"
 
-const byte MQTT_Topic_Number_Of = 28;
+const byte MQTT_Topic_Number_Of = 29;
 String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + Topic_Settings_Text + Hostname,
   System_Header + Topic_Config_Text + Hostname,
@@ -184,6 +186,7 @@ String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + Topic_RFID_Text + Hostname,
   System_Header + Topic_PIR_Text + Hostname,
   System_Header + Topic_LDR_Text + Hostname,
+  System_Header + Topic_Dobby_PIR_Text
 };
 
 bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
@@ -212,6 +215,7 @@ bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
   false,
   false,
   false,
+  false
 };
 byte MQTT_Topic_Subscribe_Subtopic[MQTT_Topic_Number_Of] = {
   HASH,
@@ -239,9 +243,36 @@ byte MQTT_Topic_Subscribe_Subtopic[MQTT_Topic_Number_Of] = {
   NONE,
   PLUS,
   NONE,
+  PLUS
 };
 
-bool MQTT_Subscribtion_Active[MQTT_Topic_Number_Of];
+bool MQTT_Subscribtion_Active[MQTT_Topic_Number_Of] = {
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false
+};
 
 #define MQTT_Reconnect_Delay 5 // in secounds
 
@@ -565,26 +596,22 @@ RunningAverage BMP180_RA_Current_Pressure(BMP180_RunningAverage_Length);
 bool PIR_Configured = false;
 
 #define PIR_Max_Number_Of 6
-#define PIR_State_Number_Of 3
-// State 0 = Disabeled
 
 byte PIR_Pins[PIR_Max_Number_Of] = {255, 255, 255, 255, 255, 255};
 
-String PIR_Topic[PIR_Max_Number_Of];
+String PIR_ON_Topic[PIR_Max_Number_Of];
+String PIR_ON_Payload[PIR_Max_Number_Of];
+String PIR_OFF_Topic[PIR_Max_Number_Of];
 String PIR_OFF_Payload[PIR_Max_Number_Of];
-String PIR_ON_Payload[PIR_State_Number_Of][PIR_Max_Number_Of];
 
 int PIR_OFF_Delay[PIR_Max_Number_Of]; // in sec
 unsigned long PIR_OFF_At[PIR_Max_Number_Of];
 
-bool PIR_ON_Send[PIR_Max_Number_Of];
+bool PIR_Last_State[PIR_Max_Number_Of];
 
-// ON = Light
-bool PIR_LDR_ON[PIR_Max_Number_Of];
+bool PIR_Target_State[PIR_Max_Number_Of];
 
-bool PIR_Disabled[PIR_Max_Number_Of];
 
-byte PIR_Selected_Level[PIR_Max_Number_Of] = {1, 1, 1, 1, 1, 1};
 
 
 
@@ -638,18 +665,15 @@ int LDR_Current_Value = -1;
 int LDR_Value_Min = -1;
 int LDR_Value_Max = -1;
 
-byte LDR_Dead_Band = 10;
-
 Ticker LDR_Ticker;
 #define LDR_Refresh_Rate 100
 
-int LDR_Dark_At = -1;
+String LDR_Dobby_PIR_Name = "";
+int LDR_Dark_At = -1337;
 
 bool LDR_State = false;
 // false = no light
 // true = light
-
-String LDR_Target_Topic;
 
 
 // ############################################################ String_To_IP() ############################################################
@@ -717,6 +741,7 @@ void Rebuild_MQTT_Topics() {
   MQTT_Topic[Topic_RFID] = System_Header + System_Sub_Header + Topic_RFID_Text + Hostname;
   MQTT_Topic[Topic_PIR] = System_Header + System_Sub_Header + Topic_PIR_Text + Hostname;
   MQTT_Topic[Topic_LDR] = System_Header + System_Sub_Header + Topic_LDR_Text + Hostname;
+  MQTT_Topic[Topic_Dobby_PIR] = System_Header + Topic_Dobby_PIR_Text;
 }
 
 
@@ -973,22 +998,15 @@ void LDR_Loop() {
   LDR_Value_Max = max(LDR_Current_Value, LDR_Value_Max);;
 
   // Check if Dobby PIR Name is set
-  if (LDR_Target_Topic != "") {
+  if (LDR_Dobby_PIR_Name != "") {
     // 1024 = dark
     // 0 = light
     bool LDR_New_State;
     // Check if ligh level is below of above the trigger
-    if (LDR_Dark_At == -1) {
-      Log(MQTT_Topic[Topic_Log_Error] + "/LDR", "Disabling LDR, never got a reading from the sensor");
-      LDR_Configured = false;
-    }
     // Higher than = on
-    else if (LDR_Current_Value < LDR_Dark_At && LDR_New_State == false) {
+    if (LDR_Current_Value < LDR_Dark_At) {
       LDR_New_State = true;
     }
-    // else if (LDR_Current_Value - LDR_Dead_Band < LDR_Dark_At) {
-    //   // Do nothing withing dead band
-    // }
     else {
       LDR_New_State = false;
     }
@@ -997,7 +1015,7 @@ void LDR_Loop() {
     if (LDR_New_State != LDR_State) {
       LDR_State = LDR_New_State;
       // Publish state to Dobby PIR
-      MQTT_Client.publish(LDR_Target_Topic.c_str(), 0, false, String("LDR " + String(LDR_State) + ";").c_str());
+        MQTT_Client.publish(String(MQTT_Topic[Topic_Dobby_PIR] + LDR_Dobby_PIR_Name + "/LDR").c_str(), 0, false, (String(LDR_State) + ";").c_str());
     }
 
   }
@@ -1929,7 +1947,6 @@ void PIR_Loop() {
     return;
   }
 
-  // Disable PIR Warmup blink
   if (Indicator_LED_Configured == true) Indicator_LED(LED_PIR, false);
 
   // Check each PIR
@@ -1937,40 +1954,36 @@ void PIR_Loop() {
 
     if (PIR_Pins[i] != 255) {
 
-      // If LDR is on aka its brigh or the PIR is desabled then return
-      if (PIR_Disabled[i] == true || PIR_LDR_ON[i] == true) {
-        if (PIR_ON_Send[i] == true) {
-          MQTT_Client.publish(PIR_Topic[i].c_str(), 0, false, String(PIR_OFF_Payload[i] + ";").c_str());
-          PIR_ON_Send[i] = false;
-        }
-
-        return;
-      }
+      // Every time a high signal is send the timer is reset and publish to ON Target if target on on
 
       bool PIR_Current_State = digitalRead(PIR_Pins[i]);
 
       // Current state check
       // HIGH = Motion detected
       if (PIR_Current_State == HIGH) {
-        // Check if timer is running by checking if PIR_OFF_At[i] < millis()
-        if (PIR_ON_Send[i] == false) {
+        // Target state check - if low publish on message
+        if (PIR_Target_State[i] == LOW) {
           // Publish ON
-          MQTT_Client.publish(PIR_Topic[i].c_str(), 0, false, String(PIR_ON_Payload[PIR_Selected_Level[i]][i] + ";").c_str());
-          PIR_ON_Send[i] = true;
+          Serial.println("ON"); // rm
+          MQTT_Client.publish(PIR_ON_Topic[i].c_str(), 0, false, String(PIR_ON_Payload[i] + ";").c_str());
+          // Change Target State
+          PIR_Target_State[i] = HIGH;
         }
         // Reset timer
         PIR_OFF_At[i] = millis() + (PIR_OFF_Delay[i] * 1000);
       }
 
       else {
-        // Check if timer have elapsed
-        if (millis() < PIR_OFF_At[i]) {
-          return;
-        }
-        if (PIR_ON_Send[i] == true) {
-          // Publish OFF
-          MQTT_Client.publish(PIR_Topic[i].c_str(), 0, false, String(PIR_OFF_Payload[i] + ";").c_str());
-          PIR_ON_Send[i] = false;
+        // Check if Target is HIGH
+        if (PIR_Target_State[i] == HIGH) {
+          // Check if timer have elapsed
+          if (millis() > PIR_OFF_At[i]) {
+            // Publish OFF
+            Serial.println("OFF"); // rm
+            MQTT_Client.publish(PIR_OFF_Topic[i].c_str(), 0, false, String(PIR_OFF_Payload[i] + ";").c_str());
+            // Change Target State
+            PIR_Target_State[i] = LOW;
+          }
         }
       }
     }
@@ -2414,7 +2427,7 @@ void MQTT_Subscribe(String Topic, bool Activate_Topic, byte SubTopics) {
     }
 
     if (MQTT_Subscribtion_Active[Topic_Number] == true && MQTT_Topic_Subscribe_Active[Topic_Number] == true) {
-      Log(MQTT_Topic[Topic_Log_Warning] + "/MQTT", "Already subscribed to Topic: " + Subscribe_String);
+      Log(MQTT_Topic[Topic_Log_Error] + "/MQTT", "Already subscribed to Topic: " + Subscribe_String);
     }
   }
 }
@@ -2607,11 +2620,6 @@ void DHT_Loop() {
 
 // ############################################################ DHT() ############################################################
 bool DHT(String Topic, String Payload) {
-
-  if (DHT_Configured == false) {
-    return false;
-  }
-
   if (Topic.indexOf(MQTT_Topic[Topic_DHT]) != -1) {
 
     Topic.replace(MQTT_Topic[Topic_DHT] + "/", "");
@@ -2662,103 +2670,6 @@ bool DHT(String Topic, String Payload) {
   }
   return false;
 } // DHT
-
-
-// ############################################################ PIR() ############################################################
-bool PIR(String Topic, String Payload) {
-
-  if (PIR_Configured == false) {
-    return false;
-  }
-
-  if (Topic.indexOf(MQTT_Topic[Topic_PIR]) != -1) {
-
-    Topic.replace(MQTT_Topic[Topic_PIR] + "/", "");
-
-    byte Selected_PIR = Topic.toInt() - 1;
-
-    if (Topic.toInt() <= PIR_Max_Number_Of) {
-
-      Payload = Payload.substring(0, Payload.indexOf(";"));
-
-      // Find current PIR state
-      String PIR_State;
-
-      // PIR is on if millis() < PIR_OFF_At[i] aka timer running
-      // ON
-      if (millis() < PIR_OFF_At[Selected_PIR]) {
-        PIR_State = "1";
-      }
-      // OFF
-      else {
-        PIR_State = "0";
-      }
-
-      if (Payload == "?") {
-        Log(MQTT_Topic[Topic_PIR] + "/" + String(Selected_PIR + 1) + "/State", PIR_State);
-        return true;
-      }
-
-      else if (Payload.indexOf("LDR ") != -1) {
-
-        Payload.replace("LDR ", "");
-
-        PIR_LDR_ON[Selected_PIR] = Payload.toInt();
-
-        Log(MQTT_Topic[Topic_PIR] + "/" + String(Selected_PIR + 1) + "/LDR/State", PIR_LDR_ON[Selected_PIR]);
-        return true;
-      }
-
-      else if (Payload.indexOf("Level ") != -1) {
-        // Get selection
-        Payload.replace("Level ", "");
-
-        PIR_Selected_Level[Selected_PIR] = Payload.toInt();
-
-        // FIX - Add level check has to be = to max level
-
-        Log(MQTT_Topic[Topic_PIR] + "/" + String(Selected_PIR + 1) + "/Level/State", Payload);
-        return true;
-      }
-
-      else if (Payload == "Enable") {
-        PIR_Disabled[Selected_PIR] = false;
-        Log(MQTT_Topic[Topic_PIR] + "/" + String(Selected_PIR + 1) + "/Disabled/State", false);
-        return true;
-      }
-      else if (Payload == "Disable") {
-        PIR_Disabled[Selected_PIR] = true;
-        Log(MQTT_Topic[Topic_PIR] + "/" + String(Selected_PIR + 1) + "/Disabled/State", true);
-        return true;
-      }
-
-      else if (Payload == "json") {
-        // Create json buffer
-        DynamicJsonBuffer jsonBuffer(190);
-        JsonObject& root_PIR = jsonBuffer.createObject();
-
-        // encode json string
-        root_PIR.set("State", PIR_State);
-        root_PIR.set("Level", PIR_Selected_Level[Selected_PIR]);
-        root_PIR.set("Level Value", PIR_ON_Payload[PIR_Selected_Level[Selected_PIR] - 1][Selected_PIR]);
-        root_PIR.set("LDR", PIR_LDR_ON[Selected_PIR]);
-        root_PIR.set("Disabled", PIR_Disabled[Selected_PIR]);
-
-        String PIR_String;
-
-        root_PIR.printTo(PIR_String);
-
-        Log(MQTT_Topic[Topic_PIR] + "/" + String(Selected_PIR + 1) + "/json/State", PIR_String);
-
-        return true;
-      }
-
-    }
-  }
-
-
-  return false;
-}
 
 
 // ############################################################ Buzzer_Play() ############################################################
@@ -4040,21 +3951,19 @@ bool FS_Config_Load() {
     MQTT_Settings_Set(PIR_Pins, PIR_Max_Number_Of, root.get<String>("PIR_Pins"), MQTT_Topic[Topic_System] + "/PIR", "PIR Pins");
 
     // Set Target ON variables
-    if (root.get<String>("PIR_Topic") != "") {
-      MQTT_Settings_Set(PIR_Topic, PIR_Max_Number_Of, root.get<String>("PIR_Topic"), MQTT_Topic[Topic_System] + "/PIR", "PIR ON Topic");
+    if (root.get<String>("PIR_ON_Topic") != "") {
+      MQTT_Settings_Set(PIR_ON_Topic, PIR_Max_Number_Of, root.get<String>("PIR_ON_Topic"), MQTT_Topic[Topic_System] + "/PIR", "PIR ON Topic");
+    }
+    if (root.get<String>("PIR_ON_Payload") != "") {
+      MQTT_Settings_Set(PIR_ON_Payload, PIR_Max_Number_Of, root.get<String>("PIR_ON_Payload"), MQTT_Topic[Topic_System] + "/PIR", "PIR ON Payload");
     }
 
+    // Set Target OFF variables
+    if (root.get<String>("PIR_OFF_Topic") != "") {
+      MQTT_Settings_Set(PIR_OFF_Topic, PIR_Max_Number_Of, root.get<String>("PIR_OFF_Topic"), MQTT_Topic[Topic_System] + "/PIR", "PIR OFF Topic");
+    }
     if (root.get<String>("PIR_OFF_Payload") != "") {
       MQTT_Settings_Set(PIR_OFF_Payload, PIR_Max_Number_Of, root.get<String>("PIR_OFF_Payload"), MQTT_Topic[Topic_System] + "/PIR", "PIR OFF Payload");
-    }
-    if (root.get<String>("PIR_ON_Payload_1") != "") {
-      MQTT_Settings_Set(PIR_ON_Payload[0], PIR_Max_Number_Of, root.get<String>("PIR_ON_Payload_1"), MQTT_Topic[Topic_System] + "/PIR", "PIR ON Payload State 1");
-    }
-    if (root.get<String>("PIR_ON_Payload_2") != "") {
-      MQTT_Settings_Set(PIR_ON_Payload[1], PIR_Max_Number_Of, root.get<String>("PIR_ON_Payload_2"), MQTT_Topic[Topic_System] + "/PIR", "PIR ON Payload State 2");
-    }
-    if (root.get<String>("PIR_ON_Payload_3") != "") {
-      MQTT_Settings_Set(PIR_ON_Payload[2], PIR_Max_Number_Of, root.get<String>("PIR_ON_Payload_3"), MQTT_Topic[Topic_System] + "/PIR", "PIR ON Payload State 3");
     }
 
     // Set OFF Delay variables
@@ -4064,7 +3973,7 @@ bool FS_Config_Load() {
 
     // Set pinMode
     for (byte i = 0; i < PIR_Max_Number_Of; i++) {
-      if (PIR_Pins[i] != 255 && PIR_Topic[i] != "" && PIR_ON_Payload[0][i] != "" && PIR_OFF_Payload[i] != "" && PIR_OFF_Delay[i] != 0) {
+      if (PIR_Pins[i] != 255 && PIR_ON_Topic[i] != "" && PIR_ON_Payload[i] != "" && PIR_OFF_Topic[i] != "" && PIR_OFF_Payload[i] != "" && PIR_OFF_Delay[i] != 0) {
         if (Pin_Monitor(Reserve_Normal, PIR_Pins[i]) == Pin_Free) {
           pinMode(Switch_Pins[i], INPUT);
         }
@@ -4083,18 +3992,18 @@ bool FS_Config_Load() {
   if (root.get<String>("LDR_Pin_A0") != "") {
     Log(MQTT_Topic[Topic_System] + "/LDR", "Configuring");
 
-    if (root.get<String>("LDR_Target_Topic") != "") {
-      LDR_Target_Topic = root.get<String>("LDR_Target_Topic");
+    if (root.get<String>("LDR_Dobby_PIR_Name") != "") {
+      LDR_Dobby_PIR_Name = root.get<String>("LDR_Dobby_PIR_Name");
     }
 
     if (root.get<String>("LDR_Dark_At") != "") {
       LDR_Dark_At = root.get<int>("LDR_Dark_At");
     }
 
-    if (LDR_Target_Topic == "" || LDR_Dark_At == -1) {
-      Log(MQTT_Topic[Topic_Log_Error] + "/LDR", "Disabling Dobby PIR missing setting got. LDR_Target_Topic: " + String(LDR_Target_Topic) + " LDR_Dark_At: " + String(LDR_Dark_At));
-      LDR_Target_Topic = "";
-      LDR_Dark_At = -1;
+    if (LDR_Dobby_PIR_Name == "" || LDR_Dark_At == -1337) {
+      Log(MQTT_Topic[Topic_Log_Error] + "/LDR", "Disabling Dobby PIR missing setting got. LDR_Dobby_PIR_Name: " + String(LDR_Dobby_PIR_Name) + " LDR_Dark_At: " + String(LDR_Dark_At));
+      LDR_Dobby_PIR_Name = "";
+      LDR_Dark_At = -1337;
     }
 
 
@@ -4630,8 +4539,6 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
 
   else if (BMP180_Show(topic, payload)) return;
 
-  else if (PIR(topic, payload)) return;
-
   else if (MQ2(topic, payload)) return;
 
   else if (LDR(topic, payload)) return;
@@ -4778,7 +4685,6 @@ void setup() {
   MQTT_Client.setServer(String_To_IP(MQTT_Broker), MQTT_Port.toInt());
   MQTT_Client.setCredentials(MQTT_Username.c_str(), MQTT_Password.c_str());
   MQTT_Client.setClientId(Hostname.c_str());
-  // MQTT_Client.setWill("/Test/Will", 0, false, "Will Test");
 
 
 

@@ -1,3 +1,58 @@
+-------------------- 101053 --------------------
+
+Fixed LDR publish to PIR
+
+working on LDR
+
+loadcell and log still needs to be fixed
+
+-------------------- 101052 --------------------
+PIR is working with 3 levels and LDR support
+
+-------------------- 101051 --------------------
+Added log topics:
+- Log_Fatal
+- Log_Error
+- Log_Warning
+- Log_Info
+- Log_Debug
+
+NOTE: DO THIS = The devices log level can be set in device config.
+
+Added support for MFRC522 RFID
+
+Added support for PIR
+
+Improved Indicator LED so it can have differant states active and blinks at the most important state thats active
+
+Added support LDR
+
+
+-------------------- 101050 --------------------
+LoadCell - Got 4 connected but a soft reset happens when trying to tare but readings work.
+
+
+-------------------- 101049 --------------------
+DHT - Added Min/Max
+DHT - Added error count and disabling of sensor of 10 consekutive reads failed
+
+Changed SimpleDHT librery, file SimpleDHT.cpp:
+Lime - From - To
+60 - read(ptemperature, phumidity, pdata); - return read(ptemperature, phumidity, pdata);
+118 - read2(ptemperature, phumidity, pdata); - return read2(ptemperature, phumidity, pdata);
+297 - read2(ptemperature, phumidity, pdata); - return read2(ptemperature, phumidity, pdata);
+317 - delayMicroseconds(40); - delayMicroseconds(30);
+
+Changing line 317 from 40 to 30 seem to fix the read issues, this is based on:
+https://github.com/winlinvip/SimpleDHT/issues/4
+
+The specification says:
+    // notify DHT11 to start:
+    //    1. PULL LOW 20ms.
+    //    2. PULL HIGH 20-40us.
+    //    3. SET TO INPUT.
+It seems that we should keep the HIGH signal 20-40us, so we should pull high then delay(30us), right?
+
 -------------------- 101048 --------------------
 Added support for multiple load cells
 

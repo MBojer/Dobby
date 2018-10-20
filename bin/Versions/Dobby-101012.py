@@ -16,7 +16,6 @@ import threading
 import time
 import datetime
 from datetime import timedelta
-import random
 
 # MQTT KeepAlive
 import psutil
@@ -38,7 +37,7 @@ from email.MIMEText import MIMEText
 
 
 # System variables
-Version = 101013
+Version = 101012
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
@@ -580,149 +579,224 @@ def MQTT_Config_Send(db_MC_Curser, Hostname, Type, Name, Value):
 # ---------------------------------------- Log_Trigger ----------------------------------------
 class Log_Trigger:
 
+    # How often does esch Log_Trigger read write to the db (sec)
     db_Refresh_Rate = 1.5
 
-    def __init__(self):
-        # Log event
-        Log("Info", "Log Trigger", "Checker", "Starting")
+    id_List = []
+    Topic_List = []
 
-        self.Log_Trigger_Dict = {}
+    def __init__(self, Log_Trigger_id):
 
-        # Sart checker thread
-        Log_Trigger_Thread = threading.Thread(target=self.Checker, kwargs={})
+        db_Connection = Open_db("Dobby")
+        db_Curser = db_Connection.cursor()
+
+        db_Curser.execute("SELECT Name, Tags, Max_Entries, Enabled, State, Topic, Last_Modified FROM Dobby.Log_Trigger WHERE id='" + str(Log_Trigger_id) + "'")
+        Log_Trigger_Info = db_Curser.fetchone()
+
+        Close_db(db_Connection, db_Curser)
+
+        self.Log_Trigger_id = Log_Trigger_id
+        self.Name = str(Log_Trigger_Info[0])
+
+        Log("Info", "Log Trigger", "Initializing", str(self.Name))
+
+        self.Tags = Log_Trigger_Info[1]
+        self.Max_Entries = Log_Trigger_Info[2]
+        self.Enabled = bool(Log_Trigger_Info[3])
+        self.State = Log_Trigger_Info[4]
+        self.Topic = Log_Trigger_Info[5]
+        self.Last_Modified = Log_Trigger_Info[6]
+
+        self.id_List.append(Log_Trigger_id)
+
+        # # Check if topic is in list if not add it
+        if self.Topic not in self.Topic_List:
+            self.Topic_List.append(self.Topic)
+
+        self.Start()
+        Log("Info", "Log Trigger", "Initialization complete", str(self.Name))
+
+    def Log_Value(self, Value, json_Tag=''):
+
+        Log("Debug", "Log Trigger", "Logging", "Value: " + str(Value) + " json_Tag: " + str(json_Tag))
+
+        db_Connection = Open_db()
+        db_Curser = db_Connection.cursor()
+
+        # Make sure Log_Value is string
+        Value = str(Value)
+        # Remove the ";" at the end if there
+        if Value[-1:] == ";":
+            Value = Value[:-1]
+
+        # Change Last_Trigger
+        db_Curser.execute("UPDATE `Dobby`.`Log_Trigger` SET `Last_Trigger`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(self.Log_Trigger_id) + "';")
+
+        # Log Value
+        try:
+            db_Curser.execute("INSERT INTO `" + Log_db + "`.`Log_Trigger` (Name, json_Tag, Tags, Value) Values('" + self.Name + "','" + str(json_Tag) + "' , '" + str(self.Tags) + "', '" + Value + "');")
+        except (MySQLdb.Error, MySQLdb.Warning) as e:
+            # Table missing, create it
+            if e[0] == 1146:
+                Log("Info", "Log Trigger", "db", "Log Trigger Table missing creating it")
+                try:
+                    db_Curser.execute("CREATE TABLE `" + Log_db + "`.`Log_Trigger` (`id` int(11) NOT NULL AUTO_INCREMENT, `Name` varchar(75) NOT NULL, `json_Tag` varchar(75) NOT NULL, `Tags` varchar(75) DEFAULT NULL, `Value` varchar(75) NOT NULL, `DateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`id`))ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;")
+                    # Try logging the message again
+                    db_Curser.execute("INSERT INTO `" + Log_db + "`.`Log_Trigger` (Name, json_Tag, Tags, Value) Values('" + self.Name + "','" + str(json_Tag) + "' , '" + str(self.Tags) + "', '" + Value + "');")
+
+                except (MySQLdb.Error, MySQLdb.Warning) as e:
+                    # Error 1050 = Table already exists
+                    if e[0] != 1050:
+                        Log("Fatal", "Log Trigger", self.Name, "Unable to create log db table, failed with error: " + str(e))
+                        self.Disable()
+                        return
+            else:
+                Log("Critical", "Log Trigger", "db", "Unable to log message. Error: " + str(e))
+                return
+
+        # Delete rows > max
+        db_Curser.execute("SELECT count(*) FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + self.Name + "' AND json_Tag='" + str(json_Tag) + "';")
+        Rows_Number_Of = db_Curser.fetchall()
+
+        if Rows_Number_Of[0][0] > int(self.Max_Entries):
+            Rows_To_Delete = Rows_Number_Of[0][0] - int(self.Max_Entries)
+            print ("DELETE FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + self.Name + "' AND json_Tag='" + str(json_Tag) + "' ORDER BY 'DateTime' LIMIT " + str(Rows_To_Delete) + ";")
+            db_Curser.execute("DELETE FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + self.Name + "' AND json_Tag='" + str(json_Tag) + "' ORDER BY 'DateTime' LIMIT " + str(Rows_To_Delete) + ";")
+            Log("Debug", "Dobby", self.Name, "History Length reached, deleting " + str(Rows_To_Delete))
+
+        Log("Debug", "Log Trigger", self.Name, "Valure capured: " + Value)
+
+        Close_db(db_Connection, db_Curser)
+
+    def Start(self):
+        self.State = 'Start'
+        Log_Trigger_Thread = threading.Thread(target=self.Run, kwargs={})
         Log_Trigger_Thread.daemon = True
         Log_Trigger_Thread.start()
 
-    def Checker(self):
+    # Log message
+    def On_Message(self, mosq, obj, msg):
+        # Dont log retained messages
+        if msg.retain is 0:
+            # json value
+            if Is_json(msg.payload) is True:
+                # Create json
+                root = json.loads(msg.payload)
+                # Split headers into seperate topics
+                for json_Log_Source, json_Log_Value in root.items():
+                    self.Log_Value(json_Log_Value, json_Tag=json_Log_Source)
+            # None json value
+            else:
+                self.Log_Value(msg.payload)
+
+    def Stop(self):
+        self.State = 'Stop'
+
+    def Enable(self):
+        self.Enabled = True
+
+        db_Connection = Open_db("Dobby")
+        db_Curser = db_Connection.cursor()
+
+        db_Curser.execute("UPDATE `Dobby`.`Log_Trigger` SET `Enabled`='Disabled' WHERE `id`='" + str(self.Log_Trigger_id) + "'")
+
+        Close_db(db_Connection, db_Curser)
+
+    def Disable(self):
+        Log("Fatal", "Log Trigger", self.Name, "Disabling Log Trigger")
+        self.Enabled = False
+
+    def Run(self):
+        # Start eternal loop
         while True:
+            # Open db connection
             db_Connection = Open_db("Dobby")
             db_Curser = db_Connection.cursor()
 
-            db_Curser.execute("SELECT id, Last_Modified FROM Dobby.Log_Trigger WHERE Enabled='1'")
-            Log_Trigger_db = db_Curser.fetchall()
+            # Check last modified data to see if any changes has happend to the settings
+            db_Curser.execute("SELECT Last_Modified FROM Dobby.Log_Trigger WHERE id='" + str(self.Log_Trigger_id) + "'")
+            Log_Trigger_Date = db_Curser.fetchone()
 
+            # If Log_Trigger_Date is None its assumed that the db entry, hence removing the Log_Trigger
+            if Log_Trigger_Date is None:
+                Log("Error", "Log Trigger", "Removed from database, removing the trigger", str(self.Name))
+                self.id_List.remove(self.Spammer_id)
+                break
+
+            # If change then read all settings
+            if (Log_Trigger_Date[0] != self.Last_Modified):
+                db_Curser.execute("SELECT Name, Tags, Max_Entries, Enabled, State, Topic, Last_Modified FROM Dobby.Log_Trigger WHERE id='" + str(self.Log_Trigger_id) + "'")
+                Log_Trigger_Info = db_Curser.fetchone()
+
+                self.Name = Log_Trigger_Info[0]
+                self.Tags = Log_Trigger_Info[1]
+                self.Max_Entries = Log_Trigger_Info[2]
+                self.Enabled = bool(Log_Trigger_Info[3])
+                self.State = Log_Trigger_Info[4]
+                self.Topic = Log_Trigger_Info[5]
+                self.Last_Modified = Log_Trigger_Info[6]
+
+            # Mark as disabled and quit the Log_Trigger
+            if self.Enabled is False:
+                self.State = 'Disabled'
+                db_Curser.execute("UPDATE `Dobby`.`Log_Trigger` SET `State`='Disabled', `Enabled`='0' WHERE `id`='" + str(self.Log_Trigger_id) + "'")
+                self.id_List.remove(self.Log_Trigger_id)
+                MQTT_Client.unsubscribe(str(self.Topic))
+                MQTT_Client.message_callback_remove(str(self.Topic))
+                Close_db(db_Connection, db_Curser)
+                return
+
+            # Do nothing if running
+            elif self.State == 'Running':
+                pass
+
+            # Mark as running
+            elif self.State == 'Start' or self.State is None:
+                self.State = 'Running'
+                db_Curser.execute("UPDATE `Dobby`.`Log_Trigger` SET `State`='Running' WHERE `id`='" + str(self.Log_Trigger_id) + "'")
+                MQTT_Client.subscribe(str(self.Topic))
+                # Register callbacks
+                MQTT_Client.message_callback_add(str(self.Topic), self.On_Message)
+
+            # Mark as Stopped
+            elif self.State == 'Stop':
+                self.State = 'Stopped'
+                db_Curser.execute("UPDATE `Dobby`.`Log_Trigger` SET `State`='Stopped' WHERE `id`='" + str(self.Log_Trigger_id) + "'")
+                MQTT_Client.unsubscribe(str(self.Topic))
+                MQTT_Client.message_callback_remove(str(self.Topic))
+
+            # Wait a bit an try again check if something changed, if you dont wait the db will not be able to handle it
             Close_db(db_Connection, db_Curser)
-
-            for i in Log_Trigger_db:
-                # i[0] = Log_Trigger db id
-                if i[0] not in self.Log_Trigger_Dict:
-                    self.Log_Trigger_Dict[i[0]] = self.Agent(i[0])
-                    Log("Debug", "Log Trigger", "Checker", "Starting: " + self.Log_Trigger_Dict[i[0]].Name)
-                else:
-                    # Change to Log_Trigger
-                    if str(self.Log_Trigger_Dict[i[0]].Last_Modified) != str(i[1]):
-                        Log("Debug", "Log Trigger", "Checker", "Change found in: " + self.Log_Trigger_Dict[i[0]].Name + " restarting agent")
-                        # Wait for agent to close db connection
-                        while self.Log_Trigger_Dict[i[0]].OK_To_Kill is False:
-                            time.sleep(0.100)
-                        # Delete agent
-                        Log("Debug", "Log Trigger", "Checker", "Deleting: " + self.Log_Trigger_Dict[i[0]].Name)
-                        del self.Log_Trigger_Dict[i[0]]
-                        # Start agent again
-                        self.Log_Trigger_Dict[i[0]] = self.Agent(i[0])
-                        Log("Debug", "Log Trigger", "Checker", "Starting: " + self.Log_Trigger_Dict[i[0]].Name)
 
             time.sleep(Log_Trigger.db_Refresh_Rate)
 
-    class Agent:
-        def __init__(self, id):
 
-            self.id = int(id)
+def Log_Trigger_Checker():
 
-            db_Connection = Open_db("Dobby")
-            db_Curser = db_Connection.cursor()
+    Log_Trigger_Dict = {}
 
-            db_Curser.execute("SELECT Name, Tags, Max_Entries, Topic, Last_Modified FROM Dobby.Log_Trigger WHERE id='" + str(self.id) + "'")
-            Log_Trigger_Info = db_Curser.fetchone()
+    while True:
+        db_Connection = Open_db("Dobby")
+        db_Curser = db_Connection.cursor()
 
-            Close_db(db_Connection, db_Curser)
+        db_Curser.execute("SELECT id FROM Dobby.Log_Trigger WHERE Enabled='1'")
+        Log_Trigger_db = db_Curser.fetchall()
 
-            self.Name = str(Log_Trigger_Info[0])
+        for i in Log_Trigger_db:
+            # i[0] = Log_Trigger db id
+            if i[0] not in Log_Trigger.id_List:
+                # Create new Log_Trigger
+                Log_Trigger_Dict[int(i[0])] = Log_Trigger(i[0])
 
-            # Canget log event before now if you want to use name
-            Log("Debug", "Log Trigger", self.Name, 'Initializing')
+        Close_db(db_Connection, db_Curser)
+        time.sleep(Log_Trigger.db_Refresh_Rate)
 
-            self.Tags = Log_Trigger_Info[1]
-            self.Max_Entries = Log_Trigger_Info[2]
-            self.Topic = Log_Trigger_Info[3]
-            self.Last_Modified = Log_Trigger_Info[4]
 
-            self.OK_To_Kill = False
-
-            # Subscribe
-            MQTT_Client.subscribe(str(self.Topic))
-            # Register callbacks
-            MQTT_Client.message_callback_add(str(self.Topic), self.On_Message)
-
-            Log("Debug", "Log Trigger", self.Name, 'Initialization compleate')
-
-        # ========================= Agent - On Message =========================
-        def On_Message(self, mosq, obj, msg):
-            # Dont log retained messages
-            if msg.retain is 0:
-                # json value
-                if Is_json(msg.payload) is True:
-                    # Create json
-                    root = json.loads(msg.payload)
-                    # Split headers into seperate topics
-                    for json_Log_Source, json_Log_Value in root.items():
-                        self.Log_Value(json_Log_Value, json_Tag=json_Log_Source)
-                        # None json value
-                else:
-                    self.Log_Value(msg.payload)
-
-        # ========================= Agent - Log Value =========================
-        def Log_Value(self, Value, json_Tag=''):
-
-            Log("Debug", "Log Trigger", "Logging", "Value: " + str(Value) + " json_Tag: " + str(json_Tag))
-
-            db_Connection = Open_db()
-            db_Curser = db_Connection.cursor()
-
-            # Make sure Log_Value is string
-            Value = str(Value)
-            # Remove the ";" at the end if there
-            if Value[-1:] == ";":
-                Value = Value[:-1]
-
-            # Change Last_Trigger
-            db_Curser.execute("UPDATE `Dobby`.`Log_Trigger` SET `Last_Trigger`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(self.id) + "';")
-
-            # Log Value
-            try:
-                db_Curser.execute("INSERT INTO `" + Log_db + "`.`Log_Trigger` (Name, json_Tag, Tags, Value) Values('" + self.Name + "','" + str(json_Tag) + "' , '" + str(self.Tags) + "', '" + Value + "');")
-            except (MySQLdb.Error, MySQLdb.Warning) as e:
-                # Table missing, create it
-                if e[0] == 1146:
-                    Log("Info", "Log Trigger", "db", "Log Trigger Table missing creating it")
-                    try:
-                        db_Curser.execute("CREATE TABLE `" + Log_db + "`.`Log_Trigger` (`id` int(11) NOT NULL AUTO_INCREMENT, `Name` varchar(75) NOT NULL, `json_Tag` varchar(75) NOT NULL, `Tags` varchar(75) DEFAULT NULL, `Value` varchar(75) NOT NULL, `DateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`id`))ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;")
-                        # Try logging the message again
-                        db_Curser.execute("INSERT INTO `" + Log_db + "`.`Log_Trigger` (Name, json_Tag, Tags, Value) Values('" + self.Name + "','" + str(json_Tag) + "' , '" + str(self.Tags) + "', '" + Value + "');")
-
-                    except (MySQLdb.Error, MySQLdb.Warning) as e:
-                        # Error 1050 = Table already exists
-                        if e[0] != 1050:
-                            Log("Fatal", "Log Trigger", self.Name, "Unable to create log db table, failed with error: " + str(e))
-                            self.Disable()
-                            return
-                else:
-                    Log("Critical", "Log Trigger", "db", "Unable to log message. Error: " + str(e))
-                    return
-
-            # Delete rows > max
-            db_Curser.execute("SELECT count(*) FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + self.Name + "' AND json_Tag='" + str(json_Tag) + "';")
-            Rows_Number_Of = db_Curser.fetchall()
-
-            if Rows_Number_Of[0][0] > int(self.Max_Entries):
-                Rows_To_Delete = Rows_Number_Of[0][0] - int(self.Max_Entries)
-                print ("DELETE FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + self.Name + "' AND json_Tag='" + str(json_Tag) + "' ORDER BY 'DateTime' LIMIT " + str(Rows_To_Delete) + ";")
-                db_Curser.execute("DELETE FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + self.Name + "' AND json_Tag='" + str(json_Tag) + "' ORDER BY 'DateTime' LIMIT " + str(Rows_To_Delete) + ";")
-                Log("Debug", "Dobby", self.Name, "History Length reached, deleting " + str(Rows_To_Delete))
-
-            Log("Debug", "Log Trigger", self.Name, "Valure capured: " + Value)
-
-            Close_db(db_Connection, db_Curser)
+def Log_Trigger_init():
+    # Start Log_Trigger checker thread
+    Log_Trigger_Thread = threading.Thread(target=Log_Trigger_Checker, kwargs={})
+    Log_Trigger_Thread.daemon = True
+    Log_Trigger_Thread.start()
 
 
 # ---------------------------------------- Spammer ----------------------------------------
@@ -730,18 +804,149 @@ class Spammer:
 
     # How often does esch spammer read write to the db (sec)
     db_Refresh_Rate = 1.5
-    Loop_Delay = 0.500
+
+    Spammer_Dict = {}
+
+    id_List = []
+
+    Checker_Running = False
 
     def __init__(self):
-        # Log event
-        Log("Info", "Spammer", "Checker", "Starting")
 
-        self.Spammer_Dict = {}
+        if self.Checker_Running is False:
+            print "Starting checkere"
+            self.Checker_Running = True
+            self.Checker()
 
-        # Sart checker thread
-        Spammer_Thread = threading.Thread(target=self.Checker, kwargs={})
+    def Spawn(self, Spammer_id):
+        db_Connection = Open_db("Dobby")
+        db_Curser = db_Connection.cursor()
+
+        db_Curser.execute("SELECT Name, Enabled, State, `Interval`, Topic, Payload, Next_Ping, Last_Modified FROM Dobby.Spammer WHERE id='" + str(Spammer_id) + "'")
+        Spammer_Info = db_Curser.fetchone()
+
+        self.Spammer_id = Spammer_id
+        self.Name = Spammer_Info[0]
+
+        Log("Debug", "Spammer", "Initializing", str(self.Name))
+
+        self.Enabled = bool(Spammer_Info[1])
+        self.State = Spammer_Info[2]
+        self.Interval = float(Spammer_Info[3])
+        self.Topic = Spammer_Info[4]
+        self.Payload = Spammer_Info[5]
+        self.Next_Ping = Spammer_Info[6]
+        self.Last_Modified = Spammer_Info[7]
+
+        self.id_List.append(Spammer_id)
+
+        Close_db(db_Connection, db_Curser)
+
+        self.Start()
+
+        Log("Debug", "Spammer", "Initialization complete", str(self.Name))
+
+    def Start(self):
+        Log("Debug", "Spammer", "Starting", str(self.Name))
+        self.State = 'Start'
+        Spammer_Thread = threading.Thread(target=self.Run, kwargs={})
         Spammer_Thread.daemon = True
         Spammer_Thread.start()
+
+    def Stop(self):
+        Log("Debug", "Spammer", "Stopping", str(self.Name))
+        self.State = 'Stop'
+
+    def Enable(self):
+        Log("Debug", "Spammer", "Enabling", str(self.Name))
+
+        db_Connection = Open_db("Dobby")
+        db_Curser = db_Connection.cursor()
+
+        db_Curser.execute("UPDATE `Dobby`.`Spammer` SET `Enabled`='1' WHERE `id`='" + str(self.Spammer_id) + "'")
+
+        Close_db(db_Connection, db_Curser)
+
+        self.Enabled = True
+
+    def Disable(self):
+        Log("Debug", "Spammer", "Disabling", str(self.Name))
+
+        db_Connection = Open_db("Dobby")
+        db_Curser = db_Connection.cursor()
+
+        db_Curser.execute("UPDATE `Dobby`.`Spammer` SET `Enabled`='0' WHERE `id`='" + str(self.Spammer_id) + "'")
+
+        Close_db(db_Connection, db_Curser)
+        self.Enabled = False
+
+    def Run(self):
+        Log("Debug", "Spammer", "Started", str(self.Name))
+        # Start eternal loop
+        while True:
+            # Open db connection
+            db_Connection = Open_db("Dobby")
+            db_Curser = db_Connection.cursor()
+
+            db_Curser.execute("set autocommit = 1")
+
+            # Check last modified data to see if any changes has happend to the settings
+            db_Curser.execute("SELECT Last_Modified FROM Dobby.Spammer WHERE id='" + str(self.Spammer_id) + "'")
+            Spammer_Date = db_Curser.fetchone()
+
+            # If Spammer_Date is None its assumed that the db entry, hence removing the Spammer
+            if Spammer_Date is None:
+                Log("Error", "Spammer", "Removed from database", str(self.Name))
+                self.id_List.remove(self.Spammer_id)
+                break
+
+            # If change then read all settings
+            if (Spammer_Date[0] != self.Last_Modified):
+                Log("Debug", "Spammer", "Config Changed", str(self.Name))
+                db_Curser.execute("SELECT Enabled, State, `Interval`, Topic, Payload, Next_Ping, Last_Modified FROM Dobby.Spammer WHERE id='" + str(self.Spammer_id) + "'")
+                Spammer_Info = db_Curser.fetchone()
+
+                self.Enabled = bool(Spammer_Info[0])
+                self.State = Spammer_Info[1]
+                self.Interval = float(Spammer_Info[2])
+                self.Topic = Spammer_Info[3]
+                self.Payload = Spammer_Info[4]
+                self.Next_Ping = Spammer_Info[5]
+                self.Last_Modified = Spammer_Info[6]
+
+            # Mark as disabled and quit the Spammer
+            if self.Enabled is False:
+                Log("Info", "Spammer", "Disabled", str(self.Name))
+                self.State = 'Disabled'
+                db_Curser.execute("UPDATE `Dobby`.`Spammer` SET `State`='Disabled' WHERE `id`='" + str(self.Spammer_id) + "'")
+                self.id_List.remove(self.Spammer_id)
+                break
+
+            # Mark as running
+            elif self.State == 'Start' or self.State is None:
+                Log("Info", "Spammer", "Running", str(self.Name))
+                self.State = 'Running'
+                db_Curser.execute("UPDATE `Dobby`.`Spammer` SET `State`='Running' WHERE `id`='" + str(self.Spammer_id) + "'")
+
+            # Running
+            elif self.State == 'Running':
+                # Check if its time to ping
+                if self.Next_Ping < datetime.datetime.now():
+                    Log("Debug", "Spammer", "Ping", str(self.Name))
+                    self.Next_Ping = datetime.datetime.now() + timedelta(seconds=self.Interval)
+                    db_Curser.execute("UPDATE `Dobby`.`Spammer` SET `Next_Ping`='" + str(self.Next_Ping) + "', `Last_Ping`='" + str(datetime.datetime.now()) + "' WHERE id = '" + str(self.Spammer_id) + "';")
+                    MQTT_Client.publish(self.Topic, payload=self.Payload, qos=0, retain=False)
+
+            # Mark as Stopped
+            elif self.State == 'Stop':
+                Log("Info", "Spammer", "Stopped", str(self.Name))
+                self.State = 'Stopped'
+                db_Curser.execute("UPDATE `Dobby`.`Spammer` SET `State`='Stopped' WHERE `id`='" + str(self.Spammer_id) + "'")
+
+            # Wait a bit an try again check if something changed, if you dont wait the db will not be able to handle it
+            # NOTE: dont set it to low or else the db connection will timeout
+            Close_db(db_Connection, db_Curser)
+            time.sleep(Spammer.db_Refresh_Rate)
 
     def Checker(self):
 
@@ -749,103 +954,25 @@ class Spammer:
             db_Connection = Open_db("Dobby")
             db_Curser = db_Connection.cursor()
 
-            db_Curser.execute("SELECT id, Last_Modified FROM Dobby.Spammer WHERE Enabled='1'")
+            db_Curser.execute("SELECT id FROM Dobby.Spammer WHERE Enabled='1'")
             Spammer_db = db_Curser.fetchall()
 
             Close_db(db_Connection, db_Curser)
 
             for i in Spammer_db:
                 # i[0] = Spammer db id
-                if i[0] not in self.Spammer_Dict:
-                    self.Spammer_Dict[i[0]] = self.Agent(i[0])
-                    Log("Debug", "Spammer", "Checker", "Starting: " + self.Spammer_Dict[i[0]].Name)
-
-                else:
-                    # Change to spammer
-                    if str(self.Spammer_Dict[i[0]].Last_Modified) != str(i[1]):
-                        Log("Debug", "Spammer", "Checker", "Change found in: " + self.Spammer_Dict[i[0]].Name + " restarting agent")
-                        # Wait for agent to close db connection
-                        while self.Spammer_Dict[i[0]].OK_To_Kill is False:
-                            time.sleep(0.100)
-
-                        # Delete agent
-                        Log("Debug", "Spammer", "Checker", "Deleting: " + self.Spammer_Dict[i[0]].Name)
-                        del self.Spammer_Dict[i[0]]
-                        # Start agent again
-                        self.Spammer_Dict[i[0]] = self.Agent(i[0])
-                        Log("Debug", "Spammer", "Checker", "Starting: " + self.Spammer_Dict[i[0]].Name)
-
-                time.sleep(random.uniform(0.10, 0.150))
+                if i[0] not in self.id_List:
+                    # Create new Spammer
+                    self.Spammer_Dict[int(i[0])] = self.Spawn(i[0])
 
             time.sleep(Spammer.db_Refresh_Rate)
 
-    class Agent:
-        def __init__(self, id):
 
-            self.id = int(id)
-
-            db_Connection = Open_db("Dobby")
-            db_Curser = db_Connection.cursor()
-
-            db_Curser.execute("SELECT Name, Enabled, State, `Interval`, Topic, Payload, Next_Ping, Last_Modified FROM Dobby.Spammer WHERE id='" + str(self.id) + "'")
-            Spammer_Info = db_Curser.fetchone()
-
-            Close_db(db_Connection, db_Curser)
-
-            self.Name = str(Spammer_Info[0])
-
-            # Canget log event before now if you want to use name
-            Log("Debug", "Spammer", self.Name, 'Initializing')
-
-            self.Enabled = bool(Spammer_Info[1])
-            self.State = Spammer_Info[2]
-            self.Interval = float(Spammer_Info[3])
-            self.Topic = Spammer_Info[4]
-            self.Payload = Spammer_Info[5]
-            self.Next_Ping = Spammer_Info[6]
-            self.Last_Modified = Spammer_Info[7]
-
-            self.OK_To_Kill = True
-
-            Log("Debug", "Spammer", self.Name, 'Initialization compleate')
-
-            self.Start()
-
-        # ========================= Agent - Start =========================
-        def Start(self):
-            Spammer_Thread = threading.Thread(target=self.Run, kwargs={})
-            Spammer_Thread.daemon = True
-            Spammer_Thread.start()
-
-        # ========================= Agent - Run =========================
-        def Run(self):
-
-            Log("Info", "Spammer", self.Name, "Running")
-            # Start eternal loop
-            while True:
-                # Check if its time to ping
-                if self.Next_Ping < datetime.datetime.now():
-                    Log("Debug", "Spammer", self.Name, "Ping")
-
-                    self.Next_Ping = datetime.datetime.now() + timedelta(seconds=self.Interval)
-
-                    self.OK_To_Kill = False
-
-                    db_Connection = Open_db("Dobby")
-                    db_Curser = db_Connection.cursor()
-
-                    db_Curser.execute("UPDATE `Dobby`.`Spammer` SET `Next_Ping`='" + str(self.Next_Ping) + "', `Last_Ping`='" + str(datetime.datetime.now()) + "' WHERE id = '" + str(self.id) + "';")
-
-                    Close_db(db_Connection, db_Curser)
-
-                    self.OK_To_Kill = True
-
-                    MQTT_Client.publish(self.Topic, payload=self.Payload, qos=0, retain=False)
-
-                    time.sleep(Spammer.Loop_Delay)
-
-                while self.Next_Ping > datetime.datetime.now():
-                    time.sleep(Spammer.Loop_Delay)
+# def Spammer_init():
+#     # Start Spammer checker thread
+#     Spammer_Thread = threading.Thread(target=Spammer_Checker, kwargs={})
+#     Spammer_Thread.daemon = True
+#     Spammer_Thread.start()
 
 
 # ---------------------------------------- KeepAlive Monitor ----------------------------------------
@@ -1754,10 +1881,9 @@ Log("Info", "Dobby", "System", "Booting Dobby - Version: " + str(Version))
 
 MQTT_init(MQTT_Client)
 
-# Start Spammer
+# Init Spammer
 Spammer()
 
-# Start Log Trigger
-Log_Trigger()
+Log_Trigger_init()
 
 MQTT_Client.loop_forever()

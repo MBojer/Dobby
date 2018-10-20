@@ -37,7 +37,7 @@ import pandas as pd
 import json
 
 # MISC
-Version = 101005
+Version = 101004
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
@@ -207,10 +207,6 @@ def Generate_Variable_Dict(String):
 
     Return_Dict = {}
 
-    print "String"
-    print String
-    print type(String)
-
     # Do nothing if string en empthy
     if String == "" or String is None:
         pass
@@ -294,10 +290,9 @@ def MQTT_Config_New(Selected_Device):
 # ======================================== Layout ========================================
 app.layout = html.Div([
 
-    dcc.Tabs(id="tabs", value='Log_Trigger_Tab', children=[
+    dcc.Tabs(id="tabs", value='MonitorAgent_Tab', children=[
         dcc.Tab(label='Buttons', value='Buttons_Tab'),
         dcc.Tab(label='MonitorAgent', value='MonitorAgent_Tab'),
-        dcc.Tab(label='Log Trigger', value='Log_Trigger_Tab'),
         dcc.Tab(label='Alerts', value='Alerts_Tab'),
         dcc.Tab(label='Functions', value='Functions_Tab'),
         dcc.Tab(label='Devices', value='Devices_Tab'),
@@ -317,7 +312,6 @@ app.layout = html.Div([
 
         html.Div(id='Devices_Tab_Variables', children=""),
         html.Div(id='MonitorAgent_Tab_Variables', children=""),
-        html.Div(id='Log_Trigger_Tab_Variables', children=""),
         html.Div(id='Users_Tab_Variables', children=""),
         html.Div(id='Buttons_Tab_Variables', children=""),
         html.Div(id='System_Tab_Variables', children=""),
@@ -335,17 +329,15 @@ app.layout = html.Div([
     [
         State('Devices_Tab_Variables', 'children'),
         State('MonitorAgent_Tab_Variables', 'children'),
-        State('Log_Trigger_Tab_Variables', 'children'),
         State('Users_Tab_Variables', 'children'),
         State('Buttons_Tab_Variables', 'children'),
         State('System_Tab_Variables', 'children'),
         ]
     )
-def render_content(tab, Devices_Tab_Variables, MonitorAgent_Tab_Variables, Log_Trigger_Tab_Variables, Users_Tab_Variables, Buttons_Tab_Variables, System_Tab_Variables):
+def render_content(tab, Devices_Tab_Variables, MonitorAgent_Tab_Variables, Users_Tab_Variables, Buttons_Tab_Variables, System_Tab_Variables):
 
     Devices_Tab_Variables = Generate_Variable_Dict(Devices_Tab_Variables)
     MonitorAgent_Tab_Variables = Generate_Variable_Dict(MonitorAgent_Tab_Variables)
-    Log_Trigger_Tab_Variables = Generate_Variable_Dict(Log_Trigger_Tab_Variables)
     Users_Tab_Variables = Generate_Variable_Dict(Users_Tab_Variables)
     Buttons_Tab_Variables = Generate_Variable_Dict(Buttons_Tab_Variables)
 
@@ -624,52 +616,11 @@ def render_content(tab, Devices_Tab_Variables, MonitorAgent_Tab_Variables, Log_T
         return html.Div([
         ], id='Functions_Tab')
 
-    # ======================================== Log Trigger Tab ========================================
-    elif tab == 'Log_Trigger_Tab':
-        return html.Div([
-            dcc.Dropdown(
-                id='Log_Trigger_Dropdown',
-                options=[{'label': Trigger, 'value': Trigger} for Trigger in SQL_To_List("SELECT DISTINCT Name FROM DobbyLog.Log_Trigger;")],
-                multi=True,
-                value=Log_Trigger_Tab_Variables.get('Log_Trigger_Dropdown')
-            ),
-        ], id='Log_Trigger_Tab')
-
 
 # ================================================================================ Callbacks ================================================================================
 # ================================================================================ Callbacks ================================================================================
 # ================================================================================ Callbacks ================================================================================
 # ================================================================================ Callbacks ================================================================================
-
-# ======================================== Log Trigger Tab - Callbacks ========================================
-# Log_Trigger_Tab_Variables
-@app.callback(
-    Output('Log_Trigger_Tab_Variables', 'children'),
-    [
-        Input('Log_Trigger_Dropdown', 'value'),
-        # Input('Log_Trigger_Slider', 'value'),
-        # Input('Log_Trigger_Button_Live', 'n_clicks'),
-        # Input('Log_Trigger_Dropdown_Agent_State', 'value'),
-        # Input('Log_Trigger_Current_State', 'value'),
-        # Input('Log_Trigger_Change_State', 'value'),
-        ],
-    [
-        State('Log_Trigger_Tab_Variables', 'children')
-        ]
-    )
-def Log_Trigger_Tab_Variables(Log_Trigger_Dropdown, Log_Trigger_Tab_Variables):
-
-    Log_Trigger_Tab_Variables = Generate_Variable_Dict(Log_Trigger_Tab_Variables)
-
-    Log_Trigger_Tab_Variables['Log_Trigger_Dropdown'] = Log_Trigger_Dropdown
-
-    print "Log_Trigger_Tab_Variables['Log_Trigger_Dropdown']"
-    print Log_Trigger_Tab_Variables['Log_Trigger_Dropdown']
-    print Log_Trigger_Tab_Variables['Log_Trigger_Dropdown'][0]
-    print type(Log_Trigger_Tab_Variables['Log_Trigger_Dropdown'][0])
-
-    return Generate_Variable_String(Log_Trigger_Tab_Variables)
-
 
 # ======================================== Button Tab - Callbacks ========================================
 # Button Tabs
@@ -1223,6 +1174,7 @@ def MonitorAgent_Tab_Buttons(MonitorAgent_Dropdown, MonitorAgent_Slider, Monitor
                 db_MTB_Curser.execute("UPDATE `Dobby`.`MonitorAgentConfig` SET `Agent_State`='Stop' WHERE `Agent_ID`='" + str(SQL_Return[0]) + "';")
                 db_MTB_Curser.execute("UPDATE `Dobby`.`MonitorAgentConfig` SET `Date_Modified`='" + str(datetime.datetime.now()) + "' WHERE `Agent_ID`='" + str(SQL_Return[0]) + "';")
                 print 'MARKER Stoppeeeeedddddddddddddddddddddddddddddddddddddddddddd'
+
 
             if MonitorAgent_Dropdown_Agent_State == 'Running':
                 print "State changed to"

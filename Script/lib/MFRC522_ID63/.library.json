@@ -1,0 +1,35 @@
+{
+    "name": "MFRC522", 
+    "repository": {
+        "url": "https://github.com/miguelbalboa/rfid.git", 
+        "type": "git"
+    }, 
+    "platforms": [
+        "atmelavr", 
+        "ststm32", 
+        "teensy", 
+        "espressif8266", 
+        "samd"
+    ], 
+    "frameworks": [
+        "arduino"
+    ], 
+    "version": "1.4.2", 
+    "export": {
+        "exclude": "doc"
+    }, 
+    "authors": [
+        {
+            "maintainer": false, 
+            "name": "Miguel Balboa", 
+            "url": "https://github.com/miguelbalboa", 
+            "email": null
+        }
+    ], 
+    "keywords": [
+        "spi", 
+        "rfid"
+    ], 
+    "id": 63, 
+    "description": "Read a card using a MFRC522 reader on your SPI interface"
+}

@@ -27,7 +27,7 @@ pip install --upgrade pip
 pip install flask logging paho-mqtt psutil mysql-python
 
 # Install dependencies - Dash
-pip install dash==0.26.3 dash-html-components==0.12.0 dash-core-components==0.28.0 pandas dash-auth==1.0.0
+pip install dash==0.26.3 dash-html-components==0.12.0 dash-core-components==0.28.0 pandas dash-auth==1.0.0 six
 
 
 # Pull and move

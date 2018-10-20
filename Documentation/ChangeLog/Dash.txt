@@ -1,3 +1,18 @@
+================================================== 101005 ==================================================
+
+Added Log Trigger
+
 ================================================== 101004 ==================================================
 
 Added SoftwareVersion to Device Graph
+
+
+# - 101003
+# -- Added live graph under monitoring agent
+#
+# - 101002
+# -- Fixed issues with clicks getting triggered when reentering buttons tab
+# -- Added Systems tab and shutdown buttton
+#
+# - 101001
+# -- A lot of stull happened
