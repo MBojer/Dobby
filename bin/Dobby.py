@@ -787,7 +787,7 @@ class Spammer:
             db_Connection = Open_db("Dobby")
             db_Curser = db_Connection.cursor()
 
-            db_Curser.execute("SELECT Name, Enabled, State, `Interval`, Topic, Payload, Next_Ping, Last_Modified FROM Dobby.Spammer WHERE id='" + str(self.id) + "'")
+            db_Curser.execute("SELECT Name, Enabled, `Interval`, Topic, Payload, Next_Ping, Last_Modified FROM Dobby.Spammer WHERE id='" + str(self.id) + "'")
             Spammer_Info = db_Curser.fetchone()
 
             Close_db(db_Connection, db_Curser)
@@ -798,12 +798,11 @@ class Spammer:
             Log("Debug", "Spammer", self.Name, 'Initializing')
 
             self.Enabled = bool(Spammer_Info[1])
-            self.State = Spammer_Info[2]
-            self.Interval = float(Spammer_Info[3])
-            self.Topic = Spammer_Info[4]
-            self.Payload = Spammer_Info[5]
-            self.Next_Ping = Spammer_Info[6]
-            self.Last_Modified = Spammer_Info[7]
+            self.Interval = float(Spammer_Info[2])
+            self.Topic = Spammer_Info[3]
+            self.Payload = Spammer_Info[4]
+            self.Next_Ping = Spammer_Info[5]
+            self.Last_Modified = Spammer_Info[6]
 
             self.OK_To_Kill = True
 
@@ -860,7 +859,7 @@ def KeepAlive_Monitor(Topic, Payload):
         Log("Debug", "KeepAliveMonitor", "KeepAlive", "From unknown device - Topic: " + Topic + " Payload: " + Payload)
         return
 
-    Log("Debug", "KeepAliveMonitor", "KeepAlive", "From: " + root_KL["Hostname"])
+    Log("Debug", "KeepAliveMonitor", "KeepAlive", " From: " + root_KL["Hostname"])
 
     if "IP" not in root_KL:
         if root_KL["Hostname"] is "Dobby":
@@ -1253,12 +1252,12 @@ def Auto_Update(Hostname, IP, Current_SW):
             Firmware_List.append(int(Firmware_Name.replace(".bin", "")))
 
     if Current_SW < max(Firmware_List):
-        Log("Info", "AutoUpdate", "Updating", Hostname + "From: " + str(Current_SW) + " To:" + str(max(Firmware_List)))
+        Log("Info", "AutoUpdate", "Updating", Hostname + " From: " + str(Current_SW) + " To:" + str(max(Firmware_List)))
 
         # FIX ADD FOLDER ROOT PATH BELOW
         call(["python", "/etc/Dobby/Tools/espota.py", "-i", IP, "-a", "StillNotSinking", "-f", "/etc/Dobby/Firmware/" + str(max(Firmware_List)) + ".bin"])
 
-        Log("Debug", "AutoUpdate", "Update compleate", Hostname + "From: " + str(Current_SW) + " To:" + str(max(Firmware_List)))
+        Log("Debug", "AutoUpdate", "Update compleate", Hostname + " From: " + str(Current_SW) + " To:" + str(max(Firmware_List)))
 
     elif Current_SW == max(Firmware_List):
         Log("Debug", "AutoUpdate", "OK", Hostname + "Up to date")

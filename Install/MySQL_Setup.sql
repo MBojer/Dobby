@@ -133,45 +133,11 @@ CREATE TABLE `Dobby`.`Spammer` (
   `Interval` decimal(10,4) NOT NULL DEFAULT '300.0000',
   `Topic` varchar(45) NOT NULL,
   `Payload` varchar(45) NOT NULL,
-  `Next_Ping` datetime DEFAULT NULL CURRENT_TIMESTAMP,
+  `Next_Ping` datetime DEFAULT CURRENT_TIMESTAMP,
   `Last_Ping` datetime DEFAULT NULL,
-  `Last_Modified` datetime DEFAULT CURRENT_TIMESTAMP,
+  `Last_Modified` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id_UNIQUE` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
-
-
-CREATE TABLE `Dobby`.`MonitorAgentConfig` (
-  `Agent_ID` tinyint(3) unsigned NOT NULL AUTO_INCREMENT,
-  `Agent_Name` varchar(25) NOT NULL,
-  `Agent_Enabled` tinyint(1) NOT NULL DEFAULT '1',
-  `Agent_State` varchar(8) NOT NULL DEFAULT 'Stopped',
-  `Agent_Interval` varchar(20) NOT NULL,
-  `Agent_Targets` varchar(200) NOT NULL,
-  `Agent_Targets_Payload` varchar(200) NOT NULL,
-  `Agent_Sources` varchar(200) NOT NULL,
-  `Agent_Log_Length` smallint(5) unsigned NOT NULL DEFAULT '15000',
-  `Agent_Last_Ping` timestamp NOT NULL DEFAULT '1984-09-24 00:00:00',
-  `Agent_Next_Ping` timestamp NOT NULL DEFAULT '1984-09-24 00:00:01',
-  `Date_Modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`Agent_ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
-
-
-CREATE TABLE `Dobby`.`PIR` (
-  `id` int(16) NOT NULL AUTO_INCREMENT,
-  `Name` VARCHAR(45) NOT NULL,
-  `State` tinyint(1) NOT NULL DEFAULT 1,
-  `PIR_Source_Topic` VARCHAR(45) NOT NULL,
-  `LDR_Source_Topic` VARCHAR(45) NOT NULL,
-  `LDR_Trigger_At` tinyint(4) NOT NULL,
-  `Target_Topic` VARCHAR(45) NOT NULL,
-  `Target_Payload_1` VARCHAR(45) NOT NULL,
-  `Target_Payload_2` VARCHAR(45) NOT NULL,
-  `Target_Payload_3` VARCHAR(45) NOT NULL,
-  `Target_State` tinyint(1) NOT NULL DEFAULT 0,
-  `DateModified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
 
 
@@ -217,9 +183,6 @@ INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Mail_Tr
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Log", "db", "DobbyLog");
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Log", "Length", "250000");
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "Log", "Level", "Info");
-
-INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MonitorAgent", "Log", "Level", "Info");
-INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MonitorAgent", "Log", "Length", "25000");
 
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("KeepAliveMonitor", "Log", "Level", "Info");
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("KeepAliveMonitor", "Log", "Length", "2500");

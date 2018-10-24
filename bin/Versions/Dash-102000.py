@@ -41,7 +41,7 @@ import plotly.graph_objs as go
 # import json
 
 # MISC
-Version = 102002
+Version = 102000
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
@@ -181,31 +181,6 @@ def SQL_Read(SQL_String):
     return db_Resoult
 
 
-# ======================================== Generate_Spammer_Dict ========================================
-def Generate_Spammer_Dict(Selected_Spammer, db_Curser):
-
-    if Selected_Spammer is None:
-        return None
-
-    db_Curser.execute("SELECT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA`='Dobby' AND `TABLE_NAME`='Spammer';")
-    Spammer_Setting = db_Curser.fetchall()
-
-    db_Curser.execute("SELECT * FROM Dobby.Spammer WHERE `Name`='" + Selected_Spammer + "';")
-    Spammer_Value = db_Curser.fetchone()
-
-    Row_List = []
-    Config_Ignore_List = ['id', 'Date_Modified']
-
-    i = 0
-
-    for Setting in Spammer_Setting:
-        if Setting[0] not in Config_Ignore_List:
-            Row_List.append({'Setting': [Setting[0]], 'Value': [Spammer_Value[i]]})
-        i = i + 1
-
-    return Row_List
-
-
 # ======================================== Generate_Device_Config_Dict ========================================
 def Generate_Device_Config_Dict(Selected_Device, db_Curser):
 
@@ -215,7 +190,7 @@ def Generate_Device_Config_Dict(Selected_Device, db_Curser):
     db_Curser.execute("SELECT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA`='Dobby' AND `TABLE_NAME`='DeviceConfig';")
     Device_Config_Setting = db_Curser.fetchall()
 
-    db_Curser.execute("SELECT * FROM Dobby.DeviceConfig WHERE Hostname='" + Selected_Device + "';")
+    db_Curser.execute("SELECT * FROM Dobby.DeviceConfig WHERE Hostname='" + Selected_Device + "' AND Config_Active=1;")
     Device_Config_Value = db_Curser.fetchone()
 
     Row_List = []
@@ -282,12 +257,8 @@ def Generate_Variable_String(Dict):
 # ======================================== Layout ========================================
 app.layout = html.Div([
 
-    dcc.Tabs(id="tabs", value='Spammer_Tab', children=[
-        # dcc.Tab(label='Device', value='Device_Tab'),
-        dcc.Tab(label='Device Config', value='Device_Config_Tab'),
+    dcc.Tabs(id="tabs", value='Log_Trigger_Tab', children=[
         dcc.Tab(label='Log Trigger', value='Log_Trigger_Tab'),
-        # dcc.Tab(label='Log Trigger Config', value='Log_Trigger_Config_Tab'),
-        dcc.Tab(label='Spammer', value='Spammer_Tab'),
         dcc.Tab(label='System', value='System_Tab'),
         ]),
 
@@ -300,11 +271,8 @@ app.layout = html.Div([
 
     # Places to store variables
     html.Div([
-        # html.Div(id='Device_Tab_Variables', children=""),
-        html.Div(id='Device_Config_Tab_Variables', children=""),
+
         html.Div(id='Log_Trigger_Tab_Variables', children=""),
-        # html.Div(id='Log_Trigger_Config_Tab_Variables', children=""),
-        html.Div(id='Spammer_Tab_Variables', children=""),
         html.Div(id='System_Tab_Variables', children=""),
 
         ], style={'display': 'none'})
@@ -318,52 +286,19 @@ app.layout = html.Div([
         Input('tabs', 'value'),
         ],
     [
-        # State('Device_Tab_Variables', 'children'),
-        State('Device_Config_Tab_Variables', 'children'),
         State('Log_Trigger_Tab_Variables', 'children'),
-        # State('Log_Trigger_Config_Tab_Variables', 'children'),
-        State('Spammer_Tab_Variables', 'children'),
         State('System_Tab_Variables', 'children'),
         ]
     )
-def render_content(tab, Device_Config_Tab_Variables, Log_Trigger_Tab_Variables, Spammer_Tab_Variables, System_Tab_Variables):
-    # ======================================== Spammer Tab ========================================
-    # ======================================== Spammer Tab ========================================
-    # ======================================== Spammer Tab ========================================
-    if tab == 'Spammer_Tab':
-        Spammer_Tab_Variables = Generate_Variable_Dict(Spammer_Tab_Variables)
+def render_content(tab, Log_Trigger_Tab_Variables, System_Tab_Variables):
 
-        return html.Div(
-            id='Spammer_Tab',
-            children=[
-                # Dropdown to select Spammer
-                dcc.Dropdown(
-                    id='Spammer_Dropdown',
-                    options=[{'label': Trigger, 'value': Trigger} for Trigger in SQL_To_List("SELECT Name FROM Dobby.Spammer ORDER BY Name;")],
-                    value=Spammer_Tab_Variables.get('Spammer_Dropdown', None),
-                    ),
-                # Config table
-                dt.DataTable(
-                    id='Spammer_Table',
-                    rows=[],
-                    columns=['Setting', 'Value'],
-                    min_height=320,
-                    resizable=True,
-                    editable=True,
-                    filterable=True,
-                    sortable=True,
-                    ),
-                html.Button('Read', id='Spammer_Read', n_clicks=0, style={'margin-top': '5px'}),
-                html.Button('Save', id='Spammer_Save', n_clicks=0, style={'margin-left': '5px', 'margin-top': '5px'}),
-            ],
-        )
+    Log_Trigger_Tab_Variables = Generate_Variable_Dict(Log_Trigger_Tab_Variables)
+    System_Tab_Variables = Generate_Variable_Dict(System_Tab_Variables)
 
     # ======================================== Log Trigger Tab ========================================
     # ======================================== Log Trigger Tab ========================================
     # ======================================== Log Trigger Tab ========================================
-    elif tab == 'Log_Trigger_Tab':
-
-        Log_Trigger_Tab_Variables = Generate_Variable_Dict(Log_Trigger_Tab_Variables)
+    if tab == 'Log_Trigger_Tab':
 
         return html.Div(
             id='Log_Trigger_Tab',
@@ -407,46 +342,10 @@ def render_content(tab, Device_Config_Tab_Variables, Log_Trigger_Tab_Variables, 
             ],
         )
 
-    # ======================================== Log Trigger Tab ========================================
-    # ======================================== Log Trigger Tab ========================================
-    # ======================================== Log Trigger Tab ========================================
-    elif tab == 'Device_Config_Tab':
-        Device_Config_Tab_Variables = Generate_Variable_Dict(Device_Config_Tab_Variables)
-
-        return html.Div(
-            id='Device_Config_Tab',
-            children=[
-                # Dropdown to select device
-                dcc.Dropdown(
-                    id='Device_Config_Dropdown',
-                    options=[{'label': Trigger, 'value': Trigger} for Trigger in SQL_To_List("SELECT Hostname FROM Dobby.DeviceConfig ORDER BY Hostname;")],
-                    value=Device_Config_Tab_Variables.get('Device_Config_Dropdown', None),
-                    ),
-                # Config table
-                dt.DataTable(
-                    id='Device_Config_Table',
-                    rows=[],
-                    columns=['Setting', 'Value'],
-                    min_height=500,
-                    resizable=True,
-                    editable=True,
-                    filterable=True,
-                    sortable=True,
-                    ),
-                html.Button('Read', id='Device_Config_Read', n_clicks=0, style={'margin-top': '5px'}),
-                html.Button('Save', id='Device_Config_Save', n_clicks=0, style={'margin-left': '5px', 'margin-top': '5px'}),
-                html.Button('Send Config', id='Device_Config_Send', n_clicks=0, style={'margin-left': '5px', 'margin-top': '5px'}),
-                html.Button('Reboot', id='Device_Config_Reboot', n_clicks=0, style={'margin-left': '50px', 'margin-top': '5px'}),
-                html.Button('Shutdown', id='Device_Config_Shutdown', n_clicks=0, style={'margin-left': '20px', 'margin-top': '5px'}),
-                ],
-            ),
-
     # ======================================== System Tab ========================================
     # ======================================== System Tab ========================================
     # ======================================== System Tab ========================================
     elif tab == 'System_Tab':
-        System_Tab_Variables = Generate_Variable_Dict(System_Tab_Variables)
-
         return html.Div([
             html.Button('Quit', id='System_Quit_Button', n_clicks=0),
         ], id='System_Tab')
@@ -457,257 +356,6 @@ def render_content(tab, Device_Config_Tab_Variables, Log_Trigger_Tab_Variables, 
 # ================================================================================ Callbacks ================================================================================
 # ================================================================================ Callbacks ================================================================================
 
-@app.callback(
-    Output('Spammer_Tab_Variables', 'children'),
-    [
-        Input('Spammer_Dropdown', 'value'),
-        Input('Spammer_Read', 'n_clicks'),
-        Input('Spammer_Save', 'n_clicks'),
-        ],
-    [
-        State('Spammer_Tab_Variables', 'children')
-        ]
-    )
-def Spammer_Tab_Variables(Spammer_Dropdown, Spammer_Read, Spammer_Save, Spammer_Tab_Variables):
-
-    Spammer_Tab_Variables = Generate_Variable_Dict(Spammer_Tab_Variables)
-
-    Spammer_Tab_Variables['Spammer_Dropdown'] = Spammer_Dropdown
-
-    Button_List = [Spammer_Read, Spammer_Save]
-    Button_List_Text = ['Spammer_Read', 'Spammer_Save']
-
-    for i in range(len(Button_List)):
-        if Button_List[i] != int(Spammer_Tab_Variables.get(Button_List_Text[i], 0)):
-            Spammer_Tab_Variables['Last_Click'] = Button_List_Text[i]
-            Spammer_Tab_Variables[Button_List_Text[i]] = Button_List[i]
-            break
-
-    return Generate_Variable_String(Spammer_Tab_Variables)
-
-
-# Update Device Config rows
-@app.callback(
-    Output('Spammer_Table', 'rows'),
-    [
-        Input('Spammer_Tab_Variables', 'children'),
-        ],
-    [
-        State('Spammer_Table', 'rows'),
-        ]
-    )
-def Spammer_Tab_Config_Show(Spammer_Tab_Variables, Spammer_Table):
-
-    # Import variables from div able
-    Spammer_Tab_Variables = Generate_Variable_Dict(Spammer_Tab_Variables)
-
-    # Open db connection
-    db_Write_Connection = Open_db('Dobby')
-    db_Write_Curser = db_Write_Connection.cursor()
-
-    Return_Dict = [{'Setting': '', 'Value': ''}]
-
-    # Do nothing if no device have been selected in the dropdown
-    if Spammer_Tab_Variables['Spammer_Dropdown'] == "None" or []:
-        Close_db(db_Write_Connection, db_Write_Curser)
-        return Return_Dict
-
-    # ======================================== Save Config ========================================
-    elif Spammer_Tab_Variables.get('Last_Click', "None") == "Spammer_Read":
-        Spammer_Tab_Variables['Last_Click'] = "None"
-
-    # ======================================== Save Config ========================================
-    elif Spammer_Tab_Variables.get('Last_Click', "None") == "Spammer_Save":
-
-        Spammer_Tab_Variables['Last_Click'] = "None"
-
-        Current_Config = Generate_Spammer_Dict(Spammer_Tab_Variables['Spammer_Dropdown'], db_Write_Curser)
-
-        # Needed to refer between tables
-        i = 0
-
-        # Needed so you dont change the config id when no changes is made
-        Config_Changes = {}
-
-        for Current_Config_Row in Current_Config:
-
-            # For some odd reason "is datetime.datetime" does not work
-            # If datetime convert to string to get == below to work
-            if str(type(Current_Config_Row['Value'][0])) == "<type 'datetime.datetime'>":
-                Current_Config_Row['Value'][0] = str(Current_Config_Row['Value'][0])
-
-            # If value is '' set it to NULL
-            if Spammer_Table[i]['Value'] == '':
-                Config_Changes[Spammer_Table[i]['Setting'][0]] = 'NULL'
-
-            elif Spammer_Table[i]['Value'][0] != Current_Config_Row['Value'][0]:
-                # Add chnages to chnages dict
-                Config_Changes[Spammer_Table[i]['Setting'][0]] = Spammer_Table[i]['Value']
-
-            i = i + 1
-
-        if Config_Changes != {}:
-
-            # Get device id for use in sql changes below
-            db_Write_Curser.execute("SELECT id FROM Dobby.Spammer WHERE Name='" + Spammer_Tab_Variables['Spammer_Dropdown'] + "';")
-            Spammer_id = db_Write_Curser.fetchone()
-            Spammer_id = str(Spammer_id[0])
-
-            # Apply changes
-            for key, value in Config_Changes.iteritems():
-                if value is 'NULL':
-                    db_Write_Curser.execute("UPDATE `Dobby`.`Spammer` SET `" + str(key) + "`=NULL WHERE `id`='" + Spammer_id + "';")
-                else:
-                    print value[0]
-                    print type(value[0])
-                    # db_Write_Curser.execute("UPDATE `Dobby`.`Spammer` SET `" + str(key) + "`='" + str(value) + "' WHERE `id`='" + Spammer_id + "';")
-
-            # Update Last modified
-            db_Write_Curser.execute("UPDATE `Dobby`.`Spammer` SET `Last_Modified`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + Spammer_id + "';")
-
-    # ======================================== Return table ========================================
-    Return_Dict = Generate_Spammer_Dict(Spammer_Tab_Variables['Spammer_Dropdown'], db_Write_Curser)
-
-    Close_db(db_Write_Connection, db_Write_Curser)
-
-    return Return_Dict
-
-
-# ======================================== Device Config Tab - Callbacks ========================================
-# Device_Config_Tab_Variables
-@app.callback(
-    Output('Device_Config_Tab_Variables', 'children'),
-    [
-        Input('Device_Config_Dropdown', 'value'),
-        Input('Device_Config_Read', 'n_clicks'),
-        Input('Device_Config_Save', 'n_clicks'),
-        Input('Device_Config_Send', 'n_clicks'),
-        Input('Device_Config_Reboot', 'n_clicks'),
-        Input('Device_Config_Shutdown', 'n_clicks'),
-        ],
-    [
-        State('Device_Config_Tab_Variables', 'children')
-        ]
-    )
-def Device_Config_Tab_Variables(Device_Config_Dropdown, Device_Config_Read, Device_Config_Save, Device_Config_Send, Device_Config_Reboot, Device_Config_Shutdown, Device_Config_Tab_Variables):
-
-    Device_Config_Tab_Variables = Generate_Variable_Dict(Device_Config_Tab_Variables)
-
-    Device_Config_Tab_Variables['Device_Config_Dropdown'] = Device_Config_Dropdown
-
-    Button_List = [Device_Config_Read, Device_Config_Save, Device_Config_Send, Device_Config_Reboot, Device_Config_Shutdown]
-    Button_List_Text = ['Device_Config_Read', 'Device_Config_Save', 'Device_Config_Send', 'Device_Config_Reboot', 'Device_Config_Shutdown']
-
-    # Check if buttons was presses
-    for i in range(len(Button_List)):
-        if Button_List[i] != int(Device_Config_Tab_Variables.get(Button_List_Text[i], 0)):
-            Device_Config_Tab_Variables['Last_Click'] = Button_List_Text[i]
-
-            # Shutdown / Reboot
-            if Device_Config_Tab_Variables['Device_Config_Dropdown'] is not None or []:
-                Action = None
-                if Device_Config_Tab_Variables.get('Last_Click', None) == "Device_Config_Reboot":
-                    if Device_Config_Tab_Variables.get('Device_Config_Reboot', 0) != Device_Config_Reboot:
-                        Action = 'Reboot'
-                elif Device_Config_Tab_Variables.get('Last_Click', None) == "Device_Config_Shutdown":
-                    if Device_Config_Tab_Variables.get('Device_Config_Shutdown', 0) != Device_Config_Shutdown:
-                        Action = 'Shutdown'
-                if Action is not None:
-                    # Set Last_Click to none to prevent repress when changing back to tab
-                    Device_Config_Tab_Variables['Last_Click'] = None
-                    MQTT.single(System_Header.Value[0] + "/Commands/" + str(Device_Config_Tab_Variables['Device_Config_Dropdown']) + "/Power", Action + ";", hostname=MQTT_Broker.Value[0], port=MQTT_Port.Value[0], auth={'username': MQTT_Username.Value[0], 'password': MQTT_Password.Value[0]})
-
-            Device_Config_Tab_Variables[Button_List_Text[i]] = Button_List[i]
-            break
-
-    return Generate_Variable_String(Device_Config_Tab_Variables)
-
-
-# Update Device Config rows
-@app.callback(
-    Output('Device_Config_Table', 'rows'),
-    [
-        Input('Device_Config_Tab_Variables', 'children'),
-        Input('Device_Config_Save', 'n_clicks'),
-        ],
-    [
-        State('Device_Config_Table', 'rows'),
-        ]
-    )
-def Device_Config_Tab_Config_Show(Device_Config_Tab_Variables, Device_Config_Save, Device_Config_Table):
-
-    # Open db connection
-    db_Write_Connection = Open_db('Dobby')
-    db_Write_Curser = db_Write_Connection.cursor()
-
-    # Import variables from div able
-    Device_Config_Tab_Variables = Generate_Variable_Dict(Device_Config_Tab_Variables)
-
-    # Do nothing if no device have been selected in the dropdown
-    if Device_Config_Tab_Variables['Device_Config_Dropdown'] == "None":
-        Close_db(db_Write_Connection, db_Write_Curser)
-        return [{'Setting': '', 'Value': ''}]
-
-    # ======================================== Save Config ========================================
-    elif Device_Config_Tab_Variables.get('Last_Click', "None") == "Device_Config_Save":
-        Current_Config = Generate_Device_Config_Dict(Device_Config_Tab_Variables['Device_Config_Dropdown'], db_Write_Curser)
-
-        # Needed to refer between tables
-        i = 0
-
-        # Needed so you dont change the config id when no changes is made
-        Config_Changes = {}
-
-        for Current_Config_Row in Current_Config:
-
-            # If value is '' set it to NULL
-            if Device_Config_Table[i]['Value'] == '':
-                Config_Changes[Device_Config_Table[i]['Setting'][0]] = 'NULL'
-
-            elif Device_Config_Table[i]['Value'][0] != Current_Config_Row['Value'][0]:
-                # Add chnages to chnages dict
-                Config_Changes[Device_Config_Table[i]['Setting'][0]] = Device_Config_Table[i]['Value']
-
-            i = i + 1
-
-        if Config_Changes != {}:
-            # Get device id for use in sql changes below
-            db_Write_Curser.execute("SELECT id FROM Dobby.DeviceConfig WHERE Hostname='" + Device_Config_Tab_Variables['Device_Config_Dropdown'] + "';")
-            Device_id = db_Write_Curser.fetchone()
-            Device_id = str(Device_id[0])
-
-            # Apply changes
-            for key, value in Config_Changes.iteritems():
-                if value is 'NULL':
-                    db_Write_Curser.execute("UPDATE `Dobby`.`DeviceConfig` SET `" + str(key) + "`=NULL WHERE `id`='" + Device_id + "';")
-                else:
-                    db_Write_Curser.execute("UPDATE `Dobby`.`DeviceConfig` SET `" + str(key) + "`='" + str(value) + "' WHERE `id`='" + Device_id + "';")
-
-            # Get Current Config_ID
-            db_Write_Curser.execute("SELECT Config_ID FROM Dobby.DeviceConfig WHERE `id`='" + Device_id + "';")
-            Current_Config_ID = db_Write_Curser.fetchone()
-
-            # Update Config_ID
-            db_Write_Curser.execute("UPDATE `Dobby`.`DeviceConfig` SET `Config_ID`='" + str(Current_Config_ID[0] + 1) + "' WHERE `id`='" + Device_id + "';")
-
-            # Update Last modified
-            db_Write_Curser.execute("UPDATE `Dobby`.`DeviceConfig` SET `Date_Modified`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + Device_id + "';")
-
-            Device_Config_Tab_Variables['Last_Click'] = None
-
-    # ======================================== Send Config ========================================
-    elif Device_Config_Tab_Variables.get('Last_Click', "None") == "Device_Config_Send":
-        Device_Config_Tab_Variables['Last_Click'] = None
-        MQTT.single(System_Header.Value[0] + "/Commands/Dobby/Config", Device_Config_Tab_Variables['Device_Config_Dropdown'] + ",-1;", hostname=MQTT_Broker.Value[0], port=MQTT_Port.Value[0], auth={'username': MQTT_Username.Value[0], 'password': MQTT_Password.Value[0]})
-
-    # ======================================== Return table ========================================
-    Return_Dict = Generate_Device_Config_Dict(Device_Config_Tab_Variables['Device_Config_Dropdown'], db_Write_Curser)
-
-    Close_db(db_Write_Connection, db_Write_Curser)
-
-    return Return_Dict
-
-
 # ======================================== Log Trigger Tab - Callbacks ========================================
 # Log_Trigger_Tab_Variables
 @app.callback(
@@ -715,6 +363,10 @@ def Device_Config_Tab_Config_Show(Device_Config_Tab_Variables, Device_Config_Sav
     [
         Input('Log_Trigger_Dropdown', 'value'),
         Input('Log_Trigger_Slider', 'value'),
+        # Input('Log_Trigger_Button_Live', 'n_clicks'),
+        # Input('Log_Trigger_Dropdown_Agent_State', 'value'),
+        # Input('Log_Trigger_Current_State', 'value'),
+        # Input('Log_Trigger_Change_State', 'value'),
         ],
     [
         State('Log_Trigger_Tab_Variables', 'children')
@@ -727,7 +379,10 @@ def Log_Trigger_Tab_Variables(Log_Trigger_Dropdown, Log_Trigger_Slider, Log_Trig
     Log_Trigger_Tab_Variables['Log_Trigger_Dropdown'] = Log_Trigger_Dropdown
 
     # Slider
-    if Log_Trigger_Dropdown is not None and Log_Trigger_Dropdown != []:
+    if Log_Trigger_Dropdown is not None:
+
+        db_Connection = Open_db("DobbyLog")
+        db_Curser = db_Connection.cursor()
 
         Slider_Name_String = ""
         i = 0
@@ -737,9 +392,6 @@ def Log_Trigger_Tab_Variables(Log_Trigger_Dropdown, Log_Trigger_Slider, Log_Trig
                 Slider_Name_String = Slider_Name_String + " OR "
             Slider_Name_String = Slider_Name_String + "`Name`='" + str(Selection) + "'"
             i = i + 1
-
-        db_Connection = Open_db("DobbyLog")
-        db_Curser = db_Connection.cursor()
 
         db_Curser.execute("SELECT DateTime FROM DobbyLog.Log_Trigger WHERE " + Slider_Name_String + " ORDER BY id ASC LIMIT 1;")
         Min_Date = db_Curser.fetchone()
