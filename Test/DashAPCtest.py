@@ -282,7 +282,8 @@ def Generate_Variable_String(Dict):
 # ======================================== Layout ========================================
 app.layout = html.Div([
 
-    dcc.Tabs(id="tabs", value='System_Tab', children=[
+    dcc.Tabs(id="tabs", value='APC_Tab', children=[
+        dcc.Tab(label='APC Monitor', value='APC_Tab'),
         # dcc.Tab(label='Device', value='Device_Tab'),
         dcc.Tab(label='Device Config', value='Device_Config_Tab'),
         dcc.Tab(label='Log Trigger', value='Log_Trigger_Tab'),
@@ -300,6 +301,7 @@ app.layout = html.Div([
 
     # Places to store variables
     html.Div([
+        html.Div(id='APC_Tab_Variables', children=""),
         # html.Div(id='Device_Tab_Variables', children=""),
         html.Div(id='Device_Config_Tab_Variables', children=""),
         html.Div(id='Log_Trigger_Tab_Variables', children=""),
@@ -318,6 +320,7 @@ app.layout = html.Div([
         Input('tabs', 'value'),
         ],
     [
+        State('APC_Tab_Variables', 'children'),
         # State('Device_Tab_Variables', 'children'),
         State('Device_Config_Tab_Variables', 'children'),
         State('Log_Trigger_Tab_Variables', 'children'),
@@ -326,11 +329,87 @@ app.layout = html.Div([
         State('System_Tab_Variables', 'children'),
         ]
     )
-def render_content(tab, Device_Config_Tab_Variables, Log_Trigger_Tab_Variables, Spammer_Tab_Variables, System_Tab_Variables):
+def render_content(tab, APC_Tab_Variables, Device_Config_Tab_Variables, Log_Trigger_Tab_Variables, Spammer_Tab_Variables, System_Tab_Variables):
+    # ======================================== APC Tab ========================================
+    # ======================================== APC Tab ========================================
+    # ======================================== APC Tab ========================================
+    if tab == 'APC_Tab':
+        APC_Tab_Variables = Generate_Variable_Dict(APC_Tab_Variables)
+
+        return html.Div(
+            id='APC_Tab_Tab',
+            children=[
+
+                dcc.Dropdown(
+                    id='APC_Dropdown',
+                    options=[{'label': Name, 'value': Name} for Name in SQL_To_List("SELECT DISTINCT Name FROM DobbyLog.APC_Monitor;")],
+                    multi=True,
+                    value=APC_Tab_Variables.get('APC_Dropdown', None),
+                ),
+                dcc.Graph(
+                    id='APC_Graph',
+                    style={
+                        'height': '70vh',
+                        'width': '95vw',
+                        'padding': 5,
+                    }
+                ),
+                html.Div(
+                    style={
+                        'width': '85vw',
+                        'padding': 50,
+                        'display': 'inline-block'
+                        },
+                    children=[
+                        dcc.RangeSlider(
+                            id='APC_Slider',
+                            min=0,
+                            max=100,
+                            step=1,
+                            value=[95, 100],
+                            allowCross=False,
+                            marks={},
+                            ),
+                        ],
+                    ),
+
+                html.Button('Read', id='APC_Read', n_clicks=0, style={'margin-top': '5px'}),
+            ],
+
+            #
+        )
+
+    # if tab == 'APC_Config_Tab':
+    #     APC_Tab_Variables = Generate_Variable_Dict(APC_Tab_Variables)
+    #
+    #     return html.Div(
+    #         id='APC_Tab',
+    #         children=[
+    #             # Dropdown to select APC
+    #             dcc.Dropdown(
+    #                 id='APC_Dropdown',
+    #                 options=[{'label': Trigger, 'value': Trigger} for Trigger in SQL_To_List("SELECT Name FROM Dobby.APC_Monitor ORDER BY Name;")],
+    #                 value=APC_Tab_Variables.get('APC_Dropdown', None),
+    #                 ),
+    #             # Config table
+    #             dt.DataTable(
+    #                 id='APC_Table',
+    #                 rows=[],
+    #                 columns=['Setting', 'Value'],
+    #                 min_height=320,
+    #                 resizable=True,
+    #                 editable=True,
+    #                 filterable=True,
+    #                 sortable=True,
+    #                 ),
+    #             html.Button('Read', id='APC_Read', n_clicks=0, style={'margin-top': '5px'}),
+    #         ],
+    #     )
+
     # ======================================== Spammer Tab ========================================
     # ======================================== Spammer Tab ========================================
     # ======================================== Spammer Tab ========================================
-    if tab == 'Spammer_Tab':
+    elif tab == 'Spammer_Tab':
         Spammer_Tab_Variables = Generate_Variable_Dict(Spammer_Tab_Variables)
 
         return html.Div(
@@ -448,8 +527,7 @@ def render_content(tab, Device_Config_Tab_Variables, Log_Trigger_Tab_Variables, 
         System_Tab_Variables = Generate_Variable_Dict(System_Tab_Variables)
 
         return html.Div([
-            html.Button('Check for updates', id='System_Update_Button', n_clicks=0, style={'margin-top': '5px'}),
-            html.Button('Quit', id='System_Quit_Button', n_clicks=0, style={'margin-left': '5px', 'margin-top': '5px'}),
+            html.Button('Quit', id='System_Quit_Button', n_clicks=0),
         ], id='System_Tab')
 
 
@@ -458,6 +536,146 @@ def render_content(tab, Device_Config_Tab_Variables, Log_Trigger_Tab_Variables, 
 # ================================================================================ Callbacks ================================================================================
 # ================================================================================ Callbacks ================================================================================
 
+# ======================================== Spammer Tab - Callbacks ========================================
+@app.callback(
+    Output('APC_Tab_Variables', 'children'),
+    [
+        Input('APC_Dropdown', 'value'),
+        Input('APC_Slider', 'value'),
+        Input('APC_Read', 'n_clicks'),
+        ],
+    [
+        State('APC_Tab_Variables', 'children')
+        ]
+    )
+def APC_Tab_Variables(APC_Dropdown, APC_Slider, APC_Read, APC_Tab_Variables):
+
+    APC_Tab_Variables = Generate_Variable_Dict(APC_Tab_Variables)
+
+    # Dropdown
+    APC_Tab_Variables['APC_Dropdown'] = APC_Dropdown
+
+    # Button
+    Button_List = [APC_Read]
+    Button_List_Text = ['APC_Read']
+
+    for i in range(len(Button_List)):
+        if Button_List[i] != int(APC_Tab_Variables.get(Button_List_Text[i], 0)):
+            APC_Tab_Variables['Last_Click'] = Button_List_Text[i]
+            APC_Tab_Variables[Button_List_Text[i]] = Button_List[i]
+            break
+
+    # Slider
+    if APC_Dropdown is not None and APC_Dropdown != []:
+        Slider_Name_String = ""
+        i = 0
+        # Find first entry
+        for Selection in APC_Dropdown:
+            if i != 0:
+                Slider_Name_String = Slider_Name_String + " OR "
+            Slider_Name_String = Slider_Name_String + "`Name`='" + str(Selection) + "'"
+            i = i + 1
+
+        db_Connection = Open_db("DobbyLog")
+        db_Curser = db_Connection.cursor()
+
+        db_Curser.execute("SELECT DateTime FROM DobbyLog.APC_Monitor WHERE " + Slider_Name_String + " ORDER BY id ASC LIMIT 1;")
+        Min_Date = db_Curser.fetchone()
+
+        db_Curser.execute("SELECT DateTime FROM DobbyLog.APC_Monitor WHERE " + Slider_Name_String + " ORDER BY id DESC LIMIT 1;")
+        Max_Date = db_Curser.fetchone()
+
+        # Close db connection
+        Close_db(db_Connection, db_Curser)
+
+        if Min_Date is not None or Max_Date is not None:
+            Min_Date = Min_Date[0]
+            Max_Date = Max_Date[0]
+
+            # Save min/max
+            APC_Tab_Variables['Slider_Min_Date'] = Min_Date
+            APC_Tab_Variables['Slider_Max_Date'] = Max_Date
+
+            Time_Span = Max_Date - Min_Date
+            Time_Jumps = Time_Span / 100
+
+            # Save Low value
+            if APC_Slider[0] == 0:
+                APC_Tab_Variables['Slider_Value_Low'] = Min_Date
+            elif APC_Slider[0] == 100:
+                APC_Tab_Variables['Slider_Value_Low'] = Max_Date
+            else:
+                APC_Tab_Variables['Slider_Value_Low'] = Min_Date + Time_Jumps * APC_Slider[0]
+
+            # removes ".######" from the datetime string
+            if len(str(APC_Tab_Variables['Slider_Value_Low'])) > 19:
+                APC_Tab_Variables['Slider_Value_Low'] = str(APC_Tab_Variables['Slider_Value_Low'])[:-7]
+
+            # Save high value
+            if APC_Slider[1] == 0:
+                APC_Tab_Variables['Slider_Value_High'] = Min_Date
+            elif APC_Slider[1] == 100:
+                APC_Tab_Variables['Slider_Value_High'] = Max_Date
+            else:
+                APC_Tab_Variables['Slider_Value_High'] = Min_Date + Time_Jumps * APC_Slider[1]
+
+            # removes ".######" from the datetime string
+            if len(str(APC_Tab_Variables['Slider_Value_High'])) > 19:
+                APC_Tab_Variables['Slider_Value_High'] = str(APC_Tab_Variables['Slider_Value_High'])[:-7]
+
+    return Generate_Variable_String(APC_Tab_Variables)
+
+
+# Update Graph
+@app.callback(
+    Output('APC_Graph', 'figure'),
+    [
+        Input('APC_Tab_Variables', 'children'),
+        ],
+    )
+def APC_Graph(APC_Tab_Variables):
+
+    # Import variables from div able
+    APC_Tab_Variables = Generate_Variable_Dict(APC_Tab_Variables)
+
+    # Do nothing if no device have been selected in the dropdown
+    if APC_Tab_Variables['APC_Dropdown'] == 'None' or APC_Tab_Variables is {}:
+        return {'data': ''}
+
+    # ======================================== Read Logs ========================================
+    else:
+        db_Connection = Open_db("DobbyLog")
+        db_Curser = db_Connection.cursor()
+
+        Data = []
+
+        for Name in APC_Tab_Variables['APC_Dropdown']:
+
+            for i in ['Hertz A', 'Hertz B', 'Vin A', 'Vin B', 'I Out', 'IO Max', 'IO Min', 'Active Output']:
+                Data.append(
+                    go.Scatter(
+                        x=SQL_To_List("SELECT DateTime FROM DobbyLog.APC_Monitor WHERE Name='" + str(Name) + "' AND datetime>'" + str(APC_Tab_Variables['Slider_Value_Low']) + "' ORDER BY DateTime DESC;"),
+                        y=SQL_To_List("SELECT `" + i + "` FROM DobbyLog.APC_Monitor WHERE Name='" + str(Name) + "' AND datetime>'" + str(APC_Tab_Variables['Slider_Value_Low']) + "' ORDER BY DateTime DESC;"),
+                        name=str(Name) + " - " + i,
+                        mode='lines+markers',
+                    )
+                )
+
+        Close_db(db_Connection, db_Curser)
+
+        # Edit the layout
+        layout = dict(
+            # title = 'Average High and Low Temperatures in New York',
+            # xaxis=dict(title='Timestamp'),
+            # yaxis = dict(title = 'Temperature (degrees F)'),
+        )
+
+        fig = dict(data=Data, layout=layout)
+
+        return fig
+
+
+# ======================================== Spammer Tab - Callbacks ========================================
 @app.callback(
     Output('Spammer_Tab_Variables', 'children'),
     [
@@ -481,7 +699,6 @@ def Spammer_Tab_Variables(Spammer_Dropdown, Spammer_Read, Spammer_Save, Spammer_
     for i in range(len(Button_List)):
         if Button_List[i] != int(Spammer_Tab_Variables.get(Button_List_Text[i], 0)):
             Spammer_Tab_Variables['Last_Click'] = Button_List_Text[i]
-            Spammer_Tab_Variables['Last_Click_Time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             Spammer_Tab_Variables[Button_List_Text[i]] = Button_List[i]
             break
 
@@ -515,7 +732,13 @@ def Spammer_Tab_Config_Show(Spammer_Tab_Variables, Spammer_Table):
         return Return_Dict
 
     # ======================================== Save Config ========================================
-    elif Spammer_Tab_Variables.get('Last_Click', "None") == "Spammer_Save" and Spammer_Tab_Variables['Last_Click_Time'] > datetime.datetime.now() - datetime.timedelta(milliseconds=500):
+    elif Spammer_Tab_Variables.get('Last_Click', "None") == "Spammer_Read":
+        Spammer_Tab_Variables['Last_Click'] = "None"
+
+    # ======================================== Save Config ========================================
+    elif Spammer_Tab_Variables.get('Last_Click', "None") == "Spammer_Save":
+
+        Spammer_Tab_Variables['Last_Click'] = "None"
 
         Current_Config = Generate_Spammer_Dict(Spammer_Tab_Variables['Spammer_Dropdown'], db_Write_Curser)
 
@@ -554,9 +777,9 @@ def Spammer_Tab_Config_Show(Spammer_Tab_Variables, Spammer_Table):
                 if value is 'NULL':
                     db_Write_Curser.execute("UPDATE `Dobby`.`Spammer` SET `" + str(key) + "`=NULL WHERE `id`='" + Spammer_id + "';")
                 else:
-                    db_Write_Curser.execute("UPDATE `Dobby`.`Spammer` SET `" + str(key) + "`='" + str(value) + "' WHERE `id`='" + Spammer_id + "';")
-                    # Set next ping to now to make the spammer ping on start
-                    db_Write_Curser.execute("UPDATE `Dobby`.`Spammer` SET `Next_Ping`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + Spammer_id + "';")
+                    print value[0]
+                    print type(value[0])
+                    # db_Write_Curser.execute("UPDATE `Dobby`.`Spammer` SET `" + str(key) + "`='" + str(value) + "' WHERE `id`='" + Spammer_id + "';")
 
             # Update Last modified
             db_Write_Curser.execute("UPDATE `Dobby`.`Spammer` SET `Last_Modified`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + Spammer_id + "';")
@@ -932,22 +1155,20 @@ def Log_Trigger_Graph(Log_Trigger_Tab_Variables):
 @app.callback(
     Output('System_Tab_Variables', 'children'),
     [
-        Input('System_Quit_Button', 'n_clicks'),
-        Input('System_Update_Button', 'n_clicks'),
+        Input('System_Quit_Button', 'n_clicks')
         ],
     [
         State('System_Tab_Variables', 'children'),
         ],
     )
-def System_Tab_Buttons(System_Quit_Button, System_Update_Button, System_Tab_Variables):
+def System_Tab_Buttons(System_Quit_Button, System_Tab_Variables):
 
     # Import variables from div able
     System_Tab_Variables = Generate_Variable_Dict(System_Tab_Variables)
 
-    if int(System_Tab_Variables.get('System_Update_Button', 0)) != int(System_Update_Button):
-        System_Tab_Variables['System_Update_Button'] = System_Update_Button
-
-        print "working here"
+    # If n_clicks = 0 then the page has just been loaded so dont do anything
+    if int(System_Quit_Button) == 0:
+        System_Tab_Variables['System_Quit_Button'] = 0
 
     elif int(System_Tab_Variables.get('System_Quit_Button', 0)) != int(System_Quit_Button):
         System_Tab_Variables['System_Quit_Button'] = System_Quit_Button

@@ -196,3 +196,16 @@ INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Mail_Tr
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Log_Trigger", "Log", "Level", "Info");
 
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Spammer", "Log", "Level", "Info");
+
+
+CREATE TABLE `APC_Monitor` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `Name` varchar(45) NOT NULL,
+  `Enabled` tinyint(1) NOT NULL DEFAULT '1',
+  `IP` varchar(45) NOT NULL,
+  `Username` varchar(45) NOT NULL,
+  `Password` varchar(45) NOT NULL,
+  `Last_Modified` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `id_UNIQUE` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

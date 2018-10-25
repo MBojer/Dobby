@@ -1,3 +1,10 @@
+================================================== 102003 ==================================================
+-- Added Update from github
+- Check on first press
+- update on second press
+- Start update script it then stops dobby downloads from github and then starts dobby again
+
+
 ================================================== 102002 ==================================================
 Working on spammer tap
 

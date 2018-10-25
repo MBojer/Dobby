@@ -38,7 +38,7 @@ from email.MIMEText import MIMEText
 
 
 # System variables
-Version = 101014
+Version = 101013
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
@@ -123,26 +123,22 @@ def Log_Level_Check(Log_Source, Log_Level):
     Log_Level = Log_Level.lower()
     Check_Level = Log_Level_System
 
-    Known_Levels_Dict = {'KeepAliveMonitor': Log_Level_KeepAliveMonitor, 'MQTTConfig': Log_Level_MQTTConfig, 'MQTTFunctions': Log_Level_MQTTFunctions, 'MQTT': Log_Level_MQTT, 'Log Trigger': Log_Level_Log_Trigger, 'Mail Trigger': Log_Level_Mail_Trigger, 'Spammer': Log_Level_Spammer}
-
-    for Key, Variable in Known_Levels_Dict.iteritems():
-        if Log_Source == Key and Variable != "":
-            Check_Level = Variable
-
-    # if Log_Source == "KeepAliveMonitor" and Log_Level_KeepAliveMonitor != "":
-    #     Check_Level = Log_Level_KeepAliveMonitor
-    #     Check_Level = Log_Level_MQTTConfig
-    #     Check_Level = Log_Level_MQTTFunctions
-    #     Check_Level = Log_Level_MQTT
-    #     Check_Level = Log_Level_Log_Trigger
-    #     Check_Level = Log_Level_Mail_Trigger
-    #     Check_Level = Log_Level_Spammer
-    # elif Log_Source == "MQTTConfig" and Log_Level_MQTTConfig != "":
-    # elif Log_Source == "MQTTFunctions" and Log_Level_MQTTFunctions != "":
-    # elif Log_Source == "MQTT" and Log_Level_MQTT != "":
-    # elif Log_Source == "Log Trigger" and Log_Level_Log_Trigger != "":
-    # elif Log_Source == "Mail Trigger" and Log_Level_Mail_Trigger != "":
-    # elif Log_Source == "Spammer" and Log_Level_Spammer != "":
+    # if Log_Source == "MonitorAgent" and Log_Level_MonitorAgent != "":
+    #     Check_Level = Log_Level_MonitorAgent
+    if Log_Source == "KeepAliveMonitor" and Log_Level_KeepAliveMonitor != "":
+        Check_Level = Log_Level_KeepAliveMonitor
+    elif Log_Source == "MQTTConfig" and Log_Level_MQTTConfig != "":
+        Check_Level = Log_Level_MQTTConfig
+    elif Log_Source == "MQTTFunctions" and Log_Level_MQTTFunctions != "":
+        Check_Level = Log_Level_MQTTFunctions
+    elif Log_Source == "MQTT" and Log_Level_MQTT != "":
+        Check_Level = Log_Level_MQTT
+    elif Log_Source == "Log_Trigger" and Log_Level_Log_Trigger != "":
+        Check_Level = Log_Level_Log_Trigger
+    elif Log_Source == "Mail_Trigger" and Log_Level_Mail_Trigger != "":
+        Check_Level = Log_Level_Mail_Trigger
+    elif Log_Source == "Spammer" and Log_Level_Spammer != "":
+        Check_Level = Log_Level_Spammer
 
     if Log_Level in ["debug", "info", "warning", "error", "critical", "fatal"]:
         if Check_Level == "debug":
@@ -345,6 +341,10 @@ def MQTT_Commands(Topic, Payload):
         # Power_Thread.daemon = True
         # Power_Thread.start()
         return
+
+    # elif "MonitorAgent" in Topic:
+    #     MQTT_Commands_MonitorAgent(Topic, Payload)
+    #     return
 
     elif "KeepAliveMonitor" in Topic:
         MQTT_Commands_KeepAliveMontor(Topic, Payload)
@@ -1376,7 +1376,7 @@ def Dobby_init():
 
     # Spammer
     global Log_Level_Spammer
-    Log_Level_Spammer = Get_SystemConfig_Value(db_Curser, "Spammer", "Log", "Level", QuitOnError=False).lower()
+    Log_Level_Spammer = Get_SystemConfig_Value(db_Curser, "Log_Trigger", "Log", "Level", QuitOnError=False).lower()
 
     # Check if the needed databases exists
     Create_db(db_Curser, Log_db)
