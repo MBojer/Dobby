@@ -3,6 +3,8 @@
 -- Changed - Log_Level_Check
 Added the db adjustable levels to known levels list and checks against it to see if a level is defined if not defaults to system log level
 
+-- Added - APC Monitor
+
 
 ######################################## 101013 ########################################
 

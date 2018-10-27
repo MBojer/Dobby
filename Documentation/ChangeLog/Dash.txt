@@ -1,8 +1,10 @@
 ================================================== 102003 ==================================================
--- Added Update from github
+-- Added - Update from github button on System Tab
 - Check on first press
 - update on second press
 - Start update script it then stops dobby downloads from github and then starts dobby again
+
+-- Added - APC Monitor Tab
 
 
 ================================================== 102002 ==================================================

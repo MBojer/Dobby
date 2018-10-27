@@ -12,4 +12,4 @@
 .remote-sync.json
 .ftpconfig
 
-platformio.ini
+/Script/platformio.ini

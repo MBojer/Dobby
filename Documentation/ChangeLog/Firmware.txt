@@ -1,3 +1,6 @@
+-------------------- 101054 --------------------
+Fixed issed where ldr publishing state before getting online
+
 -------------------- 101053 --------------------
 
 Fixed LDR publish to PIR

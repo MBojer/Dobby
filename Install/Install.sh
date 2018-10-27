@@ -1,11 +1,10 @@
 #!/bin/bash
 
-# https://gist.github.com/smoofit/dafa493aec8d41ea057370dbfde3f3fc
-# sudo apt-get install libssl-dev
-# sudo apt-get install libwebsockets-dev
-# apt-get install uuid-dev
-
-
+# https://community.plot.ly/t/get-username-for-authenticated-user-with-dash-basic-auth/6450/3
+# File to change: /usr/local/lib/python2.7/dist-packages/dash_auth/basic_auth.py
+# NOTE: Add below just after "if pair[0] == username and pair[1] == password:"
+# self._username = username
+# To get username option from basic_auth
 
 # Create User
 sudo adduser dobby
@@ -23,7 +22,7 @@ sudo apt-get install -y git mosquitto mosquitto-clients supervisor python-pip pi
 # Update pip
 sudo pip install --upgrade pip
 
-sudo pip install flask logging paho-mqtt psutil mysql-python
+sudo pip install flask logging paho-mqtt psutil mysql-python gitpython
 
 # Install dependencies - Dash
 sudo pip install dash dash-html-components dash-core-components pandas dash-auth dash-table-experiments six
