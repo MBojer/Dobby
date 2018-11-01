@@ -14,7 +14,7 @@ extern "C" {
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 101057
+#define Version 101055
 // First didget = Software type 1-Production 2-Beta 3-Alpha
 // Secound and third didget = Major version number
 // Fourth to sixth = Minor version number
@@ -124,7 +124,6 @@ unsigned long MQTT_KeepAlive_Interval = 60000;
 #define Topic_RFID 25
 #define Topic_PIR 26
 #define Topic_LDR 27
-#define Topic_Arduino_Link 28
 
 #define Topic_Settings_Text "/Settings/"
 #define Topic_Config_Text "/Config/"
@@ -154,9 +153,8 @@ unsigned long MQTT_KeepAlive_Interval = 60000;
 #define Topic_RFID_Text "/RFID/"
 #define Topic_PIR_Text "/PIR/"
 #define Topic_LDR_Text "/LDR/"
-#define Topic_Arduino_Link_Text "/Arduino_Link/"
 
-const byte MQTT_Topic_Number_Of = 29;
+const byte MQTT_Topic_Number_Of = 28;
 String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + Topic_Settings_Text + Hostname,
   System_Header + Topic_Config_Text + Hostname,
@@ -186,7 +184,6 @@ String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + Topic_RFID_Text + Hostname,
   System_Header + Topic_PIR_Text + Hostname,
   System_Header + Topic_LDR_Text + Hostname,
-  System_Header + Topic_Arduino_Link_Text + Hostname,
 };
 
 bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
@@ -204,7 +201,6 @@ bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
   false,
   false,
   true,
-  false,
   false,
   false,
   false,
@@ -242,7 +238,6 @@ byte MQTT_Topic_Subscribe_Subtopic[MQTT_Topic_Number_Of] = {
   NONE,
   NONE,
   PLUS,
-  NONE,
   NONE,
 };
 
@@ -363,6 +358,9 @@ byte Dimmer_Procent[Dimmer_Max_Number_Of];
 
 byte Dimmer_Fade_Jump = 20;
 byte Dimmer_Fade_Jump_Delay = 40;
+
+int Dimmer_Step_To[Dimmer_Max_Number_Of];
+unsigned long Dimmer_Step_At[Dimmer_Max_Number_Of];
 
 
 // ------------------------------------------------------------ Pin_Monitor ------------------------------------------------------------
@@ -657,28 +655,6 @@ bool LDR_State = false;
 String LDR_Target_Topic;
 
 
-// ------------------------------------------------------------ Arduino Link ------------------------------------------------------------
-#include <SoftwareSerial.h>
-
-#define Arduino_Link_Max_Number_Of 10
-
-// Create 3 ints to store Current Max Min
-int Arduino_Link_Value[PIR_Max_Number_Of][3];
-
-#define Arduino_Link_RX D2
-#define Arduino_Link_TX D1
-
-SoftwareSerial Arduino_Link_Serial(Arduino_Link_RX, Arduino_Link_TX); // Arduino RX, Arduino TX
-
-bool Arduino_Link_Configured = false;
-
-String Arduino_Link_String;
-bool Arduino_Link_Command_Complate = false;
-
-#define Arduino_Link_Refresh 1000
-Ticker Arduino_Link_Ticker;
-
-
 // ############################################################ String_To_IP() ############################################################
 IPAddress String_To_IP(String IP_String) {
 
@@ -744,7 +720,6 @@ void Rebuild_MQTT_Topics() {
   MQTT_Topic[Topic_RFID] = System_Header + System_Sub_Header + Topic_RFID_Text + Hostname;
   MQTT_Topic[Topic_PIR] = System_Header + System_Sub_Header + Topic_PIR_Text + Hostname;
   MQTT_Topic[Topic_LDR] = System_Header + System_Sub_Header + Topic_LDR_Text + Hostname;
-  MQTT_Topic[Topic_LDR] = System_Header + System_Sub_Header + Topic_Arduino_Link_Text + Hostname;
 }
 
 
@@ -2006,57 +1981,60 @@ void PIR_Loop() {
 
 } // PIR_Loop()
 
-// ############################################################ Dimmer_Fade() ############################################################
-void Dimmer_Fade(byte Selected_Dimmer, byte State_Procent) {
 
-  int State_Current = Dimmer_State[Selected_Dimmer - 1];
+// ############################################################ Dimmer_Fade_Loop() ############################################################
+void Dimmer_Fade_Loop() {
 
-  int State_Target = State_Procent;
-  float Temp_Float = State_Target * 0.01;
-  State_Target = Temp_Float * 1023;
-  Dimmer_State[Selected_Dimmer - 1] = State_Target;
+  if (Dimmer_Configured == false || ArduinoOTA_Active == true || Boot_Compleate == false) {
+    return;
+  }
 
-  unsigned long Fade_Wait_Till = millis();
+  for (byte i = 0; i < Dimmer_Max_Number_Of; i++) {
+    // Pin number later that 200 is errors
+    if (Dimmer_Pins[i] < 200) {
+      // if (Dimmer_State[i] != Dimmer_Step_To[i] && Dimmer_Step_To[i] != -1 && millis() > Dimmer_Step_At[i]) {
+        if (Dimmer_State[i] != Dimmer_Step_To[i] && millis() > Dimmer_Step_At[i]) {
+          // analogWrite(Dimmer_Pins[i], Dimmer_Step_To[i]);
 
-  while (State_Current != State_Target) {
+          // Step Up
+          if (Dimmer_State[i] < Dimmer_Step_To[i]) {
+            // if (Dimmer_State[i] < Dimmer_Step_To[i] || Dimmer_Fade_Jump - Dimmer_State[i] < Dimmer_Step_To[i]) {
+              // Check if step is going to pass Steo_To
+              // More than one step
+              if (Dimmer_Step_To[i] - Dimmer_State[i] >= Dimmer_Fade_Jump) {
+                Dimmer_State[i] = Dimmer_State[i] + Dimmer_Fade_Jump;
+              }
+              // Less than one step
+              else {
+                Dimmer_State[i] = Dimmer_Step_To[i];
+              }
+            }
+          // Step Down
+          else if (Dimmer_State[i] > Dimmer_Step_To[i]) {
+            // else if (Dimmer_State[i] > Dimmer_Step_To[i] || Dimmer_Fade_Jump + Dimmer_State[i] > Dimmer_Step_To[i]) {
+            // More than one step
+            if (Dimmer_Step_To[i] + Dimmer_State[i] >= Dimmer_Fade_Jump) {
+              Dimmer_State[i] = Dimmer_State[i] - Dimmer_Fade_Jump;
+            }
+            else {
+              Dimmer_State[i] = Dimmer_Step_To[i];
+            }
+          }
 
-    while (millis() < Fade_Wait_Till) {
-      delay(1);
+          // Change light level
+          analogWrite(Dimmer_Pins[i], Dimmer_State[i]);
+
+          if (Dimmer_State[i] == Dimmer_Step_To[i]) {
+            Log(String(MQTT_Topic[Topic_Dimmer]) + "/" + String(i + 1) + "/State", Dimmer_Procent[i]);
+          }
+          else {
+            // Reset Timer
+            Dimmer_Step_At[i] = millis() + Dimmer_Fade_Jump_Delay;
+          }
+        }
+      }
     }
-
-    // Last jump +
-    if (State_Current < State_Target && State_Target - State_Current <= Dimmer_Fade_Jump) {
-      analogWrite(Dimmer_Pins[Selected_Dimmer - 1], State_Target);
-      delay(5);
-      break;
-    }
-
-    // Last jump -
-    else if (State_Target < State_Current && State_Current - State_Target <= Dimmer_Fade_Jump) {
-      analogWrite(Dimmer_Pins[Selected_Dimmer - 1], State_Target);
-      delay(5);
-      break;
-    }
-
-    // +
-    else if (State_Current < State_Target) {
-      State_Current += Dimmer_Fade_Jump;
-      analogWrite(Dimmer_Pins[Selected_Dimmer - 1], State_Current);
-    }
-
-    // -
-    else {
-      State_Current -= Dimmer_Fade_Jump;
-      analogWrite(Dimmer_Pins[Selected_Dimmer - 1], State_Current);
-    }
-
-    Fade_Wait_Till = millis() + Dimmer_Fade_Jump_Delay;
-  } // while
-
-  Dimmer_Procent[Selected_Dimmer - 1] = State_Procent;
-  Log(String(MQTT_Topic[Topic_Dimmer]) + "/" + String(Selected_Dimmer) + "/State", Dimmer_Procent[Selected_Dimmer - 1]);
-
-} // Dimmer_Fade()
+  } // Dimmer_Fade()
 
 
 // ############################################################ Dimmer() ############################################################
@@ -2074,32 +2052,40 @@ bool Dimmer(String Topic, String Payload) {
     byte Selected_Dimmer = Topic.toInt();
 
     // Ignore all requests thats larger then Dimmer_Max_Number_Of
-    if (Selected_Dimmer <= Dimmer_Max_Number_Of) {
+    if (Selected_Dimmer <= Dimmer_Max_Number_Of && Selected_Dimmer >= 1) {
+
+      if (Payload.indexOf(";") != -1) {
+        Payload = Payload.substring(0, Payload.indexOf(";"));
+      }
+
       // State request
       if (Payload.indexOf("?") != -1) {
-
-        int State_Current = Dimmer_State[Selected_Dimmer - 1];
-        float Temp_Float = State_Current * 0.01;
-        State_Current = Temp_Float * 1023;
-
-        Log(MQTT_Topic[Topic_Dimmer] + "/" + String(Selected_Dimmer) + "/State", State_Current);
+        Log(MQTT_Topic[Topic_Dimmer] + "/" + String(Selected_Dimmer) + "/State", Dimmer_Procent[Selected_Dimmer - 1]);
+        return true;
       }
 
-      else {
-        int State_Target = Payload.toInt();
-
-        // if value = current state turn off
-        if (Dimmer_Procent[Selected_Dimmer - 1] == State_Target) {
-          Dimmer_Fade(Selected_Dimmer, 0);
-          return true;
-        }
-
-        if (Dimmer_State[Selected_Dimmer - 1] != State_Target) {
-          Dimmer_Fade(Selected_Dimmer, State_Target);
-          return true;
-        }
-
+      // Check if payload aka target is between 0 and 100
+      else if (Payload.toInt() < 0 || Payload.toInt() > 100) {
+        Log(MQTT_Topic[Topic_Log_Error] + "/" + String(Selected_Dimmer) + "/Dimmer", "Incorect procent value given: " + Payload);
+        return false;
       }
+
+      // if value = current state turn off
+      // or if payload = 0 turn off
+      else if (Dimmer_Procent[Selected_Dimmer - 1] == Payload.toInt() || Payload.toInt() == 0) {
+        Dimmer_Step_To[Selected_Dimmer - 1] = 0;
+        Dimmer_Procent[Selected_Dimmer - 1] = 0;
+        return true;
+      }
+      else if (Dimmer_Procent[Selected_Dimmer - 1] != Payload.toInt()) {
+        float Temp_Float = Payload.toInt() * 0.01;
+        Dimmer_Step_To[Selected_Dimmer - 1] = int(Temp_Float * 1024);
+        Dimmer_Procent[Selected_Dimmer - 1] = Payload.toInt();
+        return true;
+      }
+    }
+    else {
+      Log(MQTT_Topic[Topic_Log_Error] + "/Dimmer", "Unknown Dimmer: " + String(Selected_Dimmer));
     }
   }
   return false;
@@ -2839,91 +2825,6 @@ bool Buzzer(String Topic, String Payload) {
 
   else return false;
 } // Buzzer()
-
-
-// ############################################################ Arduino_Link() ############################################################
-void Arduino_Link() {
-
-  if (Arduino_Link_Configured == false || ArduinoOTA_Active == true || Boot_Compleate == false) {
-    return;
-  }
-
-  unsigned long test_start = millis();
-
-  Arduino_Link_Serial.println("Ping");
-
-  String Arduino_Link_String;
-
-  delay(5);
-
-
-  set read interval at 1 sec and then offset the ping by 500 ms, then the mega fills the wemoses buffer before next read this will allow a more dynamic run
-
-  if (Arduino_Link_Serial.available() > 0) {
-    Arduino_Link_String = Arduino_Link_Serial.readStringUntil('\n');
-  }
-  // Clear the buffer
-  while (Arduino_Link_Serial.available() > 0) {
-    Arduino_Link_Serial.read();
-  }
-
-  Serial.println(millis() - test_start);
-
-
-  Serial.print("Arduino_Link_String: ");
-  Serial.println(Arduino_Link_String);
-  Arduino_Link_String = "";
-
-
-  // if (Arduino_Link_Configured == false) {
-  //   return false;
-  // }
-  // // Read incomming data
-  //
-  // // Start <
-  // // End >
-  // // Start value :
-  // // Start checksum :
-  // // exabmle: <1:10;10>
-  //
-  // while (
-  //   Arduino_Link_String.indexOf("<") != -1 &&
-  //   Arduino_Link_String.indexOf(":") != -1 &&
-  //   Arduino_Link_String.indexOf(";") != -1 &&
-  //   Arduino_Link_String.indexOf(">") != -1
-  // ) {
-  //   // Find next transmission
-  //   String Hit_String = Arduino_Link_String.substring(0, Arduino_Link_String.indexOf("\r\n"));
-  //   // Serial.println("Hit_String");
-  //   // Serial.println(Hit_String);
-  //
-  //   // Check if the two values send is the save if now remove past next \r\n
-  //   if (Hit_String.substring(0, Hit_String.indexOf("#*#")) == Hit_String.substring(Hit_String.indexOf("#*#") + 3, Hit_String.length()) && Hit_String.indexOf("#*#") != 0) {
-  //     // save message here cacl min max and averidge is done by the arduino
-  //     // Remove all insanes of same strng in buffer no reason to read the same value twie
-  //     Arduino_Link_String.replace(Hit_String, "");
-  //   }
-  //   Serial.println("HIT: " + String(Hit_String.substring(0, Hit_String.indexOf("#*#"))));
-  //
-  //
-  //
-  //   // +4 = \r\n.length()
-  //   // Arduino_Link_String = Arduino_Link_String.substring(Hit_String.length() + 4, Arduino_Link_String.length());
-  //
-  //
-  //   // Remove the Hit string after use OR remove the invalid string
-  //   // Remove everything till next \r\n regardless if it matched or not
-  // }
-  //   // If the above fails there is no reason to continue because there is not a whole string in the buffer
-  //
-  // if (Arduino_Link_String.length() > 0) {
-  //   Serial.println("Arduino_Link_String");
-  //   Serial.println(Arduino_Link_String);
-  // }
-
-
-  return;
-} // Arduino_Link()
 
 
 // ############################################################ MQTT_Allow_Flash() ############################################################
@@ -4234,32 +4135,7 @@ bool FS_Config_Load() {
     else {
       Log(MQTT_Topic[Topic_Log_Error] + "/LDR", "Configuration failed pin in use");
     }
-  } // LDR
-
-
-  // ############### Arduino_Link ###############
-  if (root.get<String>("Arduino_Link") != "") {
-
-    if (root.get<String>("Arduino_Link") == "1") {
-      Log(MQTT_Topic[Topic_System] + "/Arduino_Link", "Configuring");
-
-      if (Pin_Monitor(Reserve_Normal, Arduino_Link_RX) == Pin_Free && Pin_Monitor(Reserve_Normal, Arduino_Link_TX) == Pin_Free) {
-
-        // FIX - Add Serial Autoengotiate here
-        Arduino_Link_Serial.setTimeout(125);
-        Arduino_Link_Serial.begin(115200);  // software serial port
-
-        Arduino_Link_Ticker.attach_ms(Arduino_Link_Refresh, Arduino_Link);
-
-        Arduino_Link_Configured = true;
-        Log(MQTT_Topic[Topic_System] + "/Arduino_Link", "Configuration compleate");
-      }
-      else {
-          Log(MQTT_Topic[Topic_Log_Error] + "/Arduino_Link", "Configuration failed pin in use");
-        }
-      }
-    } // Arduino_Link
-
+  }
 
   return true;
 }
@@ -4279,6 +4155,7 @@ void Serial_CLI_Command_Check() {
     Wait_For_Serial_Input("wifi ssid");
     WiFi_SSID = CLI_Input_String;
     Serial.println("wifi ssid set to: " + WiFi_SSID);
+
   }
   else if (CLI_Input_String == "wifi password") {
     Wait_For_Serial_Input("wifi password");
@@ -4678,8 +4555,12 @@ bool MQTT_Commands(String Topic, String Payload) {
   else if (Topic == "Test") {
 
     Log("/Test", "MARKER");
-
-    Arduino_Link_Serial.println("Hello World");
+    //
+    // byte Test = 101;
+    //
+    // if (Test <= 100 && Test >= 0) {
+    //   Serial.println("HIT");
+    // }
     // String Test_STR;
     // WiFi.printDiag(Test_STR);
 
@@ -4712,7 +4593,10 @@ bool MQTT_All(String Topic, String Payload) {
       Log(MQTT_Topic[Topic_Dimmer] + "/0", "All OFF");
       for (int i = 0; i < Dimmer_Max_Number_Of; i++) {
         if (Dimmer_Pins[i] != 255) {
-          if (Dimmer_State[i] != 0) Dimmer_Fade(i + 1, 0);
+          if (Dimmer_State[i] != 0) {
+            Dimmer_Step_To[i] = 0;
+            Dimmer_Procent[i] = 0;
+          }
           Log(MQTT_Topic[Topic_Dimmer] + "/" + String(i + 1) + "/State", "0");
         }
       }
@@ -5038,7 +4922,8 @@ void setup() {
       Log(MQTT_Topic[Topic_Log_Error] + "/BMP180", "Disabling BMP");
       BMP180_Configured = false;
     }
-  } // BMP180
+  }
+
 
   // Start wifi connection
   connectToWifi();
@@ -5056,6 +4941,8 @@ void loop() {
   OTA_Handler();
 
   Relay_Auto_OFF_Loop();
+
+  Dimmer_Fade_Loop();
 
   Distance_Sensor();
 

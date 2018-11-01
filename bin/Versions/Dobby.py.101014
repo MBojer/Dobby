@@ -37,12 +37,12 @@ from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 
 # FTP
-import ftplib
-from StringIO import StringIO
+# from ftplib import FTP
+# from StringIO import StringIO
 
 
 # System variables
-Version = 101015
+Version = 101014
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
@@ -586,7 +586,6 @@ class APC_Monitor:
                 time.sleep(random.uniform(0.150, 0.500))
 
             time.sleep(APC_Monitor.db_Refresh_Rate)
-        Log("Debug", "APC Monitor", "Checker", "Stopped: " + self.APC_Monitor_Dict[i[0]].Name)
 
     class Agent:
         def __init__(self, id):
@@ -596,8 +595,7 @@ class APC_Monitor:
             db_Connection = Open_db("Dobby")
             db_Curser = db_Connection.cursor()
 
-            db_Curser.execute("SELECT Name, Enabled, Tags, Refresh_Rate, Max_Entries, FTP_URL, Next_Collect, Last_Modified FROM Dobby.APC_Monitor WHERE id='" + str(self.id) + "'")
-
+            db_Curser.execute("SELECT Name, Enabled, Refresh_Rate, IP, Username, Password, Next_Refresh, Last_Refresh, Last_Modified FROM Dobby.APC_Monitor WHERE id='" + str(self.id) + "'")
             APC_Monitor_Info = db_Curser.fetchone()
 
             Close_db(db_Connection, db_Curser)
@@ -607,31 +605,21 @@ class APC_Monitor:
             # Canget log event before now if you want to use name
             Log("Debug", "APC Monitor", self.Name, 'Initializing')
 
-            # Check if FTP URL is valid
-            if 'ftp://' and ':' and '@' in APC_Monitor_Info[5]:
-                self.Enabled = bool(APC_Monitor_Info[1])
-                self.Tags = APC_Monitor_Info[2]
-                self.Refresh_Rate = float(APC_Monitor_Info[3] * 60)
-                self.Max_Entries = APC_Monitor_Info[4]
-                # self.FTP_URL = APC_Monitor_Info[5] -- No reason to save this to memory
-                self.Next_Collect = APC_Monitor_Info[6]
-                self.Last_Modified = APC_Monitor_Info[7]
+            self.Enabled = bool(APC_Monitor_Info[1])
+            self.Refresh_Rate = float(APC_Monitor_Info[2] * 60)
+            self.IP = APC_Monitor_Info[3]
+            self.Username = APC_Monitor_Info[4]
+            self.Password = APC_Monitor_Info[5]
+            self.Next_Refresh = APC_Monitor_Info[6]
+            self.Last_Refresh = APC_Monitor_Info[7]
+            self.Last_Modified = APC_Monitor_Info[8]
 
-                # [6:] removed 'ftp://'
-                self.Username = APC_Monitor_Info[5][6:].split(":", 1)[0]
-                self.Password = APC_Monitor_Info[5][6:].split("@", 1)[0].split(":", 1)[1]
-                self.FTP_Address = APC_Monitor_Info[5][6:].split("/", 1)[0].split("@", 1)[1]
-                self.File_Name = APC_Monitor_Info[5][6:].split("/", 1)[1]
+            self.OK_To_Kill = True
+            self.Kill = False
 
-                self.OK_To_Kill = True
-                self.Kill = False
+            Log("Debug", "APC Monitor", self.Name, 'Initialization compleate')
 
-                Log("Debug", "APC Monitor", self.Name, 'Initialization compleate')
-
-                self.Start()
-
-            else:
-                Log("Error", "APC Monitor", self.Name, 'Invalid FTP URL: ' + str(APC_Monitor_Info[5]))
+            self.Start()
 
         # ========================= Agent - Start =========================
         def Start(self):
@@ -641,24 +629,11 @@ class APC_Monitor:
 
         # ========================= Agent - Read Data =========================
         def Get_Data(self, db_Curser):
-            Log("Debug", "APC Monitor", self.Name, "Starting date collection")
 
-            # Create FTP Connection
-            FTP_Connection = ftplib.FTP(self.FTP_Address)
-            # Open FTP Connection
-            FTP_Connection.login(self.Username, self.Password)
-            # Create virtual file in memory
+            ftp = FTP(self.IP)
+            ftp.login(self.Username, self.Password)
             FTP_Memory_File = StringIO()
-
-            # Download file to memory
-            try:
-                FTP_Connection.retrbinary(str('RETR ' + str(self.File_Name)), FTP_Memory_File.write)
-            except ftplib.all_errors as e:
-                Log("Error", "APC Monitor", self.Name, "FTP error: " + str(e))
-                return
-
-            # Close FTP Connection
-            FTP_Connection.quit()
+            ftp.retrbinary('RETR /data.txt', FTP_Memory_File.write)
 
             # Convert to string
             FTP_Memory_File = FTP_Memory_File.getvalue()
@@ -673,87 +648,64 @@ class APC_Monitor:
             Device_Name = ''
             Last_Entry = ''
 
-            # Get device Name
-            Device_Name = FTP_Memory_File[4].split('\t')
-            Device_Name = Device_Name[2]
+            for Line in FTP_Memory_File:
 
-            Last_Entry = ''
+                # Line 4 contains device information
+                if i == 4:
+                    Device_Name = Line.split('\t')
+                    Device_Name = Device_Name[2]
 
-            # Find last entry for device
-            try:
-                db_Curser.execute("SELECT DateTime FROM `" + Log_db + "`.`APC_Monitor` WHERE `Name`='" + Device_Name + "' ORDER BY DateTime DESC LIMIT 1;")
-                Last_Entry = db_Curser.fetchone()
+                    Last_Entry = ''
 
-            except (MySQLdb.Error, MySQLdb.Warning) as e:
-                # 1146 = Table missing
-                if e[0] == 1146:
-                    Log("Info", "APC Monitor", "db", "APC Monitor Table missing creating it")
                     try:
-                        db_Curser.execute("CREATE TABLE `" + Log_db + "`.`APC_Monitor` ( `id` int(11) NOT NULL AUTO_INCREMENT, `DateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, `Name` varchar(45) NOT NULL, `Hertz A` decimal(2,0) NOT NULL, `Hertz B` decimal(2,0) NOT NULL, `Vin A` decimal(3,0) NOT NULL, `Vin B` decimal(3,0) NOT NULL, `I Out` decimal(3,1) NOT NULL, `IO Max` decimal(3,1) NOT NULL, `IO Min` decimal(3,1) NOT NULL, `Active Output` tinyint(2) NOT NULL, PRIMARY KEY (`id`), UNIQUE KEY `id_UNIQUE` (`id`)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;")
-                        # Try getting last entry for device again
-                        db_Curser.execute("SELECT DateTime FROM `" + Log_db + "`.APC_Monitor WHERE `Name`='" + Device_Name + "' ORDER BY DateTime DESC LIMIT 1;")
+                        # Find last entry for device
+                        db_Curser.execute("SELECT DateTime FROM `" + Log_db + "`.`APC_Monitor` WHERE `Name`='" + Device_Name + "' ORDER BY DateTime DESC LIMIT 1;")
                         Last_Entry = db_Curser.fetchone()
 
                     except (MySQLdb.Error, MySQLdb.Warning) as e:
-                        # Error 1050 = Table already exists
-                        if e[0] != 1050:
-                            Log("Fatal", "APC Monitor", Device_Name, "Unable to create log db table, failed with error: " + str(e))
-                            return
-                        else:
-                            Log("Error", "APC Monitor", Device_Name, "db error: " + str(e))
+                        # 1146 = Table missing
+                        if e[0] == 1146:
+                            Log("Info", "APC Monitor", "db", "APC Monitor Table missing creating it")
+                            try:
+                                db_Curser.execute("CREATE TABLE `" + Log_db + "`.`APC_Monitor` ( `id` int(11) NOT NULL AUTO_INCREMENT, `DateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, `Name` varchar(45) NOT NULL, `Hertz A` decimal(2,0) NOT NULL, `Hertz B` decimal(2,0) NOT NULL, `Vin A` decimal(3,0) NOT NULL, `Vin B` decimal(3,0) NOT NULL, `I Out` decimal(3,1) NOT NULL, `IO Max` decimal(3,1) NOT NULL, `IO Min` decimal(3,1) NOT NULL, `Active Output` tinyint(1) NOT NULL, PRIMARY KEY (`id`), UNIQUE KEY `id_UNIQUE` (`id`)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;")
+                                # Try getting last entry for device again
+                                db_Curser.execute("SELECT DateTime FROM `" + Log_db + "`.APC_Monitor WHERE `Name`='" + Device_Name + "' ORDER BY DateTime DESC LIMIT 1;")
+                                Last_Entry = db_Curser.fetchone()
 
-            if Last_Entry is not None:
-                Last_Entry = Last_Entry[0]
-            else:
-                # Set some 'random' time to check against
-                Last_Entry = datetime.datetime.strptime("1984-09-24 03:00:00", '%Y-%m-%d %H:%M:%S')
+                            except (MySQLdb.Error, MySQLdb.Warning) as e:
+                                # Error 1050 = Table already exists
+                                if e[0] != 1050:
+                                    Log("Fatal", "APC Monitor", Device_Name, "Unable to create log db table, failed with error: " + str(e))
+                                    return
+                                else:
+                                    print e
 
-            # Remove the first lines that contains device information
-            for i in range(8):
-                FTP_Memory_File.pop(0)
+                    if Last_Entry is not None:
+                        Last_Entry = Last_Entry[0]
+                    else:
+                        Last_Entry = datetime.datetime.strptime("1984-09-24 03:00:00", '%Y-%m-%d %H:%M:%S')
 
-            # For log info later
-            Entried_Added = 0
+                # Lines after 7 is data entries
+                elif i > 7:
+                    Entries = Line.split('\t')
 
-            # Reverse the list so you stop when you find the entry thats in the db already
-            for Line in reversed(FTP_Memory_File):
-
-                Entries = Line.split('\t')
-
-                if Entries != ['']:
-                    # Check if time string is as expected YYYY-MM-DD HH:MM:SS
-                    if '-' in Entries[0] and ':' in Entries[1]:
+                    if Entries != ['']:
                         Time_String = Entries[0] + str(" ") + Entries[1]
-                    # If not then fuck it
-                    else:
-                        continue
 
-                    Entry_Time = datetime.datetime.strptime(Time_String, '%Y-%m-%d %H:%M:%S')
+                        Entry_Time = datetime.datetime.strptime(Time_String, '%Y-%m-%d %H:%M:%S')
 
-                    if Entry_Time > Last_Entry:
-                        Value_String = "'" + str(Entry_Time) + "', '" + str(Device_Name) + "' ,"
+                        if Entry_Time > Last_Entry:
 
-                        for x in range(2, 10):
-                            Value_String = Value_String + "'" + str(Entries[x]) + "'"
-                            if x != 9:
-                                Value_String = Value_String + ", "
+                            Value_String = "'" + str(Entry_Time) + "', '" + str(Device_Name) + "' ,"
 
-                        print "INSERT INTO `" + Log_db + "`.`APC_Monitor` (`DateTime`, `Name`, `Hertz A`, `Hertz B`, `Vin A`, `Vin B`, `I Out`, `IO Max`, `IO Min`, `Active Output`) VALUES (" + Value_String + ");"
-                        try:
+                            for x in range(2, 10):
+                                Value_String = Value_String + "'" + str(Entries[x]) + "'"
+                                if x != 9:
+                                    Value_String = Value_String + ", "
+
                             db_Curser.execute("INSERT INTO `" + Log_db + "`.`APC_Monitor` (`DateTime`, `Name`, `Hertz A`, `Hertz B`, `Vin A`, `Vin B`, `I Out`, `IO Max`, `IO Min`, `Active Output`) VALUES (" + Value_String + ");")
-                        except (MySQLdb.Error, MySQLdb.Warning) as e:
-                            print "ERROR"
-                            print e
-
-                        Entried_Added += 1
-
-                    # The entries loaded is before last intry in db the quit
-                    else:
-                        break
 
                 i = i + 1
-
-            Log("Debug", "APC Monitor", self.Name, "Entried Added: " + str(Entried_Added))
 
         # ========================= Agent - Run =========================
         def Run(self):
@@ -762,10 +714,10 @@ class APC_Monitor:
             # Start eternal loop
             while True:
                 # Check if its time to get information
-                if self.Next_Collect < datetime.datetime.now():
+                if self.Next_Refresh < datetime.datetime.now():
                     Log("Debug", "APC Monitor", self.Name, "Refresh Started")
 
-                    self.Next_Collect = datetime.datetime.now() + timedelta(seconds=self.Refresh_Rate)
+                    self.Next_Refresh = datetime.datetime.now() + timedelta(seconds=self.Refresh_Rate)
 
                     self.OK_To_Kill = False
 
@@ -774,7 +726,7 @@ class APC_Monitor:
 
                     self.Get_Data(db_Curser)
 
-                    db_Curser.execute("UPDATE `Dobby`.`APC_Monitor` SET `Next_Collect`='" + str(self.Next_Collect) + "', `Last_Collect`='" + str(datetime.datetime.now()) + "' WHERE id = '" + str(self.id) + "';")
+                    db_Curser.execute("UPDATE `Dobby`.`APC_Monitor` SET `Next_Refresh`='" + str(self.Next_Refresh) + "', `Last_Refresh`='" + str(datetime.datetime.now()) + "' WHERE id = '" + str(self.id) + "';")
 
                     Close_db(db_Connection, db_Curser)
 
@@ -783,7 +735,7 @@ class APC_Monitor:
                     Log("Debug", "APC Monitor", self.Name, "Refresh Compleate")
                     time.sleep(APC_Monitor.Loop_Delay)
 
-                while self.Next_Collect >= datetime.datetime.now():
+                while self.Next_Refresh > datetime.datetime.now():
                     time.sleep(APC_Monitor.Loop_Delay)
 
                 if self.Kill is True:
@@ -1678,6 +1630,255 @@ def Functions(Payload):
         if Command[2] != 0:
             # Delay_For = Command[2]
             time.sleep(Command[2])
+
+
+# ---------------------------------------- Monitor Agent ----------------------------------------
+# def Agent_Message_Check(Topic, Payload, Retained, id):
+#     # Dont log retained messages
+#     if Retained is 0:
+#
+#         db_MAC_Connection = Open_db()
+#         db_MAC_Curser = db_MAC_Connection.cursor()
+#
+#         db_MAC_Curser.execute("SELECT Agent_Name FROM Dobby.MonitorAgentConfig WHERE Agent_ID=" + str(id) + ";")
+#         Agent_Name = db_MAC_Curser.fetchone()
+#
+#         Close_db(db_MAC_Connection, db_MAC_Curser)
+#
+#         if Agent_Name is None:
+#             # FIX add error handling
+#             return
+#
+#         Agent_Log_Source_Value(Agent_Name[0], Topic, Payload)
+#
+#
+#
+#
+# def Agent_Log_Source_Value_Run(Agent_Name, Log_Source, Log_Value, db_ALSV_Curser):
+#
+#     # Make sure Log_Value is string
+#     Log_Value = str(Log_Value)
+#     try:
+#         db_ALSV_Curser.execute("INSERT INTO `" + Log_db + "`.`MonitorAgent` (Agent, Source, Value) Values('" + Agent_Name + "', '" + Log_Source + "', '" + Log_Value + "');")
+#     except (MySQLdb.Error, MySQLdb.Warning) as e:
+#         # Table missing, create it
+#         if e[0] == 1146:
+#             try:
+#                 db_ALSV_Curser.execute("CREATE TABLE `" + Log_db + "`.`MonitorAgent` (`id` int(11) NOT NULL AUTO_INCREMENT, `DateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, `Agent` varchar(75) NOT NULL, `Source` varchar(75) NOT NULL, `Value` varchar(250), PRIMARY KEY (`id`))")
+#             except (MySQLdb.Error, MySQLdb.Warning) as e:
+#                 # Error 1050 = Table already exists
+#                 if e[0] != 1050:
+#                     Log("Fatal", "MonitorAgent", Agent_Name, "Unable to create log db table, failed with error: " + str(e))
+#                     return
+#
+#             Log("Info", "MonitorAgent", "db", "MonitorAgent Table missing creating it")
+#             # Try logging the message again
+#             db_ALSV_Curser.execute("INSERT INTO `" + Log_db + "`.`MonitorAgent` (Agent, Source, Value) Values('" + Agent_Name + "', '" + Log_Source + "', '" + Log_Value + "');")
+#         else:
+#             Log("Critical", "MonitorAgent", "db", "Unable to log message. Error: " + str(e))
+#             return
+#
+#     Log("Debug", "MonitorAgent", Agent_Name, "Valure capured - Topic: " + Log_Source + " Value: " + Log_Value)
+#
+#
+# def Agent_Log_Source_Value(Agent_Name, Log_Source, Log_Value):
+#     db_ALSV_Connection = Open_db(Log_db)
+#     db_ALSV_Curser = db_ALSV_Connection.cursor()
+#
+#     # json value
+#     if Is_json(Log_Value) is True:
+#
+#         root_Gyro = json.loads(Log_Value)
+#
+#         # Split headers into seperate topics
+#         for json_Log_Source, json_Log_Value in root_Gyro.items():
+#             Agent_Log_Source_Value_Run(Agent_Name, Log_Source + "/" + json_Log_Source, json_Log_Value, db_ALSV_Curser)
+#
+#     else:
+#         Agent_Log_Source_Value_Run(Agent_Name, Log_Source, Log_Value, db_ALSV_Curser)
+#
+#     # Delete rows > max
+#     db_ALSV_Curser.execute("SELECT count(*) FROM `" + Log_db + "`.`MonitorAgent` WHERE Agent='" + Agent_Name + "';")
+#     Rows_Number_Of = db_ALSV_Curser.fetchall()
+#
+#     # Get max number of rows
+#     db_ALSV_Curser.execute("SELECT Agent_Log_Length FROM `Dobby`.`MonitorAgentConfig` WHERE Agent_Name='" + Agent_Name + "';")
+#     Max_Number_Of = db_ALSV_Curser.fetchone()
+#
+#     if Rows_Number_Of[0][0] > int(Max_Number_Of[0]):
+#         Rows_To_Delete = Rows_Number_Of[0][0] - int(Max_Number_Of[0])
+#         db_ALSV_Curser.execute("DELETE FROM `" + Log_db + "`.`MonitorAgent` WHERE Agent='" + Agent_Name + "' ORDER BY 'DateTime' LIMIT " + str(Rows_To_Delete) + ";")
+#         Log("Debug", "Dobby", Agent_Name, "History Length reached, deleting " + str(Rows_To_Delete))
+#
+#     Close_db(db_ALSV_Connection, db_ALSV_Curser)
+#
+#
+# # No longer used - i think
+# # def Agent_On_Msg(mosq, obj, msg):
+# #     Agent_Msg_Thread = threading.Thread(target=Agent_Message_Check, kwargs={"Topic": msg.topic, "Payload": msg.payload, "Retained": msg.retain})
+# #     Agent_Msg_Thread.daemon = True
+# #     Agent_Msg_Thread.start()
+#
+#
+# def MonitorAgent_Show():
+#     Publish_String = "Agent - Enabled - State - Last Ping - Next Ping\n"
+#
+#     db_MASh_Connection = Open_db("Dobby")
+#     db_MASh_Curser = db_MASh_Connection.cursor()
+#
+#     db_MASh_Curser.execute("SELECT Agent_Name, Agent_Enabled, Agent_State, Agent_Last_Ping, Agent_Next_Ping FROM `Dobby`.`MonitorAgentConfig`;")
+#     Agent_List = db_MASh_Curser.fetchall()
+#
+#     Close_db(db_MASh_Connection, db_MASh_Curser)
+#
+#     for Agent_Info in Agent_List:
+#         # Name
+#         Publish_String = Publish_String + str(Agent_Info[0])
+#         Publish_String = Publish_String + " - "
+#         # Enabled
+#         Publish_String = Publish_String + str(Agent_Info[1])
+#         Publish_String = Publish_String + " - "
+#         # State
+#         Publish_String = Publish_String + str(Agent_Info[2])
+#         Publish_String = Publish_String + " - "
+#         # Last Ping
+#         Publish_String = Publish_String + str(Agent_Info[3])
+#         Publish_String = Publish_String + " - "
+#         # Next Ping
+#         Publish_String = Publish_String + str(Agent_Info[4])
+#
+#         Publish_String = Publish_String + "\n"
+#
+#     MQTT_Client.publish(System_Header + "/System/Dobby/MonitorAgent", payload=Publish_String, qos=0, retain=False)
+
+
+# # ---------------------------------------- Monitor Agent New ----------------------------------------
+# def MonitorAgent(Agent_ID):
+#
+#     db_MAS_Connection = Open_db("Dobby")
+#     db_MAS_Curser = db_MAS_Connection.cursor()
+#
+#     db_MAS_Curser.execute("set autocommit = 1")
+#
+#     db_MAS_Curser.execute("SELECT Agent_Name, Agent_Targets, Agent_Targets_Payload FROM Dobby.MonitorAgentConfig WHERE Agent_ID='" + str(Agent_ID) + "';")
+#     Agent_Config = db_MAS_Curser.fetchall()
+#
+#     if "," in Agent_Config[0][1]:
+#         Topic_List = Agent_Config[0][1].replace(" ", "")
+#         Topic_List = Agent_Config[0][1].split(",")
+#     else:
+#         Topic_List = [Agent_Config[0][1]]
+#
+#     if "," in Agent_Config[0][2]:
+#         Payload_List = Agent_Config[0][2].replace(" ", "")
+#         Payload_List = Agent_Config[0][2].split(",")
+#     else:
+#         Payload_List = [Agent_Config[0][2]]
+#
+#     # Change Agent_State to start
+#     db_MAS_Curser.execute("UPDATE `Dobby`.`MonitorAgentConfig` SET Agent_State = 'Start' WHERE Agent_ID = '" + str(Agent_ID) + "';")
+#
+#     while True:
+#         # Quit agent when MQTT Connection is lost
+#         if MQTT_Client.Connected is False:
+#             Log("Warning", "MonitorAgent", Agent_Config[0][0], "MQTT disconnected quitting")
+#             Close_db(db_MAS_Connection, db_MAS_Curser)
+#             return
+#
+#         # Refresh agent info so agent can be controler
+#         db_MAS_Curser.execute("SELECT Agent_Enabled, Agent_State, Agent_Interval, Agent_Next_Ping  FROM Dobby.MonitorAgentConfig WHERE Agent_ID='" + str(Agent_ID) + "';")
+#         Agent_Info = db_MAS_Curser.fetchall()
+#
+#         # Agent Enabled - Quits if changes to 0
+#         if Agent_Info[0][0] == "0":
+#             Log("Info", "MonitorAgent", Agent_Config[0][0], "Disabled quitting, bye bye ...")
+#             Close_db(db_MAS_Connection, db_MAS_Curser)
+#             return
+#
+#         # Start Agent
+#         elif Agent_Info[0][1] == "Start":
+#             db_MAS_Curser.execute("UPDATE `Dobby`.`MonitorAgentConfig` SET Agent_State = 'Running', Agent_Next_Ping = '" + str(datetime.datetime.now()) + "' WHERE Agent_ID = '" + str(Agent_ID) + "';")
+#             Log("Info", "MonitorAgent", Agent_Config[0][0], "Changed state to: Running")
+#             # Publish start message
+#             MQTT_Client.publish(System_Header + "/System/Dobby/MonitorAgent/" + Agent_Config[0][0], payload="Running", qos=0, retain=False)
+#
+#         # Stop Agent
+#         elif Agent_Info[0][1] == "Stop":
+#             # Agent_State = "Stopped"
+#             db_MAS_Curser.execute("UPDATE `Dobby`.`MonitorAgentConfig` SET Agent_State = 'Stopped' WHERE Agent_ID = '" + str(Agent_ID) + "';")
+#             Log("Info", "MonitorAgent", Agent_Config[0][0], "Changed state to: Stopped")
+#             # Publish stop message
+#             MQTT_Client.publish(System_Header + "/System/Dobby/MonitorAgent/" + Agent_Config[0][0], payload="Stopped", qos=0, retain=False)
+#
+#         # Send Ping
+#         if Agent_Info[0][1] == "Running" and Agent_Info[0][3] < datetime.datetime.now():
+#             # Ping
+#             x = 0
+#             for Topic in Topic_List:
+#                 MQTT_Client.publish(Topic, payload=Payload_List[x], qos=0, retain=False)
+#                 Log("Debug", "MonitorAgent", Agent_Config[0][0], "Ping: " + Topic)
+#
+#                 # Update db
+#                 db_MAS_Curser.execute("UPDATE `Dobby`.`MonitorAgentConfig` SET Agent_Last_Ping = '" + str(datetime.datetime.now()) + "', Agent_Next_Ping = '" + str(datetime.datetime.now() + timedelta(seconds=int(Agent_Info[0][2]))) + "' WHERE Agent_ID = '" + str(Agent_ID) + "';")
+#
+#                 x = x + 1
+#
+#         time.sleep(1)
+#
+#
+# def MonitorAgent_init():
+#
+#     # Get values from db
+#     db_MAI_Connection = Open_db("Dobby")
+#     db_MAI_Curser = db_MAI_Connection.cursor()
+#
+#     db_MAI_Curser.execute("SELECT Agent_ID FROM Dobby.MonitorAgentConfig WHERE Agent_Enabled='1';")
+#     Agent_List = db_MAI_Curser.fetchall()
+#
+#     if Agent_List is ():
+#         Log("Fatal", "MonitorAgent", "db", "MonitorAgent db empthy, unable to continue")
+#         return
+#
+#     # Swan MonitorAgents
+#     for Agent in Agent_List:
+#         MoA_Thread = threading.Thread(target=MonitorAgent, kwargs={"Agent_ID": Agent[0]})
+#         MoA_Thread.daemon = True
+#         MoA_Thread.start()
+#
+#     Close_db(db_MAI_Connection, db_MAI_Curser)
+#
+#
+# # Subscribes to topics for active agents ment to be run at MQTT Connect
+# def MonitorAgent_Subscribe():
+#
+#     db_AS_Connection = Open_db("Dobby")
+#     db_AS_Curser = db_AS_Connection.cursor()
+#
+#     db_AS_Curser.execute("SELECT Agent_ID, Agent_Name, Agent_Sources FROM Dobby.MonitorAgentConfig WHERE Agent_Enabled='1';")
+#     Agent_List = db_AS_Curser.fetchall()
+#
+#     Close_db(db_AS_Connection, db_AS_Curser)
+#
+#     if Agent_List is None:
+#         # FIX add log message
+#         print None
+#         return
+#
+#     #     id = 0
+#     #   Name = 1
+#     # Target = 2
+#
+#     for i in range(len(Agent_List)):
+#
+#         # Add id and targets to dict for later use
+#         MonitorAgent_Subscribe_List.append({'id': Agent_List[i][0], 'Name': Agent_List[i][1], 'Targets': Agent_List[i][2].replace(" ", "").split(",")})
+#
+#         for Target in MonitorAgent_Subscribe_List[i]["Targets"]:
+#             Log("Info", "MonitorAgent", str(MonitorAgent_Subscribe_List[i]["Name"]), "Subscribing to topic: " + str(Target))
+#             # Subscribe
+#             MQTT_Client.subscribe(str(Target))
+#             # Register callbacks
+#             MQTT_Client.message_callback_add(str(Target), On_MQTT_Message)
 
 
 # ---------------------------------------- Main Script ----------------------------------------

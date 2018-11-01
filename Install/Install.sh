@@ -27,7 +27,6 @@ sudo pip install flask logging paho-mqtt psutil mysql-python gitpython
 # Install dependencies - Dash
 sudo pip install dash dash-html-components dash-core-components pandas dash-auth dash-table-experiments six
 
-
 # Pull and move
 git clone https://github.com/MBojer/Dobby.git
 sudo mv Dobby /etc/Dobby
@@ -43,7 +42,7 @@ sudo chown -R dobby:dobby /var/log/Dobby/
 sudo cp /etc/Dobby/Install/Config_Files/sudoers.d/010_dobby-nopasswd /etc/sudoers.d/010_dobby-nopasswd
 
 # RUN BELOW SQL SCRIP
-MySQL_Setup.sql
+sudo mysql < MySQL_Setup.sql
 
 # Supervisor Config
 sudo ln -s /etc/Dobby/Install/Config_Files/supervisor/conf.d/Dobby.conf /etc/supervisor/conf.d/Dobby.conf
