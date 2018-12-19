@@ -40,9 +40,11 @@ from email.MIMEText import MIMEText
 import ftplib
 from StringIO import StringIO
 
+# For uDP Config
+import socket
 
 # System variables
-Version = 101015
+Version = 101016
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
@@ -361,6 +363,18 @@ def MQTT_Config_New(Payload):
 
     Payload = Payload.split(",")
 
+    # Check if UDP config have been requested
+    UDP_Request = False
+    # if ",UDP" in Payload:
+    #     print "MARKER UDP"
+    #     UDP_Request = True
+
+    try:
+        if Payload[2]:
+            UDP_Request = True
+    except ValueError and IndexError:
+        pass
+
     db_FSCJ_Connection = Open_db("Dobby")
     db_FSCJ_Curser = db_FSCJ_Connection.cursor()
 
@@ -379,8 +393,14 @@ def MQTT_Config_New(Payload):
 
     # Check config id agents current and return if =
     if Config_ID_Value[0] == int(Payload[1]):
-        Log("Debug", "MQTTConfig", "Config up to date", Payload[0] + " id: " + Payload[1])
-        return
+        if UDP_Request is True:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.sendto("OK".encode('utf-8'), (Payload[3], 8888))
+            sock.close()
+            return
+        else:
+            Log("Debug", "MQTTConfig", "Config up to date", Payload[0] + " id: " + Payload[1])
+            return
 
     # Get config
     try:
@@ -410,21 +430,34 @@ def MQTT_Config_New(Payload):
         Log("Error", "MQTTConfig", "Config Empthy", Payload[0])
         return
 
-    Log("Info", "MQTTConfig", "Publish Config", Payload[0])
-
+    # Create json config
     Config_Dict = {}
-
     Interation = 0
-
     for x in Config_Name_List:
         if str(x[0]) != "id" and str(x[0]) != "Config_Active" and str(x[0]) != "Last_Modified" and Config_Value_List[0][Interation] is not None:
             Config_Dict[str(x[0])] = str(Config_Value_List[0][Interation])
         Interation = Interation + 1
 
-    # Publish json
-    MQTT_Client.publish(System_Header + "/Config/" + Payload[0], payload=json.dumps(Config_Dict) + ";", qos=0, retain=False)
+    # Check if MQTT or UDP
+    # MQTT
+    if UDP_Request is False:
+        Log("Info", "MQTTConfig", "Publish Config", Payload[0])
+        # Publish json
+        MQTT_Client.publish(System_Header + "/Config/" + Payload[0], payload=json.dumps(Config_Dict) + ";", qos=0, retain=False)
+        return
 
-    return
+    # UDP Request
+    else:
+        Log("Info", "UDPConfig", "Publish Config", Payload[0] + " - IP: " + Payload[3])
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.sendto(json.dumps(Config_Dict).encode('utf-8'), (Payload[3], 8888))
+        sock.close()
+
+        print "Done"
+        # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as UDP_Socket:
+        #     UDP_Socket.sendto(json.dumps(Config_Dict).encode('utf-8'), (Payload[3], 8888))
+        # print Done
 
 
 def MQTT_Config(Payload):
@@ -608,7 +641,7 @@ class APC_Monitor:
             Log("Debug", "APC Monitor", self.Name, 'Initializing')
 
             # Check if FTP URL is valid
-            if 'ftp://' and ':' and '@' in APC_Monitor_Info[5]:
+            if 'ftp://' and ':' and '@' and "." in APC_Monitor_Info[5]:
                 self.Enabled = bool(APC_Monitor_Info[1])
                 self.Tags = APC_Monitor_Info[2]
                 self.Refresh_Rate = float(APC_Monitor_Info[3] * 60)
@@ -618,10 +651,15 @@ class APC_Monitor:
                 self.Last_Modified = APC_Monitor_Info[7]
 
                 # [6:] removed 'ftp://'
-                self.Username = APC_Monitor_Info[5][6:].split(":", 1)[0]
-                self.Password = APC_Monitor_Info[5][6:].split("@", 1)[0].split(":", 1)[1]
-                self.FTP_Address = APC_Monitor_Info[5][6:].split("/", 1)[0].split("@", 1)[1]
-                self.File_Name = APC_Monitor_Info[5][6:].split("/", 1)[1]
+                try:
+                    self.Username = APC_Monitor_Info[5][6:].split(":", 1)[0]
+                    self.Password = APC_Monitor_Info[5][6:].split("@", 1)[0].split(":", 1)[1]
+                    self.FTP_Address = APC_Monitor_Info[5][6:].split("/", 1)[0].split("@", 1)[1]
+                    self.File_Name = APC_Monitor_Info[5][6:].split("/", 1)[1]
+                except IndexError or ValueError:
+                    # FIX - Kill the agent here and make it retrn false so you can rmeove it from the dict above
+                    Log("Error", "APC Monitor", self.Name, 'Invalid FTP URL: ' + str(APC_Monitor_Info[5]))
+                    return
 
                 self.OK_To_Kill = True
                 self.Kill = False
@@ -664,18 +702,34 @@ class APC_Monitor:
             FTP_Memory_File = FTP_Memory_File.getvalue()
 
             # Remove \r
-            FTP_Memory_File = FTP_Memory_File.replace("\t\r", "")
+            FTP_Memory_File = FTP_Memory_File.replace("\r", "")
 
-            FTP_Memory_File = FTP_Memory_File.split("\n")
+            # # Remove \t
+            # FTP_Memory_File = FTP_Memory_File.replace("\t", "")
+
+            # Split the data into Device Info and Data
+            FTP_Memory_File = FTP_Memory_File.split('SrcSel(0=A,1=B)\n')
+
+            # Store Device Info in variable
+            Device_Info = FTP_Memory_File[0]
+            # Convert device info to list
+            Device_Info = Device_Info.split('\n')
+
+            # Save the Data to FTP_Memory_File variable
+            FTP_Memory_File = FTP_Memory_File[1]
 
             i = 0
 
             Device_Name = ''
             Last_Entry = ''
 
-            # Get device Name
-            Device_Name = FTP_Memory_File[4].split('\t')
-            Device_Name = Device_Name[2]
+            # Remove the first lines that contains device information and collect the needed information
+            for i in range(8):
+                Info = Device_Info.pop(0)
+                # Get device Name
+                if i == 4:
+                    Device_Name = Info.split('\t')
+                    Device_Name = Device_Name[2]
 
             Last_Entry = ''
 
@@ -706,29 +760,50 @@ class APC_Monitor:
                 Last_Entry = Last_Entry[0]
             else:
                 # Set some 'random' time to check against
-                Last_Entry = datetime.datetime.strptime("1984-09-24 03:00:00", '%Y-%m-%d %H:%M:%S')
-
-            # Remove the first lines that contains device information
-            for i in range(8):
-                FTP_Memory_File.pop(0)
+                Last_Entry = datetime.datetime.strptime("09/24/1984 03:00:00", '%m/%d/%Y %H:%M:%S')
 
             # For log info later
             Entried_Added = 0
 
+            # Check if last datetime from db is in file
+            try:
+                Last_Entry_Index = FTP_Memory_File.index(Last_Entry.strftime('%m/%d/%Y\t%H:%M:%S'))
+            # If ValueError then the last entry is not in file
+            except ValueError:
+                Last_Entry_Index = len(FTP_Memory_File)
+
+            # Remove everything up untill last matching datetime entry
+            FTP_Memory_File = FTP_Memory_File[0:Last_Entry_Index]
+
+            # Convert to list
+            FTP_Memory_File = FTP_Memory_File.split("\n")
+
+            # Remove empth line at beginning of file
+            # FTP_Memory_File.pop(0)
+            # print "after"
+            # print FTP_Memory_File
+            # return
+
             # Reverse the list so you stop when you find the entry thats in the db already
             for Line in reversed(FTP_Memory_File):
 
+                # If empthy line do nothing
+                if Line is "":
+                    continue
+
+                # Split the line into a list
                 Entries = Line.split('\t')
 
                 if Entries != ['']:
                     # Check if time string is as expected YYYY-MM-DD HH:MM:SS
-                    if '-' in Entries[0] and ':' in Entries[1]:
+                    if '/' in Entries[0] and ':' in Entries[1]:
                         Time_String = Entries[0] + str(" ") + Entries[1]
                     # If not then fuck it
                     else:
-                        continue
+                        Log("Warning", "APC Monitor", self.Name, 'Invalid datetime detected make sure "Date Format" is set to " mm/dd/yyyy"')
+                        return
 
-                    Entry_Time = datetime.datetime.strptime(Time_String, '%Y-%m-%d %H:%M:%S')
+                    Entry_Time = datetime.datetime.strptime(Time_String, '%m/%d/%Y %H:%M:%S')
 
                     if Entry_Time > Last_Entry:
                         Value_String = "'" + str(Entry_Time) + "', '" + str(Device_Name) + "' ,"
@@ -738,18 +813,26 @@ class APC_Monitor:
                             if x != 9:
                                 Value_String = Value_String + ", "
 
-                        print "INSERT INTO `" + Log_db + "`.`APC_Monitor` (`DateTime`, `Name`, `Hertz A`, `Hertz B`, `Vin A`, `Vin B`, `I Out`, `IO Max`, `IO Min`, `Active Output`) VALUES (" + Value_String + ");"
                         try:
                             db_Curser.execute("INSERT INTO `" + Log_db + "`.`APC_Monitor` (`DateTime`, `Name`, `Hertz A`, `Hertz B`, `Vin A`, `Vin B`, `I Out`, `IO Max`, `IO Min`, `Active Output`) VALUES (" + Value_String + ");")
                         except (MySQLdb.Error, MySQLdb.Warning) as e:
-                            print "ERROR"
-                            print e
+                            Log("Error", "APC Monitor", self.Name, "Unable to add entries - db error: " + str(e))
+                            return
 
                         Entried_Added += 1
 
                     # The entries loaded is before last intry in db the quit
                     else:
-                        break
+                        print "Entry_Time"
+                        print Entry_Time > Last_Entry
+                        print "Entry_Time"
+                        print Entry_Time
+                        print type(Entry_Time)
+                        print "Last_Entry"
+                        print Last_Entry
+                        print type(Last_Entry)
+                        print "BREAK"
+                        # break
 
                 i = i + 1
 
@@ -1503,8 +1586,6 @@ def MQTT_Commands_On_Msg(mosq, obj, msg):
         Message_Thread.daemon = True
         Message_Thread.start()
         return
-    else:
-        print "MARKER"
 
 
 def MQTT_KeepAlive_On_Msg(mosq, obj, msg):

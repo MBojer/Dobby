@@ -43,7 +43,7 @@ CREATE TABLE `Dobby`.`DeviceConfig` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `Hostname` varchar(25) NOT NULL,
   `Config_Active` tinyint(1) unsigned NOT NULL,
-  `Config_ID` int(11) unsigned NOT NULL DEFAULT '0',
+  `Config_ID` int(11) unsigned NOT NULL DEFAULT '1',
   `Auto_Update` tinyint(1) unsigned NOT NULL,
   `System_Header` varchar(25) NOT NULL,
   `System_Sub_Header` varchar(25) NOT NULL,

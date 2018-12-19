@@ -1,0 +1,1 @@
+Use the deviceconfig table to generate individual users for mqtt if more secuerty is needed

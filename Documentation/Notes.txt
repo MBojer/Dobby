@@ -1,0 +1,9 @@
+- Upload when in script folder
+platformio run --target upload
+- Serial monitor
+pio device monitor --port /dev/ttyUSB0 --baud 115200 --echo
+- Upload and start serial monitor of ok
+platformio run --target upload && pio device monitor --port /dev/ttyUSB0 --baud 115200 --echo
+
+-- List memory usage on base on mega sketch
+avr-nm -Crtd --size-sort .pioenvs/megaatmega2560/firmware.elf | grep -i ' [dbv] '

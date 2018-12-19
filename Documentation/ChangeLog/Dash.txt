@@ -1,5 +1,12 @@
+================================================== 102007 ==================================================
+Addling another dropdown on Log Graph to select either rows or json tags
+
+================================================== 102006 ==================================================
+Changed "Log Trigger" to "Log Graph" and added support for different log graphs to simplify the interface
+Added "Log Trigger" and "APC Monitor" to "Log Graph" tab
+
 ================================================== 102005 ==================================================
-Added Log_Trigger_Live Log Tab
+Added Live Log Tab
 
 ================================================== 102004 ==================================================
 Added config tab

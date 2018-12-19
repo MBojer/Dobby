@@ -1,0 +1,20 @@
+-------------------- 101004 --------------------
+Removing Pin_Monitor - Used to much memory
+Moved MAC address to EEPROM address to save memory
+# Added Configuration of ACS712
+
+
+-------------------- 101003 --------------------
+Added ACS712 support (Ammeter) NOTE: AC Only
+Adding Pin_Monitor
+
+
+-------------------- 101002 --------------------
+Added Version number to identify board
+Added support for EEPROM config storage
+Working with config from dobby
+Serial CLI sort of working still needs work
+
+
+-------------------- 101001 --------------------
+Well ...

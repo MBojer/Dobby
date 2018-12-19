@@ -1,5 +1,18 @@
+-------------------- 101060 --------------------
+Removed Arduino Link
+Added MAX31855 support
+
+-------------------- 101059 --------------------
+
+Reverting arduino link to send ID when requesting in stead of string.
+requestfrom with string does not seem to work
+
+-------------------- 101058 --------------------
+trying to get arduino link going with EspSoftwareSerial
+
 -------------------- 101057 --------------------
 Working on link to Arduino Uno or Mega via Serial
+Not stable
 
 -------------------- 101056 --------------------
 Adding Ammeter
