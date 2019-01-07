@@ -221,3 +221,5 @@ INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Mail_Tr
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Log_Trigger", "Log", "Level", "Info");
 
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Spammer", "Log", "Level", "Info");
+
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("APC_Monitor", "Log", "Level", "Info");

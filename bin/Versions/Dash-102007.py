@@ -42,7 +42,7 @@ import plotly.graph_objs as go
 # import json
 
 # MISC
-Version = 102008
+Version = 102007
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
@@ -345,8 +345,6 @@ def Tabs_List():
 
     Tabs_List = []
 
-    Tabs_List.append(dcc.Tab(label='Alerts', value='Alerts_Tab'))
-
     Tabs_List.append(dcc.Tab(label='Config', value='Config_Tab'))
 
     # Tabs_List.append(dcc.Tab(label='Devices', value='Config_Tab'))
@@ -374,7 +372,7 @@ def Log_Graph_Tab_Dropdown_List():
 app.layout = html.Div([
 
 
-    dcc.Tabs(id="tabs", value='Alerts_Tab', children=Tabs_List()),
+    dcc.Tabs(id="tabs", value='Log_Graph_Tab', children=Tabs_List()),
 
     html.Div(id='Main_Tabs'),
 
@@ -385,7 +383,6 @@ app.layout = html.Div([
 
     # Places to store variables
     html.Div([
-        html.Div(id='Alerts_Tab_Variables', children=""),
         html.Div(id='Config_Tab_Variables', children=""),
         # html.Div(id='Device_Tab_Variables', children=""),
         html.Div(id='Live_Tab_Variables', children=""),
@@ -403,7 +400,6 @@ app.layout = html.Div([
         Input('tabs', 'value'),
         ],
     [
-        State('Alerts_Tab_Variables', 'children'),
         State('Config_Tab_Variables', 'children'),
         # State('Device_Tab_Variables', 'children'),
         State('Live_Tab_Variables', 'children'),
@@ -411,30 +407,11 @@ app.layout = html.Div([
         State('System_Tab_Variables', 'children'),
         ]
     )
-def render_content(tab, Alerts_Tab_Variables, Config_Tab_Variables, Live_Tab_Variables, Log_Graph_Tab_Variables, System_Tab_Variables):
-    # ======================================== System Tab ========================================
-    # ======================================== System Tab ========================================
-    # ======================================== System Tab ========================================
-    if tab == 'Alerts_Tab':
-        Alerts_Tab_Variables = Generate_Variable_Dict(Alerts_Tab_Variables)
-
-        return html.Div([
-            # Config table
-            dt.DataTable(
-                id='Alerts_Table',
-                rows=[],
-                columns=['Source', 'Text', 'Status', 'Timestamp'],
-                min_height='72vh',
-                resizable=True,
-                editable=True,
-                filterable=True,
-                sortable=True,
-                ),
-        ], style={'marginBottom': 50, 'marginTop': 25}, id='Alerts_Tab')
-    # ======================================== Live Tab ========================================
-    # ======================================== Live Tab ========================================
-    # ======================================== Live Tab ========================================
-    elif tab == 'Live_Tab':
+def render_content(tab, Config_Tab_Variables, Live_Tab_Variables, Log_Graph_Tab_Variables, System_Tab_Variables):
+    # ======================================== Config Tab ========================================
+    # ======================================== Config Tab ========================================
+    # ======================================== Config Tab ========================================
+    if tab == 'Live_Tab':
         Live_Tab_Variables = Generate_Variable_Dict(Live_Tab_Variables)
 
         return html.Div(

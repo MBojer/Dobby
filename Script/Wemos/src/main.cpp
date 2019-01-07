@@ -14,14 +14,10 @@ extern "C" {
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 1001060
+#define Version 101061
 // First didget = Software type 1-Production 2-Beta 3-Alpha
-// Secound = Board
-//  Board types:
-//  0 = Wemos D1 Mini
-//  1 = Arduino Mega 2650
-// Third and Fourth didget = Major version number
-// Fifth to seventh didget = Minor version number
+// Secound and third didget = Major version number
+// Fourth to sixth = Minor version number
 
 
 String Hostname = "NotConfigured";
@@ -61,12 +57,20 @@ WiFiEventHandler disconnectedEventHandler;
 String WiFi_SSID = "";
 String WiFi_Password = "";
 
-bool WiFi_Config_Check_Compeate = false;
+Ticker wifiReconnectTimer;
+#define WiFi_Reconnect_Delay 5000
+byte Wifi_State = 0;
+// States:
+// 0 = Just started not commection attempt maid
+// 1 = Connected
+// 2 = Disconnected
+// 3 = Reconnecting
+
 
 // ------------------------------------------------------------ FS_Config ------------------------------------------------------------
 #include <ArduinoJson.h>
 
-#define Config_Json_Max_Buffer_Size 2048
+#define Config_Json_Max_Buffer_Size 1024
 bool Config_json_Loaded = false;
 
 #define FS_Confing_File_Name "/Dobby.json"
@@ -78,7 +82,7 @@ AsyncMqttClient MQTT_Client;
 Ticker mqttReconnectTimer;
 
 String MQTT_Broker = "0.0.0.0";
-String MQTT_Port = "";
+String MQTT_Port = "1883";
 
 String MQTT_Username = "";
 String MQTT_Password = "";
@@ -87,8 +91,6 @@ String MQTT_Allow_Flash_Password = "60d15n074p455w0rdu53dby4dm1n5";
 
 Ticker MQTT_KeepAlive_Ticker;
 unsigned long MQTT_KeepAlive_Interval = 60000;
-
-bool MQTT_First_Connect = true;
 
 #define NONE 0
 #define PLUS 1
@@ -122,7 +124,6 @@ bool MQTT_First_Connect = true;
 #define Topic_RFID 25
 #define Topic_PIR 26
 #define Topic_LDR 27
-#define Topic_MAX31855 28
 
 #define Topic_Settings_Text "/Settings/"
 #define Topic_Config_Text "/Config/"
@@ -152,9 +153,8 @@ bool MQTT_First_Connect = true;
 #define Topic_RFID_Text "/RFID/"
 #define Topic_PIR_Text "/PIR/"
 #define Topic_LDR_Text "/LDR/"
-#define Topic_MAX31855_Text "/MAX31855/"
 
-const byte MQTT_Topic_Number_Of = 29;
+const byte MQTT_Topic_Number_Of = 28;
 String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + Topic_Settings_Text + Hostname,
   System_Header + Topic_Config_Text + Hostname,
@@ -184,28 +184,23 @@ String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + Topic_RFID_Text + Hostname,
   System_Header + Topic_PIR_Text + Hostname,
   System_Header + Topic_LDR_Text + Hostname,
-  System_Header + Topic_MAX31855_Text + Hostname,
 };
 
 bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
   false,
   true,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
   true,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  true,
-  false,
-  false,
-  false,
-  false,
   false,
   false,
   false,
@@ -221,25 +216,13 @@ bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
 byte MQTT_Topic_Subscribe_Subtopic[MQTT_Topic_Number_Of] = {
   HASH,
   HASH,
-  HASH,
-  NONE,
-  NONE,
-  PLUS,
-  PLUS,
-  PLUS,
-  PLUS,
-  NONE,
-  NONE,
   NONE,
   NONE,
   NONE,
   PLUS,
-  NONE,
-  NONE,
   PLUS,
   PLUS,
-  NONE,
-  NONE,
+  PLUS,
   NONE,
   NONE,
   NONE,
@@ -247,7 +230,15 @@ byte MQTT_Topic_Subscribe_Subtopic[MQTT_Topic_Number_Of] = {
   NONE,
   PLUS,
   NONE,
-  HASH,
+  NONE,
+  PLUS,
+  PLUS,
+  NONE,
+  NONE,
+  NONE,
+  NONE,
+  PLUS,
+  NONE,
 };
 
 bool MQTT_Subscribtion_Active[MQTT_Topic_Number_Of];
@@ -463,30 +454,30 @@ bool CLI_Command_Complate = false;
 
 
 // ------------------------------------------------------------ Load Cell ------------------------------------------------------------
-#include "HX711.h"
-
-#define Load_Cell_Max_Number_Of 4
-byte LoadCell_Pins_DT[Load_Cell_Max_Number_Of] = {255, 255, 255, 255};
-byte LoadCell_Pins_SCK[Load_Cell_Max_Number_Of] = {255, 255, 255, 255};
-
-HX711 Load_Cell1;
-HX711 Load_Cell2;
-HX711 Load_Cell3;
-HX711 Load_Cell4;
-
-float LoadCell_Calibration[Load_Cell_Max_Number_Of] = {-1337, -1337, -1337, -1337};
-
-bool Load_Cell_Configurated[Load_Cell_Max_Number_Of] = {false, false, false, false};
-bool Load_Cell_Tare_Done[Load_Cell_Max_Number_Of] = {false, false, false, false};
-
-#define LoadCell_RunningAverage_Length 25
-RunningAverage LoadCell_RA_Current1(LoadCell_RunningAverage_Length);
-RunningAverage LoadCell_RA_Current2(LoadCell_RunningAverage_Length);
-RunningAverage LoadCell_RA_Current3(LoadCell_RunningAverage_Length);
-RunningAverage LoadCell_RA_Current4(LoadCell_RunningAverage_Length);
-
-#define LoadCell_Read_Rate 250
-Ticker LoadCell_Refresh_Ticker;
+// #include "HX711.h"
+//
+// #define Load_Cell_Max_Number_Of 4
+// byte LoadCell_Pins_DT[Load_Cell_Max_Number_Of] = {255, 255, 255, 255};
+// byte LoadCell_Pins_SCK[Load_Cell_Max_Number_Of] = {255, 255, 255, 255};
+//
+// HX711 Load_Cell1;
+// HX711 Load_Cell2;
+// HX711 Load_Cell3;
+// HX711 Load_Cell4;
+//
+// float LoadCell_Calibration[Load_Cell_Max_Number_Of] = {-1337, -1337, -1337, -1337};
+//
+// bool Load_Cell_Configurated[Load_Cell_Max_Number_Of] = {false, false, false, false};
+// bool Load_Cell_Tare_Done[Load_Cell_Max_Number_Of] = {false, false, false, false};
+//
+// #define LoadCell_RunningAverage_Length 25
+// RunningAverage LoadCell_RA_Current1(LoadCell_RunningAverage_Length);
+// RunningAverage LoadCell_RA_Current2(LoadCell_RunningAverage_Length);
+// RunningAverage LoadCell_RA_Current3(LoadCell_RunningAverage_Length);
+// RunningAverage LoadCell_RA_Current4(LoadCell_RunningAverage_Length);
+//
+// #define LoadCell_Read_Rate 250
+// Ticker LoadCell_Refresh_Ticker;
 
 // ------------------------------------------------------------ DC Voltmeter ------------------------------------------------------------
 byte DC_Voltmeter_Pins = 255;
@@ -511,46 +502,46 @@ String Switch_Target_ON[Switch_Max_Number_Of];
 String Switch_Target_OFF[Switch_Max_Number_Of];
 
 
-// ------------------------------------------------------------ MPU6050 ------------------------------------------------------------
-#include "I2Cdev.h"
-#include "Wire.h"
-
-#include "MPU6050_6Axis_MotionApps20.h"
-
-MPU6050 mpu;
-
-byte MPU6050_Pin_SCL = 255;
-byte MPU6050_Pin_SDA = 255;
-byte MPU6050_Pin_Interrupt = 255;
-
-bool MPU6050_Configured = false;
-
-// MPU control/status vars
-bool MPU6050_BMP_Ready = false;  // set true if DMP init was successful
-uint8_t MPU6050_Interrupt_Status;   // holds actual interrupt status byte from MPU
-uint8_t MPU6050_Device_Status;      // return status after each device operation (0 = success, !0 = error)
-uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
-uint16_t fifoCount;     // count of all bytes currently in FIFO
-uint8_t fifoBuffer[1024]; // FIFO storage buffer
-
-// orientation/motion vars
-Quaternion MPU6050_Quaternion;           // [w, x, y, z]         quaternion container
-VectorInt16 MPU6050_Accelerometer;         // [x, y, z]            accel sensor measurements
-VectorInt16 MPU6050_Accelerometer_Real;     // [x, y, z]            gravity-free accel sensor measurements
-VectorInt16 MPU6050_Accelerometer_World;    // [x, y, z]            world-frame accel sensor measurements
-VectorFloat MPU6050_Gravity;    // [x, y, z]            gravity vector
-
-// For Interrupt
-volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
-
-float MPU6050_Quaternion_W_Min = 1337;
-float MPU6050_Quaternion_W_Max = 1337;
-float MPU6050_Quaternion_X_Min = 1337;
-float MPU6050_Quaternion_X_Max = 1337;
-float MPU6050_Quaternion_Y_Min = 1337;
-float MPU6050_Quaternion_Y_Max = 1337;
-float MPU6050_Quaternion_Z_Min = 1337;
-float MPU6050_Quaternion_Z_Max = 1337;
+// // ------------------------------------------------------------ MPU6050 ------------------------------------------------------------
+// #include "I2Cdev.h"
+// #include "Wire.h"
+//
+// #include "MPU6050_6Axis_MotionApps20.h"
+//
+// MPU6050 mpu;
+//
+// byte MPU6050_Pin_SCL = 255;
+// byte MPU6050_Pin_SDA = 255;
+// byte MPU6050_Pin_Interrupt = 255;
+//
+// bool MPU6050_Configured = false;
+//
+// // MPU control/status vars
+// bool MPU6050_BMP_Ready = false;  // set true if DMP init was successful
+// uint8_t MPU6050_Interrupt_Status;   // holds actual interrupt status byte from MPU
+// uint8_t MPU6050_Device_Status;      // return status after each device operation (0 = success, !0 = error)
+// uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
+// uint16_t fifoCount;     // count of all bytes currently in FIFO
+// uint8_t fifoBuffer[1024]; // FIFO storage buffer
+//
+// // orientation/motion vars
+// Quaternion MPU6050_Quaternion;           // [w, x, y, z]         quaternion container
+// VectorInt16 MPU6050_Accelerometer;         // [x, y, z]            accel sensor measurements
+// VectorInt16 MPU6050_Accelerometer_Real;     // [x, y, z]            gravity-free accel sensor measurements
+// VectorInt16 MPU6050_Accelerometer_World;    // [x, y, z]            world-frame accel sensor measurements
+// VectorFloat MPU6050_Gravity;    // [x, y, z]            gravity vector
+//
+// // For Interrupt
+// volatile bool mpuInterrupt = false;     // indicates whether MPU interrupt pin has gone high
+//
+// float MPU6050_Quaternion_W_Min = 1337;
+// float MPU6050_Quaternion_W_Max = 1337;
+// float MPU6050_Quaternion_X_Min = 1337;
+// float MPU6050_Quaternion_X_Max = 1337;
+// float MPU6050_Quaternion_Y_Min = 1337;
+// float MPU6050_Quaternion_Y_Max = 1337;
+// float MPU6050_Quaternion_Z_Min = 1337;
+// float MPU6050_Quaternion_Z_Max = 1337;
 
 // ------------------------------------------------------------ BMP180 ------------------------------------------------------------
 // URL: https://github.com/adafruit/Adafruit-BMP085-Library
@@ -621,21 +612,21 @@ Ticker MQ2_Ticker;
 #define MQ2_Refresh_Rate 100
 
 
-// ------------------------------------------------------------ MFRC522 - RFID ------------------------------------------------------------
-#include "MFRC522.h"
-#include <SPI.h>
-
-bool MFRC522_Configured = false;
-
-#define MFRC522_Max_Number_Of 5
-byte MFRC522_Pins[Switch_Max_Number_Of] = {255, 255, 255, 255, 255};
-#define MFRC522_Pin_RST 0
-#define MFRC522_Pin_SS 1
-#define MFRC522_Pin_MOSI 2
-#define MFRC522_Pin_MIOS 3
-#define MFRC522_Pin_SCK 4
-
-MFRC522 MFRC522_RFID(MFRC522_Pins[1], MFRC522_Pins[0]);	// Create MFRC522 instance
+// // ------------------------------------------------------------ MFRC522 - RFID ------------------------------------------------------------
+// #include "MFRC522.h"
+// #include <SPI.h>
+//
+// bool MFRC522_Configured = false;
+//
+// #define MFRC522_Max_Number_Of 5
+// byte MFRC522_Pins[Switch_Max_Number_Of] = {255, 255, 255, 255, 255};
+// #define MFRC522_Pin_RST 0
+// #define MFRC522_Pin_SS 1
+// #define MFRC522_Pin_MOSI 2
+// #define MFRC522_Pin_MIOS 3
+// #define MFRC522_Pin_SCK 4
+//
+// MFRC522 MFRC522_RFID(MFRC522_Pins[1], MFRC522_Pins[0]);	// Create MFRC522 instance
 
 
 // ------------------------------------------------------------ LDR - Light Dependent Resistor ------------------------------------------------------------
@@ -659,42 +650,6 @@ bool LDR_State = false;
 // true = light
 
 String LDR_Target_Topic;
-
-
-// ------------------------------------------------------------ MAX31855 ------------------------------------------------------------
-#include <SPI.h>
-#include "Adafruit_MAX31855.h"
-
-bool MAX31855_Configured = false;
-
-#define MAX31855_DO D6
-#define MAX31855_CS D8
-#define MAX31855_CLK D5
-
-// The pins is not touched till first read
-Adafruit_MAX31855 MAX31855_Sensor(MAX31855_CLK, MAX31855_CS, MAX31855_DO);
-
-#define MAX31855_Read_Rate 250
-Ticker MAX31855_Ticker;
-
-double MAX31855_Current;
-double MAX31855_Min;
-double MAX31855_Max;
-
-#define MAX31855_Error_Max 10
-byte MAX31855_Error_Count;
-
-
-// ############################################################ Headers ############################################################
-// ############################################################ Headers ############################################################
-// ############################################################ Headers ############################################################
-
-void onMqttConnect(bool sessionPresent);
-void onMqttDisconnect(AsyncMqttClientDisconnectReason reason);
-void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total);
-void ArduinoOTA_Setup();
-void connectToMqtt();
-void Indicator_LED(byte LED_State, bool Change_To);
 
 
 // ############################################################ String_To_IP() ############################################################
@@ -747,6 +702,7 @@ void Rebuild_MQTT_Topics() {
   MQTT_Topic[Topic_Relay] = System_Header + System_Sub_Header + Topic_Relay_Text + Hostname;
   MQTT_Topic[Topic_Distance] = System_Header + System_Sub_Header + Topic_Distance_Text + Hostname;
   MQTT_Topic[Topic_Dimmer] = System_Header + System_Sub_Header + Topic_Dimmer_Text + Hostname;
+  MQTT_Topic[Topic_Log_Error] = System_Header + Topic_Log_Error_Text + Hostname;
   MQTT_Topic[Topic_Button] = System_Header + System_Sub_Header + Topic_Button_Text + Hostname;
   MQTT_Topic[Topic_Dobby] = System_Header + Topic_Dobby_Text;
   MQTT_Topic[Topic_System] = System_Header + Topic_System_Text + Hostname;
@@ -756,16 +712,11 @@ void Rebuild_MQTT_Topics() {
   MQTT_Topic[Topic_Switch] = System_Header + System_Sub_Header + Topic_Switch_Text + Hostname;
   MQTT_Topic[Topic_MPU6050] = System_Header + System_Sub_Header + Topic_MPU6050_Text + Hostname;
   MQTT_Topic[Topic_BMP180] = System_Header + System_Sub_Header + Topic_BMP180_Text + Hostname;
-  MQTT_Topic[Topic_Log_Debug] = System_Header + Topic_Log_Debug_Text + Hostname;
-  MQTT_Topic[Topic_Log_Info] = System_Header + Topic_Log_Info_Text + Hostname;
   MQTT_Topic[Topic_Log_Warning] = System_Header + Topic_Log_Warning_Text + Hostname;
-  MQTT_Topic[Topic_Log_Error] = System_Header + Topic_Log_Error_Text + Hostname;
-  MQTT_Topic[Topic_Log_Fatal] = System_Header + Topic_Log_Fatal_Text + Hostname;
   MQTT_Topic[Topic_MQ2] = System_Header + System_Sub_Header + Topic_MQ2_Text + Hostname;
   MQTT_Topic[Topic_RFID] = System_Header + System_Sub_Header + Topic_RFID_Text + Hostname;
   MQTT_Topic[Topic_PIR] = System_Header + System_Sub_Header + Topic_PIR_Text + Hostname;
   MQTT_Topic[Topic_LDR] = System_Header + System_Sub_Header + Topic_LDR_Text + Hostname;
-  MQTT_Topic[Topic_MAX31855] = System_Header + System_Sub_Header + Topic_MAX31855_Text + Hostname;
 }
 
 
@@ -870,70 +821,6 @@ void WiFi_Signal() {
   Log(MQTT_Topic[Topic_System] + "/WiFi", "Signal Strength: " + String(WiFi.RSSI()));
 
 } // WiFi_Signal()
-
-
-// ############################################################ WiFi_Check() ############################################################
-void WiFi_Check() {
-
-  if (WiFi_Config_Check_Compeate == false) {
-    Log(MQTT_Topic[Topic_Log_Debug] + "/WiFi", "Checking settings");
-
-    bool Check_Failed = false;
-
-    // AutoReconnect
-    WiFi.setAutoReconnect(true);
-
-    // AutoConnect
-    if (WiFi.getAutoConnect() == false) {
-      Log(MQTT_Topic[Topic_Log_Debug] + "/WiFi", "Setting AutoConnect: true");
-      WiFi.setAutoConnect(true);
-    }
-    // Check mode
-    if (WiFi.getMode() != WIFI_STA) {
-      Log(MQTT_Topic[Topic_Log_Debug] + "/WiFi", "Setting mode: STA");
-      WiFi.mode(WIFI_STA);
-      Check_Failed = true;
-    }
-    // Hostname
-    if (WiFi.hostname() != Hostname) {
-      Log(MQTT_Topic[Topic_Log_Debug] + "/WiFi", "Setting Hostname: " + Hostname);
-      WiFi.hostname(Hostname);
-    }
-    if (WiFi.SSID() != WiFi_SSID || WiFi.psk() != WiFi_Password) {
-      Log(MQTT_Topic[Topic_Log_Debug] + "/WiFi", "Setting SSID:" + WiFi_SSID + " PSK: " + WiFi_Password);
-      Check_Failed = true;
-    }
-
-    WiFi_Config_Check_Compeate = true;
-
-    if (Check_Failed == true) {
-      // Stop Wifi
-      WiFi.disconnect(false);
-      // Start Wifi
-      // connectToWifi();
-
-      Log(MQTT_Topic[Topic_System] + "/WiFi", "Starting WiFi ...");
-      // WiFi.begin(WiFi_SSID.c_str(), WiFi_Password.c_str());
-      // if (Wifi_State != 3) {
-      //
-      //
-      //   Wifi_State = 3;
-      // }
-    }
-
-    if (WiFi.status() == WL_CONNECTED) {
-      // Wifi_State = 1;
-      // wifiReconnectTimer.detach();
-      Log(MQTT_Topic[Topic_System] + "/WiFi", "Connected to SSID: '" + WiFi_SSID + "' - IP: '" + IPtoString(WiFi.localIP()) + "' - MAC Address: '" + WiFi.macAddress() + "'");
-      if (Indicator_LED_Configured == true) Indicator_LED(LED_WiFi, false);
-      // OTA
-      ArduinoOTA_Setup();
-      // MQTT
-      connectToMqtt();
-    }
-  }
-
-} // WiFi_Check()
 
 
 // ############################################################ Setting_String() ############################################################
@@ -1044,31 +931,31 @@ void Indicator_LED(byte LED_State, bool Change_To) {
 
 
 // ############################################################ MFRC522_Loop() ############################################################
-void MFRC522_Loop() {
-  if (MFRC522_Configured == false || ArduinoOTA_Active == true || Boot_Compleate == false) {
-    return;
-  }
-
-  bool test = MFRC522_RFID.PICC_IsNewCardPresent();
-  Serial.println(test);
-  delay(150);
-
-  // Check if new card is present
-  if (MFRC522_RFID.PICC_IsNewCardPresent() == true) {
-    Serial.println("MARKER"); // rm
-    // read card info
-    MFRC522_RFID.PICC_ReadCardSerial();
-    Serial.print(F("Card UID:"));
-
-
-    for (byte i = 0; i < MFRC522_RFID.uid.size; i++) {
-      Serial.print(MFRC522_RFID.uid.uidByte[i] < 0x10 ? " 0" : " ");
-      Serial.print(MFRC522_RFID.uid.uidByte[i], HEX);
-    }
-
-    Serial.println();
-  }
-}
+// void MFRC522_Loop() {
+//   if (MFRC522_Configured == false || ArduinoOTA_Active == true || Boot_Compleate == false) {
+//     return;
+//   }
+//
+//   bool test = MFRC522_RFID.PICC_IsNewCardPresent();
+//   Serial.println(test);
+//   delay(150);
+//
+//   // Check if new card is present
+//   if (MFRC522_RFID.PICC_IsNewCardPresent() == true) {
+//     Serial.println("MARKER"); // rm
+//     // read card info
+//     MFRC522_RFID.PICC_ReadCardSerial();
+//     Serial.print(F("Card UID:"));
+//
+//
+//     for (byte i = 0; i < MFRC522_RFID.uid.size; i++) {
+//       Serial.print(MFRC522_RFID.uid.uidByte[i] < 0x10 ? " 0" : " ");
+//       Serial.print(MFRC522_RFID.uid.uidByte[i], HEX);
+//     }
+//
+//     Serial.println();
+//   }
+// }
 
 
 // ############################################################ LDR_Loop() ############################################################
@@ -1116,76 +1003,6 @@ void LDR_Loop() {
   }
 
 }  // LDR_Loop()
-
-
-// ############################################################ MAX31855_Loop() ############################################################
-void MAX31855_Read() {
-
-  if (MAX31855_Configured == false || ArduinoOTA_Active == true || Boot_Compleate == false) {
-    return;
-  }
-
-  double MAX31855_Reading = MAX31855_Sensor.readCelsius();
-  // Check if reading is valid
-  // Read Error
-  if (isnan(MAX31855_Reading)) {
-    MAX31855_Error_Count = MAX31855_Error_Count + 1;
-    Log(MQTT_Topic[Topic_Log_Warning] + "/MAX31855", "Read error: " + String(MAX31855_Error_Count));
-    if (MAX31855_Error_Count >= MAX31855_Error_Max) {
-      MAX31855_Configured = false;
-      MAX31855_Ticker.detach();
-      Log(MQTT_Topic[Topic_Log_Error] + "/MAX31855", "Disabling MAX31855 - Max error cound reached:" + String(MAX31855_Error_Count));
-      return;
-    }
-  }
-  else {
-    MAX31855_Current = MAX31855_Reading;
-    MAX31855_Min = min(MAX31855_Min, MAX31855_Current);
-    MAX31855_Max = max(MAX31855_Max, MAX31855_Current);
-  }
-
-
-
-} // MAX31855_Loop()
-
-// ############################################################ MAX31855() ############################################################
-bool MAX31855(String Topic, String Payload) {
-  // Do nothing if its not configured
-  if (MAX31855_Configured == false || ArduinoOTA_Active == true || Topic != MQTT_Topic[Topic_MAX31855]) {
-    return false;
-  }
-
-  Payload = Payload.substring(0, Payload.indexOf(";"));
-
-  if (Payload == "?") {
-    Log(MQTT_Topic[Topic_MAX31855] + "/State", String(MAX31855_Current));
-    return true;
-  }
-  // Min/Max request
-  else if (Payload == "json") {
-
-    // Create json buffer
-    DynamicJsonBuffer jsonBuffer(200);
-    JsonObject& root_MAX31855 = jsonBuffer.createObject();
-
-    // encode json string
-    root_MAX31855.set("Current", MAX31855_Current);
-    root_MAX31855.set("Min", MAX31855_Min);
-    root_MAX31855.set("Max", MAX31855_Max);
-
-    // Reset values
-    MAX31855_Min = MAX31855_Current;
-    MAX31855_Max = MAX31855_Current;
-
-    String MAX31855_String;
-
-    root_MAX31855.printTo(MAX31855_String);
-
-    Log(MQTT_Topic[Topic_MAX31855] + "/json/State", MAX31855_String);
-
-  }
-  return true;
-} // MAX31855()
 
 
 // ############################################################ LDR() ############################################################
@@ -1374,166 +1191,166 @@ bool BMP180_Show(String Topic, String Payload) {
 }
 
 
-// ############################################################ MPU6050_Interrupt() ############################################################
-void ICACHE_RAM_ATTR MPU6050_BMP_DataReady() {
-    mpuInterrupt = true;
-}
+// // ############################################################ MPU6050_Interrupt() ############################################################
+// void ICACHE_RAM_ATTR MPU6050_BMP_DataReady() {
+//     mpuInterrupt = true;
+// }
 
 // ############################################################ MPU6050_Loop() ############################################################
-void MPU6050_Loop() {
-  // if programming failed, don't try to do anything
-  if (MPU6050_BMP_Ready == false || MPU6050_Configured == false || ArduinoOTA_Active == true || Boot_Compleate == false) {
-      return;
-  }
-
-  // To prevent a eternal loop crash
-  int i = 0;
-
-  // wait for MPU interrupt or extra packet(s) available
-  while (!mpuInterrupt && fifoCount < packetSize && i > 50) {
-      // other program behavior stuff here
-      // .
-      // .
-      // .
-      // if you are really paranoid you can frequently test in between other
-      // stuff to see if mpuInterrupt is true, and if so, "break;" from the
-      // while() loop to immediately process the MPU data
-      // .
-      // .
-      // .
-      i = i + 1;
-  }
-
-  if (i >= 49) {
-    // FIX - Add some usefull error message here
-    Serial.println("50 MARKER");
-  }
-
-  // reset interrupt flag and get INT_STATUS byte
-  mpuInterrupt = false;
-  MPU6050_Interrupt_Status = mpu.getIntStatus();
-
-  // get current FIFO count
-  fifoCount = mpu.getFIFOCount();
-
-  // check for overflow (this should never happen unless our code is too inefficient)
-  // if ((MPU6050_Interrupt_Status & 0x10) || fifoCount == 1024) {  // Original
-  if ((MPU6050_Interrupt_Status & 0x10) || fifoCount == 16384) {
-      // reset so we can continue cleanly
-      mpu.resetFIFO();
-
-      Log(MQTT_Topic[Topic_Log_Warning] + "/MPU6050", "FIFO overflow");
-
-  // otherwise, check for DMP data ready interrupt (this should happen frequently)
-  } else if (MPU6050_Interrupt_Status & 0x02) {
-      // wait for correct available data length, should be a VERY short wait
-      while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
-
-      // read a packet from FIFO
-      mpu.getFIFOBytes(fifoBuffer, packetSize);
-
-      // track FIFO count here in case there is > 1 packet available
-      // (this lets us immediately read more without waiting for an interrupt)
-      fifoCount -= packetSize;
-
-      // Get gyro
-      mpu.dmpGetQuaternion(&MPU6050_Quaternion, fifoBuffer);
-
-      // Save Min/Max
-      // Check if init value or not
-      // init value
-      if (MPU6050_Quaternion_W_Min == 1337) {
-        MPU6050_Quaternion_W_Min = MPU6050_Quaternion.w;
-        MPU6050_Quaternion_W_Max = MPU6050_Quaternion.w;
-        MPU6050_Quaternion_X_Min = MPU6050_Quaternion.x;
-        MPU6050_Quaternion_X_Max = MPU6050_Quaternion.x;
-        MPU6050_Quaternion_Y_Min = MPU6050_Quaternion.y;
-        MPU6050_Quaternion_Y_Max = MPU6050_Quaternion.y;
-        MPU6050_Quaternion_Z_Min = MPU6050_Quaternion.z;
-        MPU6050_Quaternion_Z_Max = MPU6050_Quaternion.z;
-      }
-      // None init value
-      else {
-        MPU6050_Quaternion_W_Min = min(MPU6050_Quaternion_W_Min, MPU6050_Quaternion.w);
-        MPU6050_Quaternion_W_Max = max(MPU6050_Quaternion_W_Max, MPU6050_Quaternion.w);
-        MPU6050_Quaternion_X_Min = min(MPU6050_Quaternion_X_Min, MPU6050_Quaternion.x);
-        MPU6050_Quaternion_X_Max = max(MPU6050_Quaternion_X_Max, MPU6050_Quaternion.x);
-        MPU6050_Quaternion_Y_Min = min(MPU6050_Quaternion_Y_Min, MPU6050_Quaternion.y);
-        MPU6050_Quaternion_Y_Max = max(MPU6050_Quaternion_Y_Max, MPU6050_Quaternion.y);
-        MPU6050_Quaternion_Z_Min = min(MPU6050_Quaternion_Z_Min, MPU6050_Quaternion.z);
-        MPU6050_Quaternion_Z_Max = max(MPU6050_Quaternion_Z_Max, MPU6050_Quaternion.z);
-      }
-
-
-
-      // Get Accelerometer
-      mpu.dmpGetAccel(&MPU6050_Accelerometer, fifoBuffer);
-      mpu.dmpGetGravity(&MPU6050_Gravity, &MPU6050_Quaternion);
-      mpu.dmpGetLinearAccel(&MPU6050_Accelerometer_Real, &MPU6050_Accelerometer, &MPU6050_Gravity);
-      mpu.dmpGetLinearAccelInWorld(&MPU6050_Accelerometer_World, &MPU6050_Accelerometer_Real, &MPU6050_Quaternion);
-  }
-}
+// void MPU6050_Loop() {
+//   // if programming failed, don't try to do anything
+//   if (MPU6050_BMP_Ready == false || MPU6050_Configured == false || ArduinoOTA_Active == true || Boot_Compleate == false) {
+//       return;
+//   }
+//
+//   // To prevent a eternal loop crash
+//   int i = 0;
+//
+//   // wait for MPU interrupt or extra packet(s) available
+//   while (!mpuInterrupt && fifoCount < packetSize && i > 50) {
+//       // other program behavior stuff here
+//       // .
+//       // .
+//       // .
+//       // if you are really paranoid you can frequently test in between other
+//       // stuff to see if mpuInterrupt is true, and if so, "break;" from the
+//       // while() loop to immediately process the MPU data
+//       // .
+//       // .
+//       // .
+//       i = i + 1;
+//   }
+//
+//   if (i >= 49) {
+//     // FIX - Add some usefull error message here
+//     Serial.println("50 MARKER");
+//   }
+//
+//   // reset interrupt flag and get INT_STATUS byte
+//   mpuInterrupt = false;
+//   MPU6050_Interrupt_Status = mpu.getIntStatus();
+//
+//   // get current FIFO count
+//   fifoCount = mpu.getFIFOCount();
+//
+//   // check for overflow (this should never happen unless our code is too inefficient)
+//   // if ((MPU6050_Interrupt_Status & 0x10) || fifoCount == 1024) {  // Original
+//   if ((MPU6050_Interrupt_Status & 0x10) || fifoCount == 16384) {
+//       // reset so we can continue cleanly
+//       mpu.resetFIFO();
+//
+//       Log(MQTT_Topic[Topic_Log_Warning] + "/MPU6050", "FIFO overflow");
+//
+//   // otherwise, check for DMP data ready interrupt (this should happen frequently)
+//   } else if (MPU6050_Interrupt_Status & 0x02) {
+//       // wait for correct available data length, should be a VERY short wait
+//       while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
+//
+//       // read a packet from FIFO
+//       mpu.getFIFOBytes(fifoBuffer, packetSize);
+//
+//       // track FIFO count here in case there is > 1 packet available
+//       // (this lets us immediately read more without waiting for an interrupt)
+//       fifoCount -= packetSize;
+//
+//       // Get gyro
+//       mpu.dmpGetQuaternion(&MPU6050_Quaternion, fifoBuffer);
+//
+//       // Save Min/Max
+//       // Check if init value or not
+//       // init value
+//       if (MPU6050_Quaternion_W_Min == 1337) {
+//         MPU6050_Quaternion_W_Min = MPU6050_Quaternion.w;
+//         MPU6050_Quaternion_W_Max = MPU6050_Quaternion.w;
+//         MPU6050_Quaternion_X_Min = MPU6050_Quaternion.x;
+//         MPU6050_Quaternion_X_Max = MPU6050_Quaternion.x;
+//         MPU6050_Quaternion_Y_Min = MPU6050_Quaternion.y;
+//         MPU6050_Quaternion_Y_Max = MPU6050_Quaternion.y;
+//         MPU6050_Quaternion_Z_Min = MPU6050_Quaternion.z;
+//         MPU6050_Quaternion_Z_Max = MPU6050_Quaternion.z;
+//       }
+//       // None init value
+//       else {
+//         MPU6050_Quaternion_W_Min = min(MPU6050_Quaternion_W_Min, MPU6050_Quaternion.w);
+//         MPU6050_Quaternion_W_Max = max(MPU6050_Quaternion_W_Max, MPU6050_Quaternion.w);
+//         MPU6050_Quaternion_X_Min = min(MPU6050_Quaternion_X_Min, MPU6050_Quaternion.x);
+//         MPU6050_Quaternion_X_Max = max(MPU6050_Quaternion_X_Max, MPU6050_Quaternion.x);
+//         MPU6050_Quaternion_Y_Min = min(MPU6050_Quaternion_Y_Min, MPU6050_Quaternion.y);
+//         MPU6050_Quaternion_Y_Max = max(MPU6050_Quaternion_Y_Max, MPU6050_Quaternion.y);
+//         MPU6050_Quaternion_Z_Min = min(MPU6050_Quaternion_Z_Min, MPU6050_Quaternion.z);
+//         MPU6050_Quaternion_Z_Max = max(MPU6050_Quaternion_Z_Max, MPU6050_Quaternion.z);
+//       }
+//
+//
+//
+//       // Get Accelerometer
+//       mpu.dmpGetAccel(&MPU6050_Accelerometer, fifoBuffer);
+//       mpu.dmpGetGravity(&MPU6050_Gravity, &MPU6050_Quaternion);
+//       mpu.dmpGetLinearAccel(&MPU6050_Accelerometer_Real, &MPU6050_Accelerometer, &MPU6050_Gravity);
+//       mpu.dmpGetLinearAccelInWorld(&MPU6050_Accelerometer_World, &MPU6050_Accelerometer_Real, &MPU6050_Quaternion);
+//   }
+// }
 
 
 // ############################################################ MPU6050_Read_Gyro() ############################################################
-void MPU6050_Read_Gyro() {
-
-  if (MPU6050_Configured == false) {
-    return;
-  }
-
-  Log(MQTT_Topic[Topic_MPU6050] + "/Gyro/W/State", MPU6050_Quaternion.w);
-  Log(MQTT_Topic[Topic_MPU6050] + "/Gyro/X/State", MPU6050_Quaternion.x);
-  Log(MQTT_Topic[Topic_MPU6050] + "/Gyro/Y/State", MPU6050_Quaternion.y);
-  Log(MQTT_Topic[Topic_MPU6050] + "/Gyro/Z/State", MPU6050_Quaternion.z);
-}
-
-// ############################################################ MPU6050_Read_json() ############################################################
-void MPU6050_Read_Gyro_json() {
-
-  if (MPU6050_Configured == false) {
-    return;
-  }
-
-  // Create json buffer
-  DynamicJsonBuffer jsonBuffer(350);
-  JsonObject& root_Gyro = jsonBuffer.createObject();
-
-  // encode json string
-  root_Gyro.set("W", MPU6050_Quaternion.w);
-  root_Gyro.set("W_Min", MPU6050_Quaternion_W_Min);
-  root_Gyro.set("W_Max", MPU6050_Quaternion_W_Max);
-  root_Gyro.set("X", MPU6050_Quaternion.x);
-  root_Gyro.set("X_Min", MPU6050_Quaternion_X_Min);
-  root_Gyro.set("X_Max", MPU6050_Quaternion_X_Max);
-  root_Gyro.set("Y", MPU6050_Quaternion.y);
-  root_Gyro.set("Y_Min", MPU6050_Quaternion_Y_Min);
-  root_Gyro.set("Y_Max", MPU6050_Quaternion_Y_Max);
-  root_Gyro.set("Z", MPU6050_Quaternion.z);
-  root_Gyro.set("Z_Min", MPU6050_Quaternion_Z_Min);
-  root_Gyro.set("Z_Max", MPU6050_Quaternion_Z_Max);
-
-  // Reset values
-  MPU6050_Quaternion_W_Min = MPU6050_Quaternion.w;
-  MPU6050_Quaternion_W_Max = MPU6050_Quaternion.w;
-  MPU6050_Quaternion_X_Min = MPU6050_Quaternion.x;
-  MPU6050_Quaternion_X_Max = MPU6050_Quaternion.x;
-  MPU6050_Quaternion_Y_Min = MPU6050_Quaternion.y;
-  MPU6050_Quaternion_Y_Max = MPU6050_Quaternion.y;
-  MPU6050_Quaternion_Z_Min = MPU6050_Quaternion.z;
-  MPU6050_Quaternion_Z_Max = MPU6050_Quaternion.z;
-
-  String Gyro_String;
-
-  root_Gyro.printTo(Gyro_String);
-
-  Log(MQTT_Topic[Topic_MPU6050] + "/Gyro/json/State", Gyro_String);
-
-}
+// void MPU6050_Read_Gyro() {
+//
+//   if (MPU6050_Configured == false) {
+//     return;
+//   }
+//
+//   Log(MQTT_Topic[Topic_MPU6050] + "/Gyro/W/State", MPU6050_Quaternion.w);
+//   Log(MQTT_Topic[Topic_MPU6050] + "/Gyro/X/State", MPU6050_Quaternion.x);
+//   Log(MQTT_Topic[Topic_MPU6050] + "/Gyro/Y/State", MPU6050_Quaternion.y);
+//   Log(MQTT_Topic[Topic_MPU6050] + "/Gyro/Z/State", MPU6050_Quaternion.z);
+// }
+//
+// // ############################################################ MPU6050_Read_json() ############################################################
+// void MPU6050_Read_Gyro_json() {
+//
+//   if (MPU6050_Configured == false) {
+//     return;
+//   }
+//
+//   // Create json buffer
+//   DynamicJsonBuffer jsonBuffer(350);
+//   JsonObject& root_Gyro = jsonBuffer.createObject();
+//
+//   // encode json string
+//   root_Gyro.set("W", MPU6050_Quaternion.w);
+//   root_Gyro.set("W_Min", MPU6050_Quaternion_W_Min);
+//   root_Gyro.set("W_Max", MPU6050_Quaternion_W_Max);
+//   root_Gyro.set("X", MPU6050_Quaternion.x);
+//   root_Gyro.set("X_Min", MPU6050_Quaternion_X_Min);
+//   root_Gyro.set("X_Max", MPU6050_Quaternion_X_Max);
+//   root_Gyro.set("Y", MPU6050_Quaternion.y);
+//   root_Gyro.set("Y_Min", MPU6050_Quaternion_Y_Min);
+//   root_Gyro.set("Y_Max", MPU6050_Quaternion_Y_Max);
+//   root_Gyro.set("Z", MPU6050_Quaternion.z);
+//   root_Gyro.set("Z_Min", MPU6050_Quaternion_Z_Min);
+//   root_Gyro.set("Z_Max", MPU6050_Quaternion_Z_Max);
+//
+//   // Reset values
+//   MPU6050_Quaternion_W_Min = MPU6050_Quaternion.w;
+//   MPU6050_Quaternion_W_Max = MPU6050_Quaternion.w;
+//   MPU6050_Quaternion_X_Min = MPU6050_Quaternion.x;
+//   MPU6050_Quaternion_X_Max = MPU6050_Quaternion.x;
+//   MPU6050_Quaternion_Y_Min = MPU6050_Quaternion.y;
+//   MPU6050_Quaternion_Y_Max = MPU6050_Quaternion.y;
+//   MPU6050_Quaternion_Z_Min = MPU6050_Quaternion.z;
+//   MPU6050_Quaternion_Z_Max = MPU6050_Quaternion.z;
+//
+//   String Gyro_String;
+//
+//   root_Gyro.printTo(Gyro_String);
+//
+//   Log(MQTT_Topic[Topic_MPU6050] + "/Gyro/json/State", Gyro_String);
+//
+// }
 
 // ############################################################ MPU6050_Accelerometer_Max() ############################################################
 // Logs and resets the Max/Min +/- values
-void MPU6050_Accelerometer_Max() {
+// void MPU6050_Accelerometer_Max() {
   // // Log values
   // Log(MQTT_Topic[Topic_MPU6050] + "/Accelerometer/X/State/Minus", String(MPU6050_Accelerometer_X_Min + MPU6050_Accelerometer_X_Reset));
   // Log(MQTT_Topic[Topic_MPU6050] + "/Accelerometer/X/State/Plus", String(MPU6050_Accelerometer_X_Max - MPU6050_Accelerometer_X_Reset));
@@ -1553,55 +1370,55 @@ void MPU6050_Accelerometer_Max() {
   // MPU6050_Accelerometer_Y_Max = MPU6050_AcY;
   // MPU6050_Accelerometer_Z_Min = MPU6050_AcZ;
   // MPU6050_Accelerometer_Z_Max = MPU6050_AcZ;
-}
+// }
 
 
 // ############################################################ MPU6050_Read_Accelerometer() ############################################################
 // Logs and resets the Max/Min +/- values
-void MPU6050_Read_Accelerometer() {
-  // // Log values
-  Log(MQTT_Topic[Topic_MPU6050] + "/Accelerometer/X/State", String(MPU6050_Accelerometer_World.x));
-  Log(MQTT_Topic[Topic_MPU6050] + "/Accelerometer/X/State", String(MPU6050_Accelerometer_World.y));
-  Log(MQTT_Topic[Topic_MPU6050] + "/Accelerometer/Y/State", String(MPU6050_Accelerometer_World.z));
-
-}
+// void MPU6050_Read_Accelerometer() {
+//   // // Log values
+//   Log(MQTT_Topic[Topic_MPU6050] + "/Accelerometer/X/State", String(MPU6050_Accelerometer_World.x));
+//   Log(MQTT_Topic[Topic_MPU6050] + "/Accelerometer/X/State", String(MPU6050_Accelerometer_World.y));
+//   Log(MQTT_Topic[Topic_MPU6050] + "/Accelerometer/Y/State", String(MPU6050_Accelerometer_World.z));
+//
+// }
 
 
 // ############################################################ MPU6050() ############################################################
-bool MPU6050(String Topic, String Payload) {
-
-  if (MPU6050_Configured == false) {
-    return false;
-  }
-
-  // Trim Topic
-  Topic.replace(MQTT_Topic[Topic_MPU6050] + "/", "");
-
-  // Trim Payload from garbage chars
-  Payload = Payload.substring(0, Payload.indexOf(";"));
-
-  // Check topic - Gyro
-  if (Topic == "Gyro" && Payload == "?") {
-    MPU6050_Read_Gyro();
-  }
-
-  if (Topic == "Gyro" && Payload == "json") {
-    MPU6050_Read_Gyro_json();
-  }
-
-  // Check topic - Accelerometer
-  else if (Topic == "Accelerometer" && Payload == "?") {
-    MPU6050_Read_Accelerometer();
-  }
-
-  // Check topic - Accelerometer Max
-  else if (Topic == "AccelerometerMax" && Payload == "?") {
-    MPU6050_Accelerometer_Max();
-  }
-
-
-  return false;
-}
+// bool MPU6050(String Topic, String Payload) {
+//
+//   if (MPU6050_Configured == false) {
+//     return false;
+//   }
+//
+//   // Trim Topic
+//   Topic.replace(MQTT_Topic[Topic_MPU6050] + "/", "");
+//
+//   // Trim Payload from garbage chars
+//   Payload = Payload.substring(0, Payload.indexOf(";"));
+//
+//   // Check topic - Gyro
+//   if (Topic == "Gyro" && Payload == "?") {
+//     MPU6050_Read_Gyro();
+//   }
+//
+//   if (Topic == "Gyro" && Payload == "json") {
+//     MPU6050_Read_Gyro_json();
+//   }
+//
+//   // Check topic - Accelerometer
+//   else if (Topic == "Accelerometer" && Payload == "?") {
+//     MPU6050_Read_Accelerometer();
+//   }
+//
+//   // Check topic - Accelerometer Max
+//   else if (Topic == "AccelerometerMax" && Payload == "?") {
+//     MPU6050_Accelerometer_Max();
+//   }
+//
+//
+//   return false;
+// }
 
 
 // ############################################################ Button_Pressed_Check() ############################################################
@@ -1781,7 +1598,7 @@ byte Pin_To_Number(String Pin_Name) {
 } // Pin_Monitor_String()
 
 
-// ############################################################ Pin_Monitor() ############################################################
+// ############################################################ Pin_Monitor(Reserve_Normal, ) ############################################################
 // Will return false if pin is in use or invalid
 byte Pin_Monitor(byte Action, byte Pin_Number) {
   // 0 = In Use
@@ -2044,7 +1861,6 @@ bool FS_File_Check(String File_Path) {
 void ESP_Reboot() {
 
   Log(MQTT_Topic[Topic_System], "Rebooting");
-  MQTT_Client.disconnect(false);
   Serial.flush();
 
   ESP.restart();
@@ -2056,7 +1872,6 @@ void ESP_Reboot() {
 void ESP_Shutdown() {
 
   Log(MQTT_Topic[Topic_System], "Shutting down");
-  MQTT_Client.disconnect(false);
   Serial.flush();
 
   ESP.deepSleep(0);
@@ -2264,104 +2079,104 @@ bool Dimmer(String Topic, String Payload) {
 
 
 // ############################################################ LoadCell_Loop() ############################################################
-void LoadCell_Loop() {
-
-  if (Load_Cell_Configurated[0] == true) {
-    LoadCell_RA_Current1.addValue(Load_Cell1.get_units(1));
-  }
-  if (Load_Cell_Configurated[1] == true) {
-    LoadCell_RA_Current1.addValue(Load_Cell2.get_units(1));
-  }
-  if (Load_Cell_Configurated[2] == true) {
-    LoadCell_RA_Current1.addValue(Load_Cell3.get_units(1));
-  }
-  if (Load_Cell_Configurated[3] == true) {
-    LoadCell_RA_Current1.addValue(Load_Cell4.get_units(1));
-  }
-}
+// void LoadCell_Loop() {
+//
+//   if (Load_Cell_Configurated[0] == true) {
+//     LoadCell_RA_Current1.addValue(Load_Cell1.get_units(1));
+//   }
+//   if (Load_Cell_Configurated[1] == true) {
+//     LoadCell_RA_Current1.addValue(Load_Cell2.get_units(1));
+//   }
+//   if (Load_Cell_Configurated[2] == true) {
+//     LoadCell_RA_Current1.addValue(Load_Cell3.get_units(1));
+//   }
+//   if (Load_Cell_Configurated[3] == true) {
+//     LoadCell_RA_Current1.addValue(Load_Cell4.get_units(1));
+//   }
+// }
 
 // ############################################################ LoadCell() ############################################################
-bool LoadCell(String Topic, String Payload) {
-
-  if (Load_Cell_Configurated == false) {
-    return false;
-  }
-
-  String LoadCell_String = Topic;
-  LoadCell_String.replace(MQTT_Topic[Topic_LoadCell] + "/", "");
-
-  byte Selected_LoadCell = LoadCell_String.toInt();
-
-  if (Topic.indexOf(MQTT_Topic[Topic_LoadCell]) != -1) {
-    if (Payload.indexOf("?") != -1) {
-
-      if (Selected_LoadCell == 1) {
-        Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/State", String(Load_Cell1.get_units(1)));
-      }
-      else if (Selected_LoadCell == 2) {
-        Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/State", String(Load_Cell2.get_units(1)));
-      }
-      else if (Selected_LoadCell == 3) {
-        Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/State", String(Load_Cell3.get_units(1)));
-      }
-      else if (Selected_LoadCell == 4) {
-        Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/State", String(Load_Cell4.get_units(1)));
-      }
-
-    }
-
-    else if (Payload.indexOf("Tare") != -1) {
-      Log(MQTT_Topic[Topic_System] + "/LoadCell", "Tare Started");
-      Load_Cell1.tare(25);
-      Log(MQTT_Topic[Topic_System] + "/LoadCell", "Tare Compleate");
-    }
-
-    else if (Payload.indexOf("Calibration") != -1) {
-      // Payload = Payload.substring(Payload.indexOf("Calibration "));
-      // Log(MQTT_Topic[Topic_System] + "/LoadCell", "Calibration set to: " + Payload);
-      // Load_Cell.set_scale(Payload.toFloat());
-    }
-    else if (Payload.indexOf("json") != -1) {
-
-      // Create json buffer
-      DynamicJsonBuffer jsonBuffer(400);
-      JsonObject& root_LoadCell = jsonBuffer.createObject();
-
-      // encode json string
-      root_LoadCell.set("Scale: 1", LoadCell_RA_Current1.getAverage());
-      // root_LoadCell.set("Scale: 1", LoadCell_Current_Value_Humidity[Selected_LoadCell]);
-      // root_LoadCell.set("Scale: ", LoadCell_Current_Value_Temperature[Selected_LoadCell]);
-      // root_LoadCell.set("Scale: ", LoadCell_Min_Value_Humidity[Selected_LoadCell]);
-      // root_LoadCell.set("Scale: ", LoadCell_Max_Value_Humidity[Selected_LoadCell]);
-      // root_LoadCell.set("Scale: ", LoadCell_Min_Value_Temperature[Selected_LoadCell]);
-      // root_LoadCell.set("Scale: ", LoadCell_Max_Value_Temperature[Selected_LoadCell]);
-
-      String LoadCell_String;
-
-      // Build json
-      root_LoadCell.printTo(LoadCell_String);
-
-      Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/json/State", LoadCell_String);
-
-      // Reset Min/Max
-      // LoadCell_Min_Value_Temperature[Selected_LoadCell] = LoadCell_Current_Value_Temperature[Selected_LoadCell];
-      // LoadCell_Max_Value_Temperature[Selected_LoadCell] = LoadCell_Current_Value_Temperature[Selected_LoadCell];
-      // LoadCell_Min_Value_Humidity[Selected_LoadCell] = LoadCell_Current_Value_Humidity[Selected_LoadCell];
-      // LoadCell_Max_Value_Humidity[Selected_LoadCell] = LoadCell_Current_Value_Humidity[Selected_LoadCell];
-
-      return true;
-
-
-      // Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/RA/State", String(LoadCell_RA_Current1.getAverage()));
-      // Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/RA/State", String(LoadCell_RA_Current2.getAverage()));
-      // Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/RA/State", String(LoadCell_RA_Current3.getAverage()));
-      // Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/RA/State", String(LoadCell_RA_Current4.getAverage()));
-    }
-    return true;
-  }
-
-  return false;
-}
+// bool LoadCell(String Topic, String Payload) {
+//
+//   if (Load_Cell_Configurated == false) {
+//     return false;
+//   }
+//
+//   String LoadCell_String = Topic;
+//   LoadCell_String.replace(MQTT_Topic[Topic_LoadCell] + "/", "");
+//
+//   byte Selected_LoadCell = LoadCell_String.toInt();
+//
+//   if (Topic.indexOf(MQTT_Topic[Topic_LoadCell]) != -1) {
+//     if (Payload.indexOf("?") != -1) {
+//
+//       if (Selected_LoadCell == 1) {
+//         Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/State", String(Load_Cell1.get_units(1)));
+//       }
+//       else if (Selected_LoadCell == 2) {
+//         Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/State", String(Load_Cell2.get_units(1)));
+//       }
+//       else if (Selected_LoadCell == 3) {
+//         Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/State", String(Load_Cell3.get_units(1)));
+//       }
+//       else if (Selected_LoadCell == 4) {
+//         Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/State", String(Load_Cell4.get_units(1)));
+//       }
+//
+//     }
+//
+//     else if (Payload.indexOf("Tare") != -1) {
+//       Log(MQTT_Topic[Topic_System] + "/LoadCell", "Tare Started");
+//       Load_Cell1.tare(25);
+//       Log(MQTT_Topic[Topic_System] + "/LoadCell", "Tare Compleate");
+//     }
+//
+//     else if (Payload.indexOf("Calibration") != -1) {
+//       // Payload = Payload.substring(Payload.indexOf("Calibration "));
+//       // Log(MQTT_Topic[Topic_System] + "/LoadCell", "Calibration set to: " + Payload);
+//       // Load_Cell.set_scale(Payload.toFloat());
+//     }
+//     else if (Payload.indexOf("json") != -1) {
+//
+//       // Create json buffer
+//       DynamicJsonBuffer jsonBuffer(400);
+//       JsonObject& root_LoadCell = jsonBuffer.createObject();
+//
+//       // encode json string
+//       root_LoadCell.set("Scale: 1", LoadCell_RA_Current1.getAverage());
+//       // root_LoadCell.set("Scale: 1", LoadCell_Current_Value_Humidity[Selected_LoadCell]);
+//       // root_LoadCell.set("Scale: ", LoadCell_Current_Value_Temperature[Selected_LoadCell]);
+//       // root_LoadCell.set("Scale: ", LoadCell_Min_Value_Humidity[Selected_LoadCell]);
+//       // root_LoadCell.set("Scale: ", LoadCell_Max_Value_Humidity[Selected_LoadCell]);
+//       // root_LoadCell.set("Scale: ", LoadCell_Min_Value_Temperature[Selected_LoadCell]);
+//       // root_LoadCell.set("Scale: ", LoadCell_Max_Value_Temperature[Selected_LoadCell]);
+//
+//       String LoadCell_String;
+//
+//       // Build json
+//       root_LoadCell.printTo(LoadCell_String);
+//
+//       Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/json/State", LoadCell_String);
+//
+//       // Reset Min/Max
+//       // LoadCell_Min_Value_Temperature[Selected_LoadCell] = LoadCell_Current_Value_Temperature[Selected_LoadCell];
+//       // LoadCell_Max_Value_Temperature[Selected_LoadCell] = LoadCell_Current_Value_Temperature[Selected_LoadCell];
+//       // LoadCell_Min_Value_Humidity[Selected_LoadCell] = LoadCell_Current_Value_Humidity[Selected_LoadCell];
+//       // LoadCell_Max_Value_Humidity[Selected_LoadCell] = LoadCell_Current_Value_Humidity[Selected_LoadCell];
+//
+//       return true;
+//
+//
+//       // Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/RA/State", String(LoadCell_RA_Current1.getAverage()));
+//       // Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/RA/State", String(LoadCell_RA_Current2.getAverage()));
+//       // Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/RA/State", String(LoadCell_RA_Current3.getAverage()));
+//       // Log(MQTT_Topic[Topic_LoadCell] + "/" + String(Selected_LoadCell) + "/RA/State", String(LoadCell_RA_Current4.getAverage()));
+//     }
+//     return true;
+//   }
+//
+//   return false;
+// }
 
 
 // ############################################################ DC_Voltmeter() ############################################################
@@ -2570,11 +2385,7 @@ void Distance_Sensor() {
 // ############################################################ MQTT_Subscribe() ############################################################
 void MQTT_Subscribe(String Topic, bool Activate_Topic, byte SubTopics) {
 
-  if (ArduinoOTA_Active == true) {
-    return;
-  }
-
-  byte Topic_Number = 255;
+  byte Topic_Number = 0;
 
   for (byte i = 0; i < MQTT_Topic_Number_Of; i++) {
     if (Topic == MQTT_Topic[i]) {
@@ -2582,41 +2393,28 @@ void MQTT_Subscribe(String Topic, bool Activate_Topic, byte SubTopics) {
       break;
     }
   }
-  if (Topic_Number == 255) {
-    Log(MQTT_Topic[Topic_Log_Error] + "/MQTT", "Unknown Subscribe Topic: " + Topic);
-    return;
-  }
 
   MQTT_Topic_Subscribe_Active[Topic_Number] = Activate_Topic;
   MQTT_Topic_Subscribe_Subtopic[Topic_Number] = SubTopics;
-
-  // Check if MQTT is connected
-  if (MQTT_Client.connected() == false) {
-    // if not then do nothing
-    return;
-  }
 
   String Subscribe_String = MQTT_Topic[Topic_Number];
 
   if (MQTT_Subscribtion_Active[Topic_Number] == false && MQTT_Topic_Subscribe_Active[Topic_Number] == true) {
 
-    // Check if already subscribed
+    if (MQTT_Topic_Subscribe_Subtopic[Topic_Number] == 1) Subscribe_String = Subscribe_String + "/+";
+    else if (MQTT_Topic_Subscribe_Subtopic[Topic_Number] == 2) Subscribe_String = Subscribe_String + "/#";
+
+    if (MQTT_Client.subscribe(Subscribe_String.c_str(), 0)) {
+      Log(MQTT_Topic[Topic_System] + "/MQTT", "Subscribing to Topic: " + Subscribe_String + "  ... OK");
+    }
+    else {
+      if (MQTT_Config_Requested == true) {
+        Log(MQTT_Topic[Topic_Log_Error] + "/MQTT", "Subscribing to Topic: " + Subscribe_String + "  ... FAILED");
+      }
+    }
+
     if (MQTT_Subscribtion_Active[Topic_Number] == true && MQTT_Topic_Subscribe_Active[Topic_Number] == true) {
       Log(MQTT_Topic[Topic_Log_Warning] + "/MQTT", "Already subscribed to Topic: " + Subscribe_String);
-      return;
-    }
-    // Add # or + to topic
-    if (MQTT_Topic_Subscribe_Subtopic[Topic_Number] == PLUS) Subscribe_String = Subscribe_String + "/+";
-    else if (MQTT_Topic_Subscribe_Subtopic[Topic_Number] == HASH) Subscribe_String = Subscribe_String + "/#";
-
-    // Try to subscribe
-    if (MQTT_Client.subscribe(Subscribe_String.c_str(), 0)) {
-      Log(MQTT_Topic[Topic_System] + "/MQTT", "Subscribing to Topic: " + Subscribe_String + " ... OK");
-      MQTT_Subscribtion_Active[Topic_Number] = true;
-    }
-    // Log failure
-    else {
-      Log(MQTT_Topic[Topic_Log_Error] + "/MQTT", "Subscribing to Topic: " + Subscribe_String + " ... FAILED");
     }
   }
 }
@@ -2643,59 +2441,51 @@ void Relay_Auto_OFF_Check(byte Selected_Relay) {
 
 
 // ############################################################ Relay() ############################################################
-bool Relay(String Topic, String Payload) {
+void Relay(String Topic, String Payload) {
 
-  if (Relay_Configured == false) {
-    return false;
-  }
+  if (Payload.length() > 1) Payload = Payload.substring(0, 1); // "Trim" length to avoid some wird error
 
-  else if (Topic.indexOf(MQTT_Topic[Topic_Relay]) != -1) {
+  String Relay_String = Topic;
+  Relay_String.replace(MQTT_Topic[Topic_Relay] + "/", "");
 
-    if (Payload.length() > 1) Payload = Payload.substring(0, 1); // "Trim" length to avoid some wird error
+  byte Selected_Relay = Relay_String.toInt();
 
-    String Relay_String = Topic;
-    Relay_String.replace(MQTT_Topic[Topic_Relay] + "/", "");
+  // Ignore all requests thats larger then _Relay_Max_Number_Of
+  if (Selected_Relay < Relay_Max_Number_Of) {
+    // State request
+    if (Payload == "?") {
+      String State_String;
+      if (digitalRead(Relay_Pins[Selected_Relay - 1]) == Relay_On_State) State_String += "1";
+      else State_String += "0";
+      Log(MQTT_Topic[Topic_Relay] + "/" + String(Selected_Relay) + "/State", State_String);
+      return;
+    }
 
-    byte Selected_Relay = Relay_String.toInt();
+    else if(isValidNumber(Payload) == true) {
+      byte State = Payload.toInt();
 
-    // Ignore all requests thats larger then _Relay_Max_Number_Of
-    if (Selected_Relay < Relay_Max_Number_Of) {
-      // State request
-      if (Payload == "?") {
-        String State_String;
-        if (digitalRead(Relay_Pins[Selected_Relay - 1]) == Relay_On_State) State_String += "1";
-        else State_String += "0";
-        Log(MQTT_Topic[Topic_Relay] + "/" + String(Selected_Relay) + "/State", State_String);
-        return true;
+      if (State > 2) {
+        Log(MQTT_Topic[Topic_Log_Error] + "/Relay", "Relay - Invalid command entered");
+        return;
       }
 
-      else if(isValidNumber(Payload) == true) {
-        byte State = Payload.toInt();
+      bool State_Digital = false;
+      if (State == ON) State_Digital = Relay_On_State;
+      else if (State == OFF) State_Digital = !Relay_On_State;
+      else if (State == FLIP) State_Digital = !digitalRead(Relay_Pins[Selected_Relay - 1]);
 
-        if (State > 2) {
-          Log(MQTT_Topic[Topic_Log_Error] + "/Relay", "Relay - Invalid command entered");
-          return true;
+      if (Selected_Relay <= Relay_Max_Number_Of && digitalRead(Relay_Pins[Selected_Relay - 1]) != State_Digital) {
+        digitalWrite(Relay_Pins[Selected_Relay - 1], State_Digital);
+        if (State_Digital == Relay_On_State) {
+          Log(MQTT_Topic[Topic_Relay] + "/" + String(Selected_Relay) + "/State", String(ON));
+          Relay_Auto_OFF_Check(Selected_Relay);
         }
-
-        bool State_Digital = false;
-        if (State == ON) State_Digital = Relay_On_State;
-        else if (State == OFF) State_Digital = !Relay_On_State;
-        else if (State == FLIP) State_Digital = !digitalRead(Relay_Pins[Selected_Relay - 1]);
-
-        if (Selected_Relay <= Relay_Max_Number_Of && digitalRead(Relay_Pins[Selected_Relay - 1]) != State_Digital) {
-          digitalWrite(Relay_Pins[Selected_Relay - 1], State_Digital);
-          if (State_Digital == Relay_On_State) {
-            Log(MQTT_Topic[Topic_Relay] + "/" + String(Selected_Relay) + "/State", String(ON));
-            Relay_Auto_OFF_Check(Selected_Relay);
-          }
-          else {
-            Log(MQTT_Topic[Topic_Relay] + "/" + String(Selected_Relay) + "/State", String(OFF));
-          }
+        else {
+          Log(MQTT_Topic[Topic_Relay] + "/" + String(Selected_Relay) + "/State", String(OFF));
         }
       }
     }
   }
-  return false;
 } // Relay()
 
 
@@ -2733,7 +2523,7 @@ void Relay_Auto_OFF(byte Relay_Number) {
 // ############################################################ DHT_Loop() ############################################################
 void DHT_Loop() {
 
-  if (DHT_Configured == false || ArduinoOTA_Active == true || Boot_Compleate == false) {
+  if (DHT_Configured == false || ArduinoOTA_Active == true || Boot_Compleate == false || MQTT_Config_Requested == false) {
     return;
   }
 
@@ -3101,6 +2891,26 @@ String Uptime_String() {
 } // Uptime_String()
 
 
+// ############################################################ connectToWifi() ############################################################
+void connectToWifi() {
+
+  // Disable interrupts for the system not to chast when wifi is trying to connect
+  // noInterrupts();
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Wifi_State = 3;
+  }
+
+  if (Wifi_State != 3) {
+    Log(MQTT_Topic[Topic_System] + "/WiFi", "Starting WiFi ...");
+
+    WiFi.begin(WiFi_SSID.c_str(), WiFi_Password.c_str());
+
+    Wifi_State = 3;
+  }
+}
+
+
 // ############################################################ MQTT_KeepAlive() ############################################################
 void MQTT_KeepAlive() {
 
@@ -3132,7 +2942,6 @@ void MQTT_KeepAlive() {
 
 // ############################################################ onMqttConnect() ############################################################
 void onMqttConnect(bool sessionPresent) {
-
   Log(MQTT_Topic[Topic_System] + "/MQTT", "Connected to Broker: '" + MQTT_Broker + "'");
 
   Indicator_LED(LED_MQTT, false);
@@ -3163,7 +2972,6 @@ void onMqttConnect(bool sessionPresent) {
 // ############################################################ connectToMqtt() ############################################################
 void connectToMqtt() {
   Log(MQTT_Topic[Topic_System] + "/MQTT", "Connecting to Broker: '" + MQTT_Broker + "' ...");
-
   MQTT_Client.connect();
 }
 
@@ -3530,7 +3338,7 @@ String FS_Config_Build() {
     root_Config.set("Dimmer_Pins", Byte_ArrayToString(Dimmer_Pins));
   }
 
-  if (Dimmer_Configured == true) {
+  if (Button_Configured == true) {
     root_Config.set("Button_Pins", Byte_ArrayToString(Button_Pins));
     root_Config.set("Button_Target", Button_Target);
   }
@@ -3547,7 +3355,10 @@ String FS_Config_Build() {
 // #################################### FS_Config_Save() ####################################
 bool FS_Config_Save() {
 
+  SPIFFS.begin();
+
   File configFile = SPIFFS.open(FS_Confing_File_Name, "w");
+
   if (!configFile) {
     Log(MQTT_Topic[Topic_System] + "/FSConfig", "Failed to open config file for writing");
     return false;
@@ -3555,6 +3366,8 @@ bool FS_Config_Save() {
 
   configFile.print(FS_Config_Build());
   configFile.close();
+
+  SPIFFS.end();
 
   Log(MQTT_Topic[Topic_System] + "/FSConfig", "Saved to SPIFFS");
 
@@ -3674,6 +3487,8 @@ void FS_Config_Drop() {
 
 // ############################################################ FS_Config() ############################################################
 bool FS_Config_Load() {
+
+  Log(MQTT_Topic[Topic_System] + "/Dobby", "Loading FS Config");
 
   // Open file
   File configFile = SPIFFS.open(FS_Confing_File_Name, "r");
@@ -3844,116 +3659,116 @@ bool FS_Config_Load() {
 
 
   // ############### Load_Cell ###############
-  if (root.get<String>("LoadCell_Pins_DT") != "") {
-
-    Log(MQTT_Topic[Topic_System] + "/LoadCell", "Configuring");
-
-    Log(MQTT_Topic[Topic_System] + "/LoadCell", "Setting DT Pins variables");
-    MQTT_Settings_Set(LoadCell_Pins_DT, Load_Cell_Max_Number_Of, root.get<String>("LoadCell_Pins_DT"), MQTT_Topic[Topic_System] + "/LoadCell", "LoadCell DT Pins");
-
-    Log(MQTT_Topic[Topic_System] + "/LoadCell", "Setting SCK Pins variables");
-    if (root.get<String>("LoadCell_Pins_SCK") != "") {
-      MQTT_Settings_Set(LoadCell_Pins_SCK, Load_Cell_Max_Number_Of, root.get<String>("LoadCell_Pins_SCK"), MQTT_Topic[Topic_System] + "/LoadCell", "LoadCell SCK Pins");
-    }
-
-    Log(MQTT_Topic[Topic_System] + "/LoadCell", "Setting Calibration variables");
-    if (root.get<String>("LoadCell_Calibration") != "") {
-      MQTT_Settings_Set(LoadCell_Calibration, Load_Cell_Max_Number_Of, root.get<String>("LoadCell_Calibration"), MQTT_Topic[Topic_System] + "/LoadCell", "LoadCell Calibration");
-    }
-
-
-    // Setup the LoadCell if both pins is configured
-    for (byte i = 0; i < Load_Cell_Max_Number_Of; i++) {
-      if (LoadCell_Pins_DT[i] != 255 && LoadCell_Pins_SCK[i] != 255 && LoadCell_Calibration[i] != -1337) {
-        Log(MQTT_Topic[Topic_System] + "/LoadCell", "Setting up Scale: " + String(i + 1));
-
-        // Reserve pins
-        if (Pin_Monitor(Reserve_Normal, LoadCell_Pins_DT[i]) != Pin_Free) {
-          Log(MQTT_Topic[Topic_Log_Error] + "/LoadCell", "Pin: " + Number_To_Pin(LoadCell_Pins_DT[i]) + " usd for DT not free disabling Scale: " + String(i + 1));
-          continue;
-        }
-        else if (Pin_Monitor(Reserve_Normal, LoadCell_Pins_SCK[i]) != Pin_Free) {
-          Log(MQTT_Topic[Topic_Log_Error] + "/LoadCell", "Pin: " + Number_To_Pin(LoadCell_Pins_DT[i]) + " used for SCL not free disabling Scale: " + String(i + 1));
-          continue;
-        }
-
-        // DT Warningss
-        if (LoadCell_Pins_DT[i] == Pin_To_Number("D3")) {
-          Log(MQTT_Topic[Topic_Log_Warning] + "/LoadCell", "If DT is not connected to D3 during boot it will cause a reboot loop");
-        }
-        else if (LoadCell_Pins_DT[i] == Pin_To_Number("D5")) {
-          Log(MQTT_Topic[Topic_Log_Warning] + "/LoadCell", "If DT is not connected to D5 during boot it will cause a reboot loop");
-        }
-        else if (LoadCell_Pins_DT[i] == Pin_To_Number("D7")) {
-          Log(MQTT_Topic[Topic_Log_Warning] + "/LoadCell", "If DT is not connected to D7 during boot it will cause a reboot loop");
-        }
-        // SCK Warningss
-        if (LoadCell_Pins_SCK[i] == Pin_To_Number("D3")) {
-          Log(MQTT_Topic[Topic_Log_Warning] + "/LoadCell", "If SCK is not connected to D3 during boot it will cause a reboot loop");
-        }
-
-        MQTT_Subscribe(MQTT_Topic[Topic_LoadCell], true, PLUS);
-
-        // Log event
-        Log(MQTT_Topic[Topic_System] + "/LoadCell", "Starting Scale: " + String(i + 1) + " on pin DT: " + Number_To_Pin(LoadCell_Pins_DT[i]) + " SCK: " + Number_To_Pin(LoadCell_Pins_SCK[i]));
-
-        // Enable Scales
-        // NOTE: Do not tare during setup til will cause a reboot loop
-        if (i == 0) {
-          // Set Calibration
-          // this value is obtained by calibrating the scale with known weights
-          Load_Cell1.set_scale(LoadCell_Calibration[i]);
-          // Start the scale
-          Load_Cell1.begin(LoadCell_Pins_DT[i], LoadCell_Pins_SCK[i]);
-          // Enable Configuration
-          Load_Cell_Configurated[i] = true;
-          // Atach the ticket to start reading the distance sensor
-          LoadCell_Refresh_Ticker.attach_ms(LoadCell_Read_Rate, LoadCell_Loop);
-        }
-        else if (i == 1) {
-          // Set Calibration
-          // this value is obtained by calibrating the scale with known weights
-          Load_Cell2.set_scale(LoadCell_Calibration[i]);
-          // Start the scale
-          Load_Cell2.begin(LoadCell_Pins_DT[i], LoadCell_Pins_SCK[i]);
-          // Enable Configuration
-          Load_Cell_Configurated[i] = true;
-        }
-        else if (i == 2) {
-          // Set Calibration
-          // this value is obtained by calibrating the scale with known weights
-          Load_Cell3.set_scale(LoadCell_Calibration[i]);
-          // Start the scale
-          Load_Cell3.begin(LoadCell_Pins_DT[i], LoadCell_Pins_SCK[i]);
-          // Enable Configuration
-          Load_Cell_Configurated[i] = true;
-        }
-        else if (i == 3) {
-          // Set Calibration
-          // this value is obtained by calibrating the scale with known weights
-          Load_Cell4.set_scale(LoadCell_Calibration[i]);
-          // Start the scale
-          Load_Cell4.begin(LoadCell_Pins_DT[i], LoadCell_Pins_SCK[i]);
-          // Enable Configuration
-          Load_Cell_Configurated[i] = true;
-        }
-
-
-      }
-      else {
-        if (LoadCell_Pins_SCK[i] != 255 && LoadCell_Calibration[i] != -1337) {
-          Log(MQTT_Topic[Topic_Log_Error] + "/LoadCell", "Failed to setup Scale: " + String(i + 1) + " Missing: LoadCell_Pins_DT");
-        }
-        else if (LoadCell_Pins_DT[i] != 255 && LoadCell_Pins_SCK[i] != 255) {
-          Log(MQTT_Topic[Topic_Log_Error] + "/LoadCell", "Failed to setup Scale: " + String(i + 1) + " Missing: LoadCell_Calibration");
-        }
-        else if (LoadCell_Pins_DT[i] != 255 && LoadCell_Calibration[i] != -1337) {
-          Log(MQTT_Topic[Topic_Log_Error] + "/LoadCell", "Failed to setup Scale: " + String(i + 1) + " Missing: LoadCell_Pins_SCK");
-        }
-      }
-    }
-    Log(MQTT_Topic[Topic_System] + "/LoadCell", "Configuration compleate");
-  }
+  // if (root.get<String>("LoadCell_Pins_DT") != "") {
+  //
+  //   Log(MQTT_Topic[Topic_System] + "/LoadCell", "Configuring");
+  //
+  //   Log(MQTT_Topic[Topic_System] + "/LoadCell", "Setting DT Pins variables");
+  //   MQTT_Settings_Set(LoadCell_Pins_DT, Load_Cell_Max_Number_Of, root.get<String>("LoadCell_Pins_DT"), MQTT_Topic[Topic_System] + "/LoadCell", "LoadCell DT Pins");
+  //
+  //   Log(MQTT_Topic[Topic_System] + "/LoadCell", "Setting SCK Pins variables");
+  //   if (root.get<String>("LoadCell_Pins_SCK") != "") {
+  //     MQTT_Settings_Set(LoadCell_Pins_SCK, Load_Cell_Max_Number_Of, root.get<String>("LoadCell_Pins_SCK"), MQTT_Topic[Topic_System] + "/LoadCell", "LoadCell SCK Pins");
+  //   }
+  //
+  //   Log(MQTT_Topic[Topic_System] + "/LoadCell", "Setting Calibration variables");
+  //   if (root.get<String>("LoadCell_Calibration") != "") {
+  //     MQTT_Settings_Set(LoadCell_Calibration, Load_Cell_Max_Number_Of, root.get<String>("LoadCell_Calibration"), MQTT_Topic[Topic_System] + "/LoadCell", "LoadCell Calibration");
+  //   }
+  //
+  //
+  //   // Setup the LoadCell if both pins is configured
+  //   for (byte i = 0; i < Load_Cell_Max_Number_Of; i++) {
+  //     if (LoadCell_Pins_DT[i] != 255 && LoadCell_Pins_SCK[i] != 255 && LoadCell_Calibration[i] != -1337) {
+  //       Log(MQTT_Topic[Topic_System] + "/LoadCell", "Setting up Scale: " + String(i + 1));
+  //
+  //       // Reserve pins
+  //       if (Pin_Monitor(Reserve_Normal, LoadCell_Pins_DT[i]) != Pin_Free) {
+  //         Log(MQTT_Topic[Topic_Log_Error] + "/LoadCell", "Pin: " + Number_To_Pin(LoadCell_Pins_DT[i]) + " usd for DT not free disabling Scale: " + String(i + 1));
+  //         continue;
+  //       }
+  //       else if (Pin_Monitor(Reserve_Normal, LoadCell_Pins_SCK[i]) != Pin_Free) {
+  //         Log(MQTT_Topic[Topic_Log_Error] + "/LoadCell", "Pin: " + Number_To_Pin(LoadCell_Pins_DT[i]) + " used for SCL not free disabling Scale: " + String(i + 1));
+  //         continue;
+  //       }
+  //
+  //       // DT Warningss
+  //       if (LoadCell_Pins_DT[i] == Pin_To_Number("D3")) {
+  //         Log(MQTT_Topic[Topic_Log_Warning] + "/LoadCell", "If DT is not connected to D3 during boot it will cause a reboot loop");
+  //       }
+  //       else if (LoadCell_Pins_DT[i] == Pin_To_Number("D5")) {
+  //         Log(MQTT_Topic[Topic_Log_Warning] + "/LoadCell", "If DT is not connected to D5 during boot it will cause a reboot loop");
+  //       }
+  //       else if (LoadCell_Pins_DT[i] == Pin_To_Number("D7")) {
+  //         Log(MQTT_Topic[Topic_Log_Warning] + "/LoadCell", "If DT is not connected to D7 during boot it will cause a reboot loop");
+  //       }
+  //       // SCK Warningss
+  //       if (LoadCell_Pins_SCK[i] == Pin_To_Number("D3")) {
+  //         Log(MQTT_Topic[Topic_Log_Warning] + "/LoadCell", "If SCK is not connected to D3 during boot it will cause a reboot loop");
+  //       }
+  //
+  //       MQTT_Subscribe(MQTT_Topic[Topic_LoadCell], true, PLUS);
+  //
+  //       // Log event
+  //       Log(MQTT_Topic[Topic_System] + "/LoadCell", "Starting Scale: " + String(i + 1) + " on pin DT: " + Number_To_Pin(LoadCell_Pins_DT[i]) + " SCK: " + Number_To_Pin(LoadCell_Pins_SCK[i]));
+  //
+  //       // Enable Scales
+  //       // NOTE: Do not tare during setup til will cause a reboot loop
+  //       if (i == 0) {
+  //         // Set Calibration
+  //         // this value is obtained by calibrating the scale with known weights
+  //         Load_Cell1.set_scale(LoadCell_Calibration[i]);
+  //         // Start the scale
+  //         Load_Cell1.begin(LoadCell_Pins_DT[i], LoadCell_Pins_SCK[i]);
+  //         // Enable Configuration
+  //         Load_Cell_Configurated[i] = true;
+  //         // Atach the ticket to start reading the distance sensor
+  //         LoadCell_Refresh_Ticker.attach_ms(LoadCell_Read_Rate, LoadCell_Loop);
+  //       }
+  //       else if (i == 1) {
+  //         // Set Calibration
+  //         // this value is obtained by calibrating the scale with known weights
+  //         Load_Cell2.set_scale(LoadCell_Calibration[i]);
+  //         // Start the scale
+  //         Load_Cell2.begin(LoadCell_Pins_DT[i], LoadCell_Pins_SCK[i]);
+  //         // Enable Configuration
+  //         Load_Cell_Configurated[i] = true;
+  //       }
+  //       else if (i == 2) {
+  //         // Set Calibration
+  //         // this value is obtained by calibrating the scale with known weights
+  //         Load_Cell3.set_scale(LoadCell_Calibration[i]);
+  //         // Start the scale
+  //         Load_Cell3.begin(LoadCell_Pins_DT[i], LoadCell_Pins_SCK[i]);
+  //         // Enable Configuration
+  //         Load_Cell_Configurated[i] = true;
+  //       }
+  //       else if (i == 3) {
+  //         // Set Calibration
+  //         // this value is obtained by calibrating the scale with known weights
+  //         Load_Cell4.set_scale(LoadCell_Calibration[i]);
+  //         // Start the scale
+  //         Load_Cell4.begin(LoadCell_Pins_DT[i], LoadCell_Pins_SCK[i]);
+  //         // Enable Configuration
+  //         Load_Cell_Configurated[i] = true;
+  //       }
+  //
+  //
+  //     }
+  //     else {
+  //       if (LoadCell_Pins_SCK[i] != 255 && LoadCell_Calibration[i] != -1337) {
+  //         Log(MQTT_Topic[Topic_Log_Error] + "/LoadCell", "Failed to setup Scale: " + String(i + 1) + " Missing: LoadCell_Pins_DT");
+  //       }
+  //       else if (LoadCell_Pins_DT[i] != 255 && LoadCell_Pins_SCK[i] != 255) {
+  //         Log(MQTT_Topic[Topic_Log_Error] + "/LoadCell", "Failed to setup Scale: " + String(i + 1) + " Missing: LoadCell_Calibration");
+  //       }
+  //       else if (LoadCell_Pins_DT[i] != 255 && LoadCell_Calibration[i] != -1337) {
+  //         Log(MQTT_Topic[Topic_Log_Error] + "/LoadCell", "Failed to setup Scale: " + String(i + 1) + " Missing: LoadCell_Pins_SCK");
+  //       }
+  //     }
+  //   }
+  //   Log(MQTT_Topic[Topic_System] + "/LoadCell", "Configuration compleate");
+  // }
 
 
   // ############### DC_Voltmeter ###############
@@ -4032,46 +3847,46 @@ bool FS_Config_Load() {
 
 
   // ############### MPU6050 ###############
-  if (root.get<String>("MPU6050_Pin_SCL") != "") {
-    Log(MQTT_Topic[Topic_System] + "/MPU6050", "Configuring");
-    if (Pin_Monitor(Reserve_I2C_SCL, root.get<String>("MPU6050_Pin_SCL")) == Pin_SCL) {
-      MPU6050_Pin_SCL = Pin_To_Number(root.get<String>("MPU6050_Pin_SCL"));
-    }
-    // Set SDA
-    if (Pin_Monitor(Reserve_I2C_SDA, root.get<String>("MPU6050_Pin_SDA")) == Pin_SDA) {
-      MPU6050_Pin_SDA = Pin_To_Number(root.get<String>("MPU6050_Pin_SDA"));
-    }
-    // Set Interrupt
-    if (Pin_Monitor(Reserve_Normal, root.get<String>("MPU6050_Pin_Interrupt")) == Pin_Free) {
-      MPU6050_Pin_Interrupt = Pin_To_Number(root.get<String>("MPU6050_Pin_Interrupt"));
-    }
-
-    // Check needed pins
-    if (MPU6050_Pin_SCL != 255 && MPU6050_Pin_SDA != 255 && MPU6050_Pin_Interrupt != 255) {
-      Log(MQTT_Topic[Topic_System] + "/MPU6050", "All required pins set");
-
-      // Reserve pins
-      if (MPU6050_Pin_SCL != 255 && MPU6050_Pin_SDA != 255 && MPU6050_Pin_Interrupt != 255) {
-        // Set pinmode for Interrupt
-        pinMode(MPU6050_Pin_Interrupt, INPUT);
-
-        Log(MQTT_Topic[Topic_System] + "/MPU6050", "Pins set to SDA: " + Number_To_Pin(MPU6050_Pin_SDA) + " SCL: " + Number_To_Pin(MPU6050_Pin_SCL) + " Interrupt: " + Number_To_Pin(MPU6050_Pin_Interrupt));
-        MQTT_Subscribe(MQTT_Topic[Topic_MPU6050], true, PLUS);
-        MPU6050_Configured = true;
-      }
-      // Report error
-      else {
-        Log(MQTT_Topic[Topic_Log_Error] + "/MPU6050", "Unable to set pins, SDA: " + Number_To_Pin(MPU6050_Pin_SDA) + " SCL: " + Number_To_Pin(MPU6050_Pin_SCL) + " Interrupt: " + Number_To_Pin(MPU6050_Pin_Interrupt));
-      }
-    }
-
-    // Report missing pin
-    else {
-      Log(MQTT_Topic[Topic_Log_Error] + "/MPU6050", "All required pins not set, got SDA: " + Number_To_Pin(MPU6050_Pin_SDA) + " SCL: " + Number_To_Pin(MPU6050_Pin_SCL) + " Interrupt: " + Number_To_Pin(MPU6050_Pin_Interrupt));
-    }
-
-    Log(MQTT_Topic[Topic_System] + "/MPU6050", "Configuration compleate");
-  }
+  // if (root.get<String>("MPU6050_Pin_SCL") != "") {
+  //   Log(MQTT_Topic[Topic_System] + "/MPU6050", "Configuring");
+  //   if (Pin_Monitor(Reserve_I2C_SCL, root.get<String>("MPU6050_Pin_SCL")) == Pin_SCL) {
+  //     MPU6050_Pin_SCL = Pin_To_Number(root.get<String>("MPU6050_Pin_SCL"));
+  //   }
+  //   // Set SDA
+  //   if (Pin_Monitor(Reserve_I2C_SDA, root.get<String>("MPU6050_Pin_SDA")) == Pin_SDA) {
+  //     MPU6050_Pin_SDA = Pin_To_Number(root.get<String>("MPU6050_Pin_SDA"));
+  //   }
+  //   // Set Interrupt
+  //   if (Pin_Monitor(Reserve_Normal, root.get<String>("MPU6050_Pin_Interrupt")) == Pin_Free) {
+  //     MPU6050_Pin_Interrupt = Pin_To_Number(root.get<String>("MPU6050_Pin_Interrupt"));
+  //   }
+  //
+  //   // Check needed pins
+  //   if (MPU6050_Pin_SCL != 255 && MPU6050_Pin_SDA != 255 && MPU6050_Pin_Interrupt != 255) {
+  //     Log(MQTT_Topic[Topic_System] + "/MPU6050", "All required pins set");
+  //
+  //     // Reserve pins
+  //     if (MPU6050_Pin_SCL != 255 && MPU6050_Pin_SDA != 255 && MPU6050_Pin_Interrupt != 255) {
+  //       // Set pinmode for Interrupt
+  //       pinMode(MPU6050_Pin_Interrupt, INPUT);
+  //
+  //       Log(MQTT_Topic[Topic_System] + "/MPU6050", "Pins set to SDA: " + Number_To_Pin(MPU6050_Pin_SDA) + " SCL: " + Number_To_Pin(MPU6050_Pin_SCL) + " Interrupt: " + Number_To_Pin(MPU6050_Pin_Interrupt));
+  //       MQTT_Subscribe(MQTT_Topic[Topic_MPU6050], true, PLUS);
+  //       MPU6050_Configured = true;
+  //     }
+  //     // Report error
+  //     else {
+  //       Log(MQTT_Topic[Topic_Log_Error] + "/MPU6050", "Unable to set pins, SDA: " + Number_To_Pin(MPU6050_Pin_SDA) + " SCL: " + Number_To_Pin(MPU6050_Pin_SCL) + " Interrupt: " + Number_To_Pin(MPU6050_Pin_Interrupt));
+  //     }
+  //   }
+  //
+  //   // Report missing pin
+  //   else {
+  //     Log(MQTT_Topic[Topic_Log_Error] + "/MPU6050", "All required pins not set, got SDA: " + Number_To_Pin(MPU6050_Pin_SDA) + " SCL: " + Number_To_Pin(MPU6050_Pin_SCL) + " Interrupt: " + Number_To_Pin(MPU6050_Pin_Interrupt));
+  //   }
+  //
+  //   Log(MQTT_Topic[Topic_System] + "/MPU6050", "Configuration compleate");
+  // }
 
   // ############### BMP180 ###############
   if (root.get<String>("BMP180_Pin_SCL") != "") {
@@ -4168,51 +3983,51 @@ bool FS_Config_Load() {
   }
 
   // ############### MFRC522 - RFID ###############
-  if (root.get<String>("MFRC522_Pins") != "") {
-    Log(MQTT_Topic[Topic_System] + "/RFID", "Configuring");
-
-    MQTT_Settings_Set(MFRC522_Pins, MFRC522_Max_Number_Of, root.get<String>("MFRC522_Pins"), MQTT_Topic[Topic_System] + "/RFID", "MFRD522 (RFID) Pins");
-
-    bool Missing_Pins = false;
-
-    // Reserve pins
-    for (byte i = 0; i < MFRC522_Max_Number_Of; i++) {
-      if (MFRC522_Pins[i] == 255) {
-        Missing_Pins = true;
-        break;
-      }
-      if (Pin_Monitor(Reserve_Normal, MFRC522_Pins[i]) == Pin_Free) {
-
-      }
-    }
+  // if (root.get<String>("MFRC522_Pins") != "") {
+  //   Log(MQTT_Topic[Topic_System] + "/RFID", "Configuring");
+  //
+  //   MQTT_Settings_Set(MFRC522_Pins, MFRC522_Max_Number_Of, root.get<String>("MFRC522_Pins"), MQTT_Topic[Topic_System] + "/RFID", "MFRD522 (RFID) Pins");
+  //
+  //   bool Missing_Pins = false;
+  //
+  //   // Reserve pins
+  //   for (byte i = 0; i < MFRC522_Max_Number_Of; i++) {
+  //     if (MFRC522_Pins[i] == 255) {
+  //       Missing_Pins = true;
+  //       break;
+  //     }
+  //     if (Pin_Monitor(Reserve_Normal, MFRC522_Pins[i]) == Pin_Free) {
+  //
+  //     }
+  //   }
 
     // Check if all needed pins is set
     // All pins set
-    if (Missing_Pins == false) {
-      SPI.begin();	         // Init SPI bus
-      MFRC522_RFID.PCD_Init(MFRC522_Pins[1], MFRC522_Pins[0]);    // Init MFRC522
-      // Connection check
-      // Connection failed
-      if (MFRC522_RFID.PCD_PerformSelfTest() == true) {
-        // No need to subscribe i think
-        // MQTT_Subscribe(MQTT_Topic[Topic_RFID], true, NONE);
-        // Enable config
-        MFRC522_Configured = true;
-        // Log event
-        Log(MQTT_Topic[Topic_System] + "/RFID", "Selftest: Passed");
-      }
-      // Device connected
-      else {
-        Log(MQTT_Topic[Topic_Log_Error] + "/RFID", "Selftest: Failed - Disabling RFID");
-      }
-    }
-    // Missing pins
-    else {
-      Log(MQTT_Topic[Topic_Log_Error] + "/RFID", "All required pins not set, got RST:" + Number_To_Pin(MFRC522_Pin_RST) + "SS:" + Number_To_Pin(MFRC522_Pin_SS) + "MOSI:" + Number_To_Pin(MFRC522_Pin_MOSI) + "MIOS:" + Number_To_Pin(MFRC522_Pin_MIOS) + "SCK:" + Number_To_Pin(MFRC522_Pin_SCK));
-    }
-
-    Log(MQTT_Topic[Topic_System] + "/RFID", "Configuration compleate");
-  }
+  //   if (Missing_Pins == false) {
+  //     SPI.begin();	         // Init SPI bus
+  //     MFRC522_RFID.PCD_Init(MFRC522_Pins[1], MFRC522_Pins[0]);    // Init MFRC522
+  //     // Connection check
+  //     // Connection failed
+  //     if (MFRC522_RFID.PCD_PerformSelfTest() == true) {
+  //       // No need to subscribe i think
+  //       // MQTT_Subscribe(MQTT_Topic[Topic_RFID], true, NONE);
+  //       // Enable config
+  //       MFRC522_Configured = true;
+  //       // Log event
+  //       Log(MQTT_Topic[Topic_System] + "/RFID", "Selftest: Passed");
+  //     }
+  //     // Device connected
+  //     else {
+  //       Log(MQTT_Topic[Topic_Log_Error] + "/RFID", "Selftest: Failed - Disabling RFID");
+  //     }
+  //   }
+  //   // Missing pins
+  //   else {
+  //     Log(MQTT_Topic[Topic_Log_Error] + "/RFID", "All required pins not set, got RST:" + Number_To_Pin(MFRC522_Pin_RST) + "SS:" + Number_To_Pin(MFRC522_Pin_SS) + "MOSI:" + Number_To_Pin(MFRC522_Pin_MOSI) + "MIOS:" + Number_To_Pin(MFRC522_Pin_MIOS) + "SCK:" + Number_To_Pin(MFRC522_Pin_SCK));
+  //   }
+  //
+  //   Log(MQTT_Topic[Topic_System] + "/RFID", "Configuration compleate");
+  // }
 
   // ############### PIR ###############
   if (root.get<String>("PIR_Pins") != "") {
@@ -4281,7 +4096,7 @@ bool FS_Config_Load() {
 
 
     // Check if pin is free
-    else if (Pin_Monitor(Reserve_Normal, root.get<String>("LDR_Pin_A0")) == Pin_Free) {
+    if (Pin_Monitor(Reserve_Normal, root.get<String>("LDR_Pin_A0")) == Pin_Free) {
       // Set variable
       LDR_Pin_A0 = Pin_To_Number(root.get<String>("LDR_Pin_A0"));
       // Set pinmode
@@ -4303,35 +4118,9 @@ bool FS_Config_Load() {
     else {
       Log(MQTT_Topic[Topic_Log_Error] + "/LDR", "Configuration failed pin in use");
     }
-  } // LDR
+  }
 
-
-  // ############### MAX31855 ###############
-  if (root.get<String>("MAX31855") != "") {
-
-    if (root.get<String>("MAX31855") == "1") {
-      Log(MQTT_Topic[Topic_Log_Info] + "/MAX31855", "Configuring");
-    }
-
-    if (Pin_Monitor(Reserve_Normal, MAX31855_DO) == Pin_Free && Pin_Monitor(Reserve_Normal, MAX31855_CS) == Pin_Free && Pin_Monitor(Reserve_Normal, MAX31855_CLK) == Pin_Free) {
-
-      // Subscribe to topic
-      MQTT_Subscribe(MQTT_Topic[Topic_MAX31855], true, NONE);
-
-      // Init sensor
-
-      MAX31855_Ticker.attach_ms(MAX31855_Read_Rate, MAX31855_Read);
-
-      MAX31855_Configured = true;
-      Log(MQTT_Topic[Topic_Log_Info] + "/MAX31855", "Configuration compleate");
-    }
-    // Pin in use
-    else {
-      Log(MQTT_Topic[Topic_Log_Error] + "/MAX31855", "Configuration failed - Pin in use");
-    }
-  } // MAX31855
-
-return true;
+  return true;
 }
 
 
@@ -4349,6 +4138,7 @@ void Serial_CLI_Command_Check() {
     Wait_For_Serial_Input("wifi ssid");
     WiFi_SSID = CLI_Input_String;
     Serial.println("wifi ssid set to: " + WiFi_SSID);
+
   }
   else if (CLI_Input_String == "wifi password") {
     Wait_For_Serial_Input("wifi password");
@@ -4616,10 +4406,6 @@ void FS_Config_Show() {
 // ############################################################ FS_Config_Set() ############################################################
 bool FS_Config_Set(String Topic, String Payload) {
 
-  if (Topic != MQTT_Topic[Topic_Config]) {
-    return false;
-  }
-
   Payload = Payload.substring(0, Payload.indexOf(";"));
 
 
@@ -4748,6 +4534,8 @@ bool MQTT_Commands(String Topic, String Payload) {
   else if (Topic == "Test") {
 
     Log("/Test", "MARKER");
+    // String Test_STR;
+    // WiFi.printDiag(Test_STR);
 
 
   } // Test
@@ -4813,41 +4601,60 @@ bool MQTT_All(String Topic, String Payload) {
 // ################################### onMqttMessage() ###################################
 void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
 
-  if (ArduinoOTA_Active == true) return;
+  Serial.println("MARKER BEGIN ON MESSAGE");
 
-  else if (Buzzer(topic, payload) == true) return;
+  if (ArduinoOTA_Active == true);
 
-  else if (DHT(topic, payload) == true) return;
+  else if (String(topic).indexOf(MQTT_Topic[Topic_Buzzer]) != -1) {
+    Buzzer(topic, payload);
+  }
 
-  else if (Relay(topic, payload) == true) return;
+  // else if (DHT(topic, payload)) return;
+  //
+  else if (Relay_Configured == true) {
+    if (String(topic).indexOf(MQTT_Topic[Topic_Relay]) != -1) {
+      Relay(topic, payload);
+    }
+  }
 
-  else if (Distance(topic, payload) == true) return;
+  else if (Dimmer_Configured == true) {
+    if (String(topic).indexOf(MQTT_Topic[Topic_Dimmer]) != -1) {
+      Dimmer(topic, payload);
+    }
+  }
 
-  else if (Dimmer(topic, payload) == true) return;
+  the problem seems to be that the loop is to long might look at disabling watchdog for a sec or so or it might
+  be issues with string comparison that gies issues
 
-  else if (LoadCell(topic, payload) == true) return;
+  else if (String(topic) == MQTT_Topic[Topic_Config]) {
+      FS_Config_Set(topic, payload);
+    }
 
-  else if (DC_Voltmeter(topic, payload) == true) return;
+  // else if (Distance(topic, payload)) return;
+  //
+  // // else if (LoadCell(topic, payload)) return;
+  //
+  // else if (DC_Voltmeter(topic, payload)) return;
+  //
+  // else if (Switch(topic, payload)) return;
+  //
+  // // else if (MPU6050(topic, payload)) return;
+  //
+  // else if (BMP180_Show(topic, payload)) return;
+  //
+  // else if (PIR(topic, payload)) return;
+  //
+  // else if (MQ2(topic, payload)) return;
+  //
+  // else if (LDR(topic, payload)) return;
+  //
+  // // else if (FS_Config_Set(topic, payload)) return;
+  //
+  // else if (MQTT_Commands(topic, payload)) return;
 
-  else if (Switch(topic, payload) == true) return;
+  // else if (MQTT_All(topic, payload)) return;
 
-  else if (MPU6050(topic, payload) == true) return;
-
-  else if (BMP180_Show(topic, payload) == true) return;
-
-  else if (PIR(topic, payload) == true) return;
-
-  else if (MQ2(topic, payload) == true) return;
-
-  else if (LDR(topic, payload) == true) return;
-
-  else if (MAX31855(topic, payload) == true) return;
-
-  else if (FS_Config_Set(topic, payload) == true) return;
-
-  else if (MQTT_Commands(topic, payload) == true) return;
-
-  else if (MQTT_All(topic, payload) == true) return;
+  Serial.println("MARKER END ON MESSAGE");
 
 } // MQTT_Settings
 
@@ -4870,12 +4677,12 @@ void ArduinoOTA_Setup() {
     }
 
     // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-    Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "Start updating " + type);
+    SPIFFS.end();
+    Serial.println("Start updating " + type);
   });
 
   ArduinoOTA.onEnd([]() {
     Log(MQTT_Topic[Topic_System] + "/ArduinoOTA", "ArduinoOTA ... End");
-    MQTT_Client.disconnect(false);
     ArduinoOTA_Active = false;
   });
 
@@ -4949,8 +4756,6 @@ void Base_Config_Check() {
 // ############################################################ setup() ############################################################
 // FIX - ADD log messages below
 void setup() {
-  // Disconnect wifi as early as possible
-  // WiFi.disconnect();
 
   // Disable interrupts during setup
   // noInterrupts();
@@ -4960,14 +4765,12 @@ void setup() {
   Serial.begin(115200);
   Serial.println();
 
+
   // ------------------------------ Indicator_LED ------------------------------
   if (Indicator_LED_Configured == true) {
     pinMode(D4, OUTPUT);
   }
   if (Indicator_LED_Configured == true) Indicator_LED(LED_Config, true);
-
-  // ------------------------------ Random Seed ------------------------------
-  randomSeed(analogRead(0));
 
   // ------------------------------ FS ------------------------------
   SPIFFS.begin();
@@ -4978,6 +4781,11 @@ void setup() {
 
   Base_Config_Check();
 
+  SPIFFS.end();
+
+  // ------------------------------ Random Seed ------------------------------
+  randomSeed(analogRead(0));
+
 
   // ------------------------------ MQTT ------------------------------
   MQTT_Client.onConnect(onMqttConnect);
@@ -4986,17 +4794,22 @@ void setup() {
 
   MQTT_Client.setServer(String_To_IP(MQTT_Broker), MQTT_Port.toInt());
   MQTT_Client.setCredentials(MQTT_Username.c_str(), MQTT_Password.c_str());
-
   MQTT_Client.setClientId(Hostname.c_str());
-  // MQTT_Client.setWill(String(MQTT_Topic[Topic_System] + "/MQTT").c_str(), 0, false, "Disconnected");
+  // MQTT_Client.setWill("/Test/Will", 0, false, "Will Test");
+
 
 
   // ------------------------------ WiFi ------------------------------
-  WiFi_Check();
+  Log(MQTT_Topic[Topic_System] + "/WiFi", "SSID set to: " + WiFi_SSID);
+
+  WiFi.disconnect();
+
+  WiFi.mode(WIFI_STA);
+  WiFi.hostname(Hostname);
 
   gotIpEventHandler = WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP& event) {
-    // Wifi_State = 1;
-    // wifiReconnectTimer.detach();
+    Wifi_State = 1;
+    wifiReconnectTimer.detach();
     Log(MQTT_Topic[Topic_System] + "/WiFi", "Connected to SSID: '" + WiFi_SSID + "' - IP: '" + IPtoString(WiFi.localIP()) + "' - MAC Address: '" + WiFi.macAddress() + "'");
     if (Indicator_LED_Configured == true) Indicator_LED(LED_WiFi, false);
     // OTA
@@ -5006,70 +4819,80 @@ void setup() {
   });
 
   disconnectedEventHandler = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event) {
+    if (Wifi_State == 3) {
+      Log(MQTT_Topic[Topic_System] + "/WiFi", "Connecting to SSID: " + WiFi_SSID);
+    }
+
+    else if (Wifi_State != 2) {
+      Log(MQTT_Topic[Topic_System] + "/WiFi", "Disconnected from SSID: " + WiFi_SSID);
+      if (Indicator_LED_Configured == true) Indicator_LED(LED_WiFi, true);
+      wifiReconnectTimer.attach_ms(WiFi_Reconnect_Delay, connectToWifi);
+      Wifi_State = 2;
+    }
     // MQTT
     mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to WiFi
   });
 
 
   // ------------------------------ MPU6050 ------------------------------
-  if (MPU6050_Configured == true) {
-    Log(MQTT_Topic[Topic_System] + "/MPU6050", "Initializing");
-
-    if (Wire_Avtive == false) {
-      Wire.begin(MPU6050_Pin_SDA, MPU6050_Pin_SCL);
-      Wire_Avtive = true;
-    }
-
-    mpu.initialize();
-
-
-    Log(MQTT_Topic[Topic_System] + "/MPU6050", "Testing device connections ...");
-    if (mpu.testConnection() == true) {
-      Log(MQTT_Topic[Topic_System] + "/MPU6050", "Connection OK");
-
-      // load and configure the DMP
-      Log(MQTT_Topic[Topic_System] + "/MPU6050", "Initializing BMP");
-      MPU6050_Device_Status = mpu.dmpInitialize();
-
-      // Set offset
-      // FIX - Add below funtion
-      // mpu.setXGyroOffset(220);
-      // mpu.setYGyroOffset(76);
-      // mpu.setZGyroOffset(-85);
-      // mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
-
-      // make sure it worked (returns 0 if so)
-      if (MPU6050_Device_Status == 0) {
-          // turn on the DMP, now that it's ready
-          Log(MQTT_Topic[Topic_System] + "/MPU6050", "Enabling BMP");
-          mpu.setDMPEnabled(true);
-
-          // enable interrupt detection
-          Log(MQTT_Topic[Topic_System] + "/MPU6050", "Enabling interrupt on pin: " + Number_To_Pin(MPU6050_Pin_Interrupt));
-          attachInterrupt(digitalPinToInterrupt(MPU6050_Pin_Interrupt), MPU6050_BMP_DataReady, RISING);
-          MPU6050_Interrupt_Status = mpu.getIntStatus();
-
-          MPU6050_BMP_Ready = true;
-
-          // get expected DMP packet size for later comparison
-          packetSize = mpu.dmpGetFIFOPacketSize();
-
-          Log(MQTT_Topic[Topic_System] + "/MPU6050", "Initialization complete");
-      } else {
-          // ERROR!
-          // 1 = initial memory load failed
-          // 2 = DMP configuration updates failed
-          // (if it's going to break, usually the code will be 1)
-          Log(MQTT_Topic[Topic_Log_Error] + "/MPU6050", "DMP Initialization failed with code: " + String(MPU6050_Device_Status));
-        }
-
-    }
-    else {
-      Log(MQTT_Topic[Topic_Log_Error] + "/MPU6050", "Connection failed, disabling MPU6050");
-      // Disable mpu config
-      MPU6050_Configured = false;
-    }
-  }
+  // if (MPU6050_Configured == true) {
+  //   Log(MQTT_Topic[Topic_System] + "/MPU6050", "Initializing");
+  //
+  //   if (Wire_Avtive == false) {
+  //     Wire.begin(MPU6050_Pin_SDA, MPU6050_Pin_SCL);
+  //     Wire_Avtive = true;
+  //   }
+  //
+  //   mpu.initialize();
+  //
+  //
+  //   Log(MQTT_Topic[Topic_System] + "/MPU6050", "Testing device connections ...");
+  //   if (mpu.testConnection() == true) {
+  //     Log(MQTT_Topic[Topic_System] + "/MPU6050", "Connection OK");
+  //
+  //     // load and configure the DMP
+  //     Log(MQTT_Topic[Topic_System] + "/MPU6050", "Initializing BMP");
+  //     MPU6050_Device_Status = mpu.dmpInitialize();
+  //
+  //     // Set offset
+  //     // FIX - Add below funtion
+  //     // mpu.setXGyroOffset(220);
+  //     // mpu.setYGyroOffset(76);
+  //     // mpu.setZGyroOffset(-85);
+  //     // mpu.setZAccelOffset(1788); // 1688 factory default for my test chip
+  //
+  //     // make sure it worked (returns 0 if so)
+  //     if (MPU6050_Device_Status == 0) {
+  //         // turn on the DMP, now that it's ready
+  //         Log(MQTT_Topic[Topic_System] + "/MPU6050", "Enabling BMP");
+  //         mpu.setDMPEnabled(true);
+  //
+  //         // enable interrupt detection
+  //         Log(MQTT_Topic[Topic_System] + "/MPU6050", "Enabling interrupt on pin: " + Number_To_Pin(MPU6050_Pin_Interrupt));
+  //         attachInterrupt(digitalPinToInterrupt(MPU6050_Pin_Interrupt), MPU6050_BMP_DataReady, RISING);
+  //         MPU6050_Interrupt_Status = mpu.getIntStatus();
+  //
+  //         MPU6050_BMP_Ready = true;
+  //
+  //         // get expected DMP packet size for later comparison
+  //         packetSize = mpu.dmpGetFIFOPacketSize();
+  //
+  //         Log(MQTT_Topic[Topic_System] + "/MPU6050", "Initialization complete");
+  //     } else {
+  //         // ERROR!
+  //         // 1 = initial memory load failed
+  //         // 2 = DMP configuration updates failed
+  //         // (if it's going to break, usually the code will be 1)
+  //         Log(MQTT_Topic[Topic_Log_Error] + "/MPU6050", "DMP Initialization failed with code: " + String(MPU6050_Device_Status));
+  //       }
+  //
+  //   }
+  //   else {
+  //     Log(MQTT_Topic[Topic_Log_Error] + "/MPU6050", "Connection failed, disabling MPU6050");
+  //     // Disable mpu config
+  //     MPU6050_Configured = false;
+  //   }
+  // }
 
 
   // ------------------------------ BMP180 ------------------------------
@@ -5093,7 +4916,11 @@ void setup() {
       Log(MQTT_Topic[Topic_Log_Error] + "/BMP180", "Disabling BMP");
       BMP180_Configured = false;
     }
-  } // BMP180
+  }
+
+
+  // Start wifi connection
+  connectToWifi();
 
   if (Indicator_LED_Configured == true) Indicator_LED(LED_Config, false);
 
@@ -5117,14 +4944,14 @@ void loop() {
 
   Switch_Loop();
 
-  MPU6050_Loop();
+  // MPU6050_Loop();
 
   BMP180_Loop();
 
   DHT_Loop();
 
   // RFID
-  MFRC522_Loop();
+  // MFRC522_Loop();
 
   PIR_Loop();
 

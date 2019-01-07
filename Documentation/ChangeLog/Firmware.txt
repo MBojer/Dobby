@@ -1,3 +1,7 @@
+-------------------- 101061 --------------------
+Device unstable reboots when getting new config via mqtt
+Uncommented several functions
+
 -------------------- 101060 --------------------
 Removed Arduino Link
 Added MAX31855 support
