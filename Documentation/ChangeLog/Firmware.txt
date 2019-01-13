@@ -1,3 +1,6 @@
+-------------------- 102001 --------------------
+Removed everything and added only base system
+
 -------------------- 101061 --------------------
 Device unstable reboots when getting new config via mqtt
 Uncommented several functions
