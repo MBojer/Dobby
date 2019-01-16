@@ -14,7 +14,7 @@ extern "C" {
 }
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 102002
+#define Version 102001
 // First didget = Software type 1-Production 2-Beta 3-Alpha
 // Secound and third didget = Major version number
 // Fourth to sixth = Minor version number
@@ -38,6 +38,7 @@ bool ArduinoOTA_Active = false;
 // ------------------------------------------------------------ WiFi ------------------------------------------------------------
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
+// #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 #include <Ticker.h>
 
@@ -91,7 +92,7 @@ bool MQTT_Subscrive_Compleate = false;
 #define PLUS 1
 #define HASH 2
 
-const byte MQTT_Topic_Number_Of = 20;
+const byte MQTT_Topic_Number_Of = 19;
 
 // System
 #define Topic_Config 0
@@ -115,7 +116,6 @@ const byte MQTT_Topic_Number_Of = 20;
 #define Topic_MQ2 16
 #define Topic_Relay 17
 #define Topic_PIR 18
-#define Topic_MAX31855 19
 
 // System
 #define Topic_Config_Text "/Config/"
@@ -139,7 +139,6 @@ const byte MQTT_Topic_Number_Of = 20;
 #define Topic_MQ2_Text "/MQ2/"
 #define Topic_Relay_Text "/Relay/"
 #define Topic_PIR_Text "/PIR/"
-#define Topic_MAX31855_Text "/MAX31855/"
 
 String MQTT_Topic[MQTT_Topic_Number_Of] = {
   // System
@@ -164,7 +163,6 @@ String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + System_Sub_Header + Topic_MQ2_Text + Hostname,
   System_Header + System_Sub_Header + Topic_Relay_Text + Hostname,
   System_Header + System_Sub_Header + Topic_PIR_Text + Hostname,
-  System_Header + System_Sub_Header + Topic_MAX31855_Text + Hostname,
 };
 
 bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
@@ -181,7 +179,6 @@ bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
   false,
   false,
   // Devices
-  false,
   false,
   false,
   false,
@@ -216,7 +213,6 @@ byte MQTT_Topic_Subscribe_Subtopic[MQTT_Topic_Number_Of] = {
   NONE,
   PLUS,
   PLUS,
-  NONE,
 };
 
 bool MQTT_Subscribtion_Active[MQTT_Topic_Number_Of];
@@ -330,13 +326,14 @@ byte Dimmer_Fade_Jump_Delay = 40;
 #define Reserve_I2C_SDA 2
 #define Check_State 3
 
-#define Pin_Monitor_Pins_Number_Of 17
+#define Pin_Monitor_Pins_Number_Of 10
 String Pin_Monitor_Pins_Names[Pin_Monitor_Pins_Number_Of] = {"D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "A0"};
 byte Pin_Monitor_Pins_List[Pin_Monitor_Pins_Number_Of] = {D0, D1, D2, D3, D4, D5, D6, D7, D8, A0};
 
 byte Pin_Monitor_Pins_Active[Pin_Monitor_Pins_Number_Of] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
 String Pin_Monitor_State_Text[4] = {"In Use", "Free", "I2C SCL", "I2C SDA"};
+
 
 
 // ------------------------------------------------------------ Button ------------------------------------------------------------
@@ -467,23 +464,6 @@ Ticker MQ2_Ticker;
 #define MQ2_Refresh_Rate 100
 
 
-// ------------------------------------------------------------ MAX31855 ------------------------------------------------------------
-#include <SPI.h>
-#include <Adafruit_MAX31855.h>
-
-bool MAX31855_Configured = false;
-
-#define MAX31855_Pin_CLK D5
-#define MAX31855_Pin_CS D8
-#define MAX31855_Pin_DO D6
-
-Adafruit_MAX31855 MAX31855_Sensor(MAX31855_Pin_CLK, MAX31855_Pin_CS, MAX31855_Pin_DO);
-
-double MAX31855_Current_Value = 0;
-double MAX31855_Value_Min = 0;
-double MAX31855_Value_Max = 0;
-
-
 // ############################################################ Headers ############################################################
 // ############################################################ Headers ############################################################
 // ############################################################ Headers ############################################################
@@ -555,7 +535,6 @@ void Rebuild_MQTT_Topics() {
   MQTT_Topic[Topic_Ammeter] = System_Header + System_Sub_Header + Topic_Ammeter_Text + Hostname;
   MQTT_Topic[Topic_MQ2] = System_Header + System_Sub_Header + Topic_MQ2_Text + Hostname;
   MQTT_Topic[Topic_PIR] = System_Header + System_Sub_Header + Topic_PIR_Text + Hostname;
-  MQTT_Topic[Topic_MAX31855] = System_Header + System_Sub_Header + Topic_MAX31855_Text + Hostname;
 }
 
 
@@ -756,7 +735,7 @@ void MQ2_Loop() {
 
 
 // ############################################################ MQ2() ############################################################
-bool MQ2(String &Topic, String &Payload) {
+bool MQ2(String Topic, String Payload) {
 
   // Do nothing if its not configured
   if (MQ2_Configured == false) {
@@ -1337,7 +1316,7 @@ void Dimmer_Fade(byte Selected_Dimmer, byte State_Procent) {
 
 
 // ############################################################ Dimmer() ############################################################
-bool Dimmer(String &Topic, String &Payload) {
+bool Dimmer(String Topic, String Payload) {
 
   if (Dimmer_Configured == false) {
     return false;
@@ -1384,7 +1363,7 @@ bool Dimmer(String &Topic, String &Payload) {
 
 
 // ############################################################ DC_Voltmeter() ############################################################
-bool DC_Voltmeter(String &Topic, String &Payload) {
+bool DC_Voltmeter(String Topic, String Payload) {
 
   if (Topic.indexOf(MQTT_Topic[Topic_DC_Voltmeter]) != -1) {
     if (Payload.indexOf("?") != -1) {
@@ -1453,7 +1432,7 @@ void Distance_Loop() {
 
 // ############################################################ Distance() ############################################################
 // Handles MQTT Read request
-bool Distance(String &Topic, String &Payload) {
+bool Distance(String Topic, String Payload) {
 
   if (Topic.indexOf(MQTT_Topic[Topic_Distance]) != -1) {
     // Ignore state publish from localhost
@@ -1663,7 +1642,7 @@ void Relay_Auto_OFF_Check(byte Selected_Relay) {
 
 
 // ############################################################ Relay() ############################################################
-bool Relay(String &Topic, String &Payload) {
+bool Relay(String Topic, String Payload) {
 
   if (Relay_Configured == false) {
     return false;
@@ -1828,7 +1807,7 @@ void DHT_Loop() {
 
 
 // ############################################################ DHT() ############################################################
-bool DHT(String &Topic, String &Payload) {
+bool DHT(String Topic, String Payload) {
 
   if (DHT_Configured == false) {
     return false;
@@ -1887,7 +1866,7 @@ bool DHT(String &Topic, String &Payload) {
 
 
 // ############################################################ PIR() ############################################################
-bool PIR(String &Topic, String &Payload) {
+bool PIR(String Topic, String Payload) {
 
   if (PIR_Configured == false) {
     return false;
@@ -3004,29 +2983,6 @@ bool FS_Config_Load() {
     }
   }
 
-  // ############### MAX31855 ###############
-  if (root.get<String>("MAX31855") != "") {
-
-    if (root.get<String>("MAX31855") == "1") {
-
-      Log(MQTT_Topic[Topic_Log_Info] + "/MAX31855", "Configuring");
-
-      // MAX31855_Sensor.begin();
-
-      // If the sensor reads -0.06 in internal temp its not connected
-      if (MAX31855_Sensor.readInternal() == -0.06) {
-        Log(MQTT_Topic[Topic_Log_Error] + "/MAX31855", "Not responding check wires. Disabling MAX31855");
-      }
-      else {
-        MQTT_Subscribe(MQTT_Topic[Topic_MAX31855], true, NONE);
-
-        MAX31855_Configured = true;
-
-        Log(MQTT_Topic[Topic_Log_Info] + "/MAX31855", "Configuration compleate");
-      }
-    }
-  }
-
   return true;
 }
 
@@ -3310,7 +3266,7 @@ void FS_Config_Show() {
 
 
 // ############################################################ FS_Config_Set() ############################################################
-bool FS_Config_Set(String &Topic, String &Payload) {
+bool FS_Config_Set(String Topic, String Payload) {
 
   if (Topic != MQTT_Topic[Topic_Config]) {
     return false;
@@ -3353,7 +3309,7 @@ void Version_Update() {
 
 
 // ################################### MQTT_Commands() ###################################
-bool MQTT_Commands(String &Topic, String &Payload) {
+bool MQTT_Commands(String Topic, String Payload) {
 
   // Ignore none commands
   if (Topic.indexOf(MQTT_Topic[Topic_Commands]) == -1) {
@@ -3441,9 +3397,6 @@ bool MQTT_Commands(String &Topic, String &Payload) {
 
     Log("/Test", "MARKER");
 
-    Serial.print("Internal Temp = ");
-    Serial.println(MAX31855_Sensor.readInternal());
-    Serial.println(MAX31855_Sensor.readCelsius());
 
 
     // String Request_String;
@@ -3471,7 +3424,7 @@ bool MQTT_Commands(String &Topic, String &Payload) {
 
 
 // ################################### MQTT_All() ###################################
-bool MQTT_All(String &Topic, String &Payload) {
+bool MQTT_All(String Topic, String Payload) {
 
   if (Topic == MQTT_Topic[Topic_All]) {
 
@@ -3519,80 +3472,6 @@ bool MQTT_All(String &Topic, String &Payload) {
 } // MQTT_All()
 
 
-// ############################################################ MAX31855_Loop() ############################################################
-void MAX31855_Loop() {
-
-  return;
-
-  // Do nothing if its not configured
-  if (MAX31855_Configured == false || ArduinoOTA_Active == true) {
-    return;
-  }
-
-  // // Set currernt value
-  double Test_Value = MAX31855_Sensor.readCelsius();
-  if (isnan(Test_Value)) {
-    // Log(MQTT_Topic[Topic_Log_Error] + "/MAX31855", "Read bad value");
-    Serial.println("Read bad value");
-  }
-  else {
-    MAX31855_Current_Value = Test_Value;
-    MAX31855_Value_Min = min(MAX31855_Current_Value, MAX31855_Value_Min);
-    MAX31855_Value_Max = max(MAX31855_Current_Value, MAX31855_Value_Max);;
-  }
-  // // Check min/max
-
-
-}  // MAX31855_Loop()
-
-
-// ############################################################ MAX31855() ############################################################
-bool MAX31855(String &Topic, String &Payload) {
-
-  if (MAX31855_Configured == false) {
-    return false;
-  }
-
-  if (Topic == MQTT_Topic[Topic_MAX31855]) {
-    
-    Payload = Payload.substring(0, Payload.indexOf(";"));
-
-    // State request
-    if (Payload == "?") {
-      Log(MQTT_Topic[Topic_MAX31855] + "/State", String(MAX31855_Current_Value));
-      return true;
-    }
-    // Min/Max request
-    else if (Payload == "json") {
-
-      // Create json buffer
-      DynamicJsonBuffer jsonBuffer(80);
-      JsonObject& root_MAX31855 = jsonBuffer.createObject();
-
-      // encode json string
-      root_MAX31855.set("Current", MAX31855_Current_Value);
-      root_MAX31855.set("Min", MAX31855_Value_Min);
-      root_MAX31855.set("Max", MAX31855_Value_Max);
-
-      // Reset values
-      MAX31855_Value_Min = MAX31855_Current_Value;
-      MAX31855_Value_Max = MAX31855_Current_Value;
-
-      String MAX31855_String;
-
-      root_MAX31855.printTo(MAX31855_String);
-
-      Log(MQTT_Topic[Topic_MAX31855] + "/json/State", MAX31855_String);
-
-      return true;
-    }
-  }
-
-  return false;
-
-} // MAX31855()
-
-
 // ################################### MQTT_On_Message() ###################################
 void MQTT_On_Message(String &topic, String &payload) {
 
@@ -3611,8 +3490,6 @@ void MQTT_On_Message(String &topic, String &payload) {
   // else if (PIR(topic, payload) == true) return;
   //
   // else if (MQ2(topic, payload) == true) return;
-  
-  else if (MAX31855(topic, payload) == true) return;
 
   else if (FS_Config_Set(topic, payload) == true) return;
 
@@ -3780,7 +3657,7 @@ void WiFi_Setup() {
   // Set wifi to persistent so the defice reconnects asap
   WiFi.persistent(true);
 
-  Log(MQTT_Topic[Topic_Log_Info] + "/WiFi", "Configuration compleate");
+  Log(MQTT_Topic[Topic_Log_Info] + "/WiFi", "Configuration conpleate");
 } // WiFi_Setup()
 
 
@@ -3789,7 +3666,6 @@ void WiFi_Setup() {
 void setup() {
   // Disconnect wifi as early as possible
   WiFi.disconnect();
-
 
   // ------------------------------ Serial ------------------------------
   Serial.setTimeout(100);
@@ -3803,7 +3679,6 @@ void setup() {
   }
   if (Indicator_LED_Configured == true) Indicator_LED(LED_Config, true);
 
-
   // ------------------------------ FS ------------------------------
   SPIFFS.begin();
 
@@ -3813,17 +3688,14 @@ void setup() {
 
   Base_Config_Check();
 
-
   // ------------------------------ Random Seed ------------------------------
   randomSeed(analogRead(0));
-
 
   // ------------------------------ WiFi ------------------------------
   WiFi_Setup();
 
   MDNS.begin(Hostname.c_str());
   MDNS.addService("OTA", "TCP", 8266);
-
 
   // ------------------------------ MQTT ------------------------------
   MQTT_Client.begin(MQTT_Broker.c_str(), MQTT_Port.toInt(), WiFi_Client);
@@ -3855,7 +3727,5 @@ void loop() {
   // DHT_Loop();
   //
   // PIR_Loop();
-
-  MAX31855_Loop();
 
 } // loop()
