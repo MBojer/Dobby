@@ -7,6 +7,9 @@
 # Changelog
 # See Changelog/Dash.txt
 
+from pathlib import Path
+
+
 import dash
 import dash_auth
 
@@ -84,8 +87,8 @@ app = dash.Dash()
 
 # Dash auth
 auth = dash_auth.BasicAuth(
-        app,
-        User_List
+    app,
+    User_List
 )
 
 # Needed with taps
@@ -1399,5 +1402,9 @@ app.css.append_css({"external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"
 app.css.append_css({'external_url': 'http://rawgit.com/lwileczek/Dash/master/undo_redo5.css'})
 
 
+
+print "Path().absolute()"
+print Path().absolute()
+
 if __name__ == '__main__':
-    app.run_server(debug=True,  host='0.0.0.0')
+    app.run_server(debug=True, host='0.0.0.0', ssl_context=('/etc/Dobby/Cert/cert.pem', '/etc/Dobby/Cert/key.pem'))
