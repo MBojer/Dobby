@@ -1,5 +1,7 @@
 -------------------- 102002 --------------------
 Added support for MAX31855
+Removed the "2" from MQ2 since the code should support all MQ type sensors
+Improved wifi connection speed
 
 -------------------- 102001 --------------------
 Changed the MQTT Lib to Arduino-MQTT and removed support for several devices

@@ -49,6 +49,8 @@ WiFiEventHandler disconnectedEventHandler;
 String WiFi_SSID = "";
 String WiFi_Password = "";
 
+bool WiFi_Disconnect_Message_Send = false;
+
 
 // ------------------------------------------------------------ FS_Config ------------------------------------------------------------
 #include <ArduinoJson.h>
@@ -112,7 +114,7 @@ const byte MQTT_Topic_Number_Of = 20;
 #define Topic_DC_Voltmeter 13
 #define Topic_Dimmer 14
 #define Topic_Distance 15
-#define Topic_MQ2 16
+#define Topic_MQ 16
 #define Topic_Relay 17
 #define Topic_PIR 18
 #define Topic_MAX31855 19
@@ -136,7 +138,7 @@ const byte MQTT_Topic_Number_Of = 20;
 #define Topic_DC_Voltmeter_Text "/DC_Voltmeter/"
 #define Topic_Dimmer_Text "/Dimmer/"
 #define Topic_Distance_Text "/Distance/"
-#define Topic_MQ2_Text "/MQ2/"
+#define Topic_MQ_Text "/MQ/"
 #define Topic_Relay_Text "/Relay/"
 #define Topic_PIR_Text "/PIR/"
 #define Topic_MAX31855_Text "/MAX31855/"
@@ -161,7 +163,7 @@ String MQTT_Topic[MQTT_Topic_Number_Of] = {
   System_Header + System_Sub_Header + Topic_DC_Voltmeter_Text + Hostname,
   System_Header + System_Sub_Header + Topic_Dimmer_Text + Hostname,
   System_Header + System_Sub_Header + Topic_Distance_Text + Hostname,
-  System_Header + System_Sub_Header + Topic_MQ2_Text + Hostname,
+  System_Header + System_Sub_Header + Topic_MQ_Text + Hostname,
   System_Header + System_Sub_Header + Topic_Relay_Text + Hostname,
   System_Header + System_Sub_Header + Topic_PIR_Text + Hostname,
   System_Header + System_Sub_Header + Topic_MAX31855_Text + Hostname,
@@ -453,18 +455,18 @@ MB_Queue Log_Queue_Topic(Log_Max_Queue_Size);
 MB_Queue Log_Queue_Log_Text(Log_Max_Queue_Size);
 
 
-// ------------------------------------------------------------ MQ2 ------------------------------------------------------------
-bool MQ2_Configured = false;
+// ------------------------------------------------------------ MQ ------------------------------------------------------------
+bool MQ_Configured = false;
 
-byte MQ2_Pin_A0 = 255;
+byte MQ_Pin_A0 = 255;
 
-int MQ2_Current_Value = -1;
-int MQ2_Value_Min = -1;
-int MQ2_Value_Max = -1;
+int MQ_Current_Value = -1;
+int MQ_Value_Min = -1;
+int MQ_Value_Max = -1;
 
 
-Ticker MQ2_Ticker;
-#define MQ2_Refresh_Rate 100
+Ticker MQ_Ticker;
+#define MQ_Refresh_Rate 100
 
 
 // ------------------------------------------------------------ MAX31855 ------------------------------------------------------------
@@ -553,7 +555,7 @@ void Rebuild_MQTT_Topics() {
   MQTT_Topic[Topic_Button] = System_Header + System_Sub_Header + Topic_Button_Text + Hostname;
   MQTT_Topic[Topic_DC_Voltmeter] = System_Header + System_Sub_Header + Topic_DC_Voltmeter_Text + Hostname;
   MQTT_Topic[Topic_Ammeter] = System_Header + System_Sub_Header + Topic_Ammeter_Text + Hostname;
-  MQTT_Topic[Topic_MQ2] = System_Header + System_Sub_Header + Topic_MQ2_Text + Hostname;
+  MQTT_Topic[Topic_MQ] = System_Header + System_Sub_Header + Topic_MQ_Text + Hostname;
   MQTT_Topic[Topic_PIR] = System_Header + System_Sub_Header + Topic_PIR_Text + Hostname;
   MQTT_Topic[Topic_MAX31855] = System_Header + System_Sub_Header + Topic_MAX31855_Text + Hostname;
 }
@@ -737,53 +739,53 @@ void Indicator_LED(byte LED_State, bool Change_To) {
 } // Indicator_LED()
 
 
-// ############################################################ MQ2_Loop() ############################################################
-void MQ2_Loop() {
+// ############################################################ MQ_Loop() ############################################################
+void MQ_Loop() {
 
   // Do nothing if its not configured
-  if (MQ2_Configured == false || ArduinoOTA_Active == true) {
+  if (MQ_Configured == false || ArduinoOTA_Active == true) {
     return;
   }
 
   // // Set currernt value
-  MQ2_Current_Value = analogRead(MQ2_Pin_A0);
+  MQ_Current_Value = analogRead(MQ_Pin_A0);
   // // Check min/max
-  MQ2_Value_Min = min(MQ2_Current_Value, MQ2_Value_Min);
-  MQ2_Value_Max = max(MQ2_Current_Value, MQ2_Value_Max);;
+  MQ_Value_Min = min(MQ_Current_Value, MQ_Value_Min);
+  MQ_Value_Max = max(MQ_Current_Value, MQ_Value_Max);;
 
 
-}  // MQ2_Loop()
+}  // MQ_Loop()
 
 
-// ############################################################ MQ2() ############################################################
-bool MQ2(String &Topic, String &Payload) {
+// ############################################################ MQ() ############################################################
+bool MQ(String &Topic, String &Payload) {
 
   // Do nothing if its not configured
-  if (MQ2_Configured == false) {
+  if (MQ_Configured == false) {
     return false;
   }
 
   // If Values = -1 no readings resived form sensor so disabling it
-  else if (MQ2_Current_Value == -1) {
+  else if (MQ_Current_Value == -1) {
     // Disable sensor
-    MQ2_Configured = false;
+    MQ_Configured = false;
     // Log Error
-    Log(MQTT_Topic[Topic_Log_Error] + "/MQ2", "Never got a readings from the sensor disabling it.");
+    Log(MQTT_Topic[Topic_Log_Error] + "/MQ", "Never got a readings from the sensor disabling it.");
     // Detatch ticket
-    MQ2_Ticker.detach();
+    MQ_Ticker.detach();
     // Return
     return false;
   }
 
   // Check topic
-  else if (Topic == MQTT_Topic[Topic_MQ2]) {
+  else if (Topic == MQTT_Topic[Topic_MQ]) {
 
     // Trim Payload from garbage chars
     Payload = Payload.substring(0, Payload.indexOf(";"));
 
     // State request
     if (Payload == "?") {
-      Log(MQTT_Topic[Topic_MQ2] + "/State", String(MQ2_Current_Value));
+      Log(MQTT_Topic[Topic_MQ] + "/State", String(MQ_Current_Value));
       return true;
     }
     // Min/Max request
@@ -791,22 +793,22 @@ bool MQ2(String &Topic, String &Payload) {
 
       // Create json buffer
       DynamicJsonBuffer jsonBuffer(80);
-      JsonObject& root_MQ2 = jsonBuffer.createObject();
+      JsonObject& root_MQ = jsonBuffer.createObject();
 
       // encode json string
-      root_MQ2.set("Current", MQ2_Current_Value);
-      root_MQ2.set("Min", MQ2_Value_Min);
-      root_MQ2.set("Max", MQ2_Value_Max);
+      root_MQ.set("Current", MQ_Current_Value);
+      root_MQ.set("Min", MQ_Value_Min);
+      root_MQ.set("Max", MQ_Value_Max);
 
       // Reset values
-      MQ2_Value_Min = MQ2_Current_Value;
-      MQ2_Value_Max = MQ2_Current_Value;
+      MQ_Value_Min = MQ_Current_Value;
+      MQ_Value_Max = MQ_Current_Value;
 
-      String MQ2_String;
+      String MQ_String;
 
-      root_MQ2.printTo(MQ2_String);
+      root_MQ.printTo(MQ_String);
 
-      Log(MQTT_Topic[Topic_MQ2] + "/json/State", MQ2_String);
+      Log(MQTT_Topic[Topic_MQ] + "/json/State", MQ_String);
 
       return true;
     }
@@ -814,7 +816,7 @@ bool MQ2(String &Topic, String &Payload) {
 
   return false;
 
-} // MQ2
+} // MQ
 
 
 // ############################################################ Button_Pressed_Check() ############################################################
@@ -856,6 +858,7 @@ bool Button_Loop() {
       return true;
     }
   }
+
 
   return false;
 
@@ -2928,32 +2931,32 @@ bool FS_Config_Load() {
   }
 
 
-  // ############### MQ2 ###############
-  if (root.get<String>("MQ2_Pin_A0") != "") {
-    Log(MQTT_Topic[Topic_Log_Info] + "/MQ2", "Configuring");
+  // ############### MQ ###############
+  if (root.get<String>("MQ_Pin_A0") != "") {
+    Log(MQTT_Topic[Topic_Log_Info] + "/MQ", "Configuring");
 
     // Check if pin is free
-    if (Pin_Monitor(Reserve_Normal, root.get<String>("MQ2_Pin_A0")) == Pin_Free) {
+    if (Pin_Monitor(Reserve_Normal, root.get<String>("MQ_Pin_A0")) == Pin_Free) {
         // Set variable
-        MQ2_Pin_A0 = Pin_To_Number(root.get<String>("MQ2_Pin_A0"));
+        MQ_Pin_A0 = Pin_To_Number(root.get<String>("MQ_Pin_A0"));
         // Set pinmode
-        pinMode(MQ2_Pin_A0, INPUT);
+        pinMode(MQ_Pin_A0, INPUT);
         // Subscribe to topic
-        MQTT_Subscribe(MQTT_Topic[Topic_MQ2], true, NONE);
+        MQTT_Subscribe(MQTT_Topic[Topic_MQ], true, NONE);
         // Set configured to true
-        MQ2_Configured = true;
+        MQ_Configured = true;
         // Read once to set Min/Max referance
-        MQ2_Loop();
+        MQ_Loop();
         // Set min max to current
-        MQ2_Value_Min = MQ2_Current_Value;
-        MQ2_Value_Max = MQ2_Current_Value;
+        MQ_Value_Min = MQ_Current_Value;
+        MQ_Value_Max = MQ_Current_Value;
         // Start ticker
-        MQ2_Ticker.attach_ms(MQ2_Refresh_Rate, MQ2_Loop);
+        MQ_Ticker.attach_ms(MQ_Refresh_Rate, MQ_Loop);
         // Log configuration compleate
-        Log(MQTT_Topic[Topic_MQ2] + "/MQ2", "Configuration compleate");
+        Log(MQTT_Topic[Topic_MQ] + "/MQ", "Configuration compleate");
       }
       else {
-        Log(MQTT_Topic[Topic_Log_Error] + "/MQ2", "Configuration failed pin in use");
+        Log(MQTT_Topic[Topic_Log_Error] + "/MQ", "Configuration failed pin in use");
       }
   }
 
@@ -3346,12 +3349,6 @@ bool Version_Show() {
 } // Version_Show()
 
 
-// ################################### Version_Update() ###################################
-void Version_Update() {
-  Log(MQTT_Topic[Topic_Log_Info] + "/Version", "Checking for updates ... Running Dobby v" + String(Version) + " My IP: " + IPtoString(WiFi.localIP()));
-} // Version_Update()
-
-
 // ################################### MQTT_Commands() ###################################
 bool MQTT_Commands(String &Topic, String &Payload) {
 
@@ -3398,7 +3395,6 @@ bool MQTT_Commands(String &Topic, String &Payload) {
 
   else if (Topic == "Version") {
     if (Payload == "Show") Version_Show();
-    if (Payload == "Update") Version_Update();
   }
 
   else if (Topic == "IP") {
@@ -3505,14 +3501,7 @@ bool MQTT_All(String &Topic, String &Payload) {
         }
         return true;
       }
-    } // Update
-    else if (Payload == "Update") {
-      int Update_Delay = 5000 + random(15000);
-      Log(MQTT_Topic[Topic_Log_Info] + "/Version", "Mass update triggered, updating in " + String(Update_Delay) + " ms. Lets dance");
-      Update_Ticker.once_ms(Update_Delay, Version_Update);
-
-      return true;
-    } // Update
+    } // Relay-OFF
   }
 
   return false;
@@ -3598,19 +3587,19 @@ void MQTT_On_Message(String &topic, String &payload) {
 
   if (ArduinoOTA_Active == true) return;
 
-  // else if (DHT(topic, payload) == true) return;
-  //
+  else if (DHT(topic, payload) == true) return;
+  
   else if (Relay(topic, payload) == true) return;
-  //
-  // else if (Distance(topic, payload) == true) return;
-  //
+  
+  else if (Distance(topic, payload) == true) return;
+  
   else if (Dimmer(topic, payload) == true) return;
-  //
-  // else if (DC_Voltmeter(topic, payload) == true) return;
-  //
-  // else if (PIR(topic, payload) == true) return;
-  //
-  // else if (MQ2(topic, payload) == true) return;
+  
+  else if (DC_Voltmeter(topic, payload) == true) return;
+  
+  else if (PIR(topic, payload) == true) return;
+  
+  else if (MQ(topic, payload) == true) return;
   
   else if (MAX31855(topic, payload) == true) return;
 
@@ -3620,7 +3609,7 @@ void MQTT_On_Message(String &topic, String &payload) {
 
   else if (MQTT_All(topic, payload) == true) return;
 
-} // MQTT_Settings
+} // MQTT_On_Message
 
 
 // ############################################################ ArduinoOTA_Setup() ############################################################
@@ -3758,18 +3747,20 @@ void WiFi_Setup() {
 
   // Callbakcs
   gotIpEventHandler = WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP& event) {
-
     Log(MQTT_Topic[Topic_Log_Info] + "/WiFi", "Connected to SSID: '" + WiFi_SSID + "' - IP: '" + IPtoString(WiFi.localIP()) + "' - MAC Address: '" + WiFi.macAddress() + "'");
-
     Indicator_LED(LED_WiFi, false);
     // OTA
     ArduinoOTA_Setup();
+    WiFi_Disconnect_Message_Send = false;
   });
 
   disconnectedEventHandler = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event) {
+    // Check if the disconnected message have already been send if it has do nothing.
+    if (WiFi_Disconnect_Message_Send == false) {
       Log(MQTT_Topic[Topic_Log_Warning] + "/WiFi", "Disconnected from SSID: " + WiFi_SSID);
-
       Indicator_LED(LED_WiFi, true);
+      WiFi_Disconnect_Message_Send = true;
+    }
   });
 
   if (WiFi.status() != WL_CONNECTED) {
@@ -3787,10 +3778,7 @@ void WiFi_Setup() {
 // ############################################################ setup() ############################################################
 // FIX - ADD log messages below
 void setup() {
-  // Disconnect wifi as early as possible
-  WiFi.disconnect();
-
-
+  
   // ------------------------------ Serial ------------------------------
   Serial.setTimeout(100);
   Serial.begin(115200);
@@ -3844,17 +3832,17 @@ void loop() {
 
   Log_Loop();
 
-  // Relay_Auto_OFF_Loop();
-  //
-  // Distance_Sensor();
-  //
-  // Distance_Sensor_Auto_OFF();
-  //
-  // Button_Loop();
-  //
-  // DHT_Loop();
-  //
-  // PIR_Loop();
+  Relay_Auto_OFF_Loop();
+  
+  Distance_Sensor();
+  
+  Distance_Sensor_Auto_OFF();
+  
+  Button_Loop();
+  
+  DHT_Loop();
+  
+  PIR_Loop();
 
   MAX31855_Loop();
 
