@@ -86,7 +86,7 @@ unsigned long MQTT_Publish_At;
 #define MQTT_State_Disconnected 4
 byte MQTT_State = MQTT_State_Init;
 
-bool MQTT_Subscrive_Compleate = false;
+bool MQTT_Subscribe_Compleate = false;
 
 #define NONE 0
 #define PLUS 1
@@ -2071,7 +2071,7 @@ void MQTT_On_Connect() {
   // ------------------------------ MQTT KeepAlive ------------------------------
   MQTT_KeepAlive_Ticker.attach_ms(MQTT_KeepAlive_Interval, MQTT_KeepAlive);
 
-  // // Subscrive to topics
+  // // Subscribe to topics
   // for (byte i = 0; i < MQTT_Topic_Number_Of; i++) {
   //   MQTT_Subscribe(MQTT_Topic[i], MQTT_Topic_Subscribe_Active[i], MQTT_Topic_Subscribe_Subtopic[i]);
   // }
@@ -2144,15 +2144,15 @@ void MQTT_Loop() {
   else if (MQTT_State == MQTT_State_Connected) {
     if (MQTT_Client.connected() == true) {
 
-      // Subscrive to topics
-      if (MQTT_Subscrive_Compleate == false) {
+      // Subscribe to topics
+      if (MQTT_Subscribe_Compleate == false) {
         if (MQTT_Publish_At < millis()) {
           for (byte i = 0; i < MQTT_Topic_Number_Of; i++) {
             // Subscribe to a topic if needed
             MQTT_Subscribe(MQTT_Topic[i], MQTT_Topic_Subscribe_Active[i], MQTT_Topic_Subscribe_Subtopic[i]);
             // Check if all topics have been checked
             if (i == MQTT_Topic_Number_Of) {
-              MQTT_Subscrive_Compleate = true;
+              MQTT_Subscribe_Compleate = true;
             }
             // Set delay
             MQTT_Publish_At = millis() + MQTT_Publish_Interval;

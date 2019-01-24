@@ -1,0 +1,418 @@
+// Licence:
+// Releaed under The GNU General Public License v3.0
+
+// Change log:
+// See ChangeLog.txt
+
+// Bug list:
+// See BugList.txt
+
+
+#include <Arduino.h>
+extern "C" {
+  #include "user_interface.h"
+}
+
+
+// ---------------------------------------- Dobby ----------------------------------------
+#define Version 102004
+// First didget = Software type 1-Production 2-Beta 3-Alpha
+// Secound and third didget = Major version number
+// Fourth to sixth = Minor version number
+
+String Device_Hostname = "NotConfigured";
+String System_Header = "/Dobby";
+String System_Sub_Header = "";
+String Config_ID = "0";
+
+
+// ------------------------------------------------------------ WiFi ------------------------------------------------------------
+#include <ESP8266WiFi.h>
+#include <Ticker.h>
+
+WiFiClient WiFi_Client;
+
+WiFiEventHandler gotIpEventHandler;
+WiFiEventHandler disconnectedEventHandler;
+
+String WiFi_SSID = "NoInternetHere";
+String WiFi_Password = "NoPassword1!";
+
+bool WiFi_Disconnect_Message_Send = false;
+
+
+// ------------------------------------------------------------ MQTT ------------------------------------------------------------
+// #include <MQTT.h>
+
+// If the buffer size is not set then they system will not work propperly
+// MQTTClient MQTT_Client(1024);
+
+String MQTT_Broker = "0.0.0.0";
+String MQTT_Port = "1883";
+
+String MQTT_Username = "";
+String MQTT_Password = "";
+
+Ticker MQTT_KeepAlive_Ticker;
+unsigned long MQTT_KeepAlive_Interval = 60000;
+
+bool MQTT_Config_Requested = false;
+
+#define MQTT_Publish_Interval 10
+unsigned long MQTT_Publish_At;
+
+#define MQTT_State_Init 0
+#define MQTT_State_Connecting 1
+#define MQTT_State_Connected 2
+#define MQTT_State_Disconnecting 3
+#define MQTT_State_Disconnected 4
+byte MQTT_State = MQTT_State_Init;
+
+bool MQTT_Subscrive_Compleate = false;
+
+#define NONE 0
+#define PLUS 1
+#define HASH 2
+
+const byte MQTT_Topic_Number_Of = 20;
+
+// System
+#define Topic_Config 0
+#define Topic_Commands 1
+#define Topic_All 2
+#define Topic_KeepAlive 3
+#define Topic_Dobby 4
+// Log
+#define Topic_Log_Debug 5
+#define Topic_Log_Info 6
+#define Topic_Log_Warning 7
+#define Topic_Log_Error 8
+#define Topic_Log_Fatal 9
+// Devices
+#define Topic_Ammeter 10
+#define Topic_Button 11
+#define Topic_DHT 12
+#define Topic_DC_Voltmeter 13
+#define Topic_Dimmer 14
+#define Topic_Distance 15
+#define Topic_MQ 16
+#define Topic_Relay 17
+#define Topic_PIR 18
+#define Topic_MAX31855 19
+
+// System
+#define Topic_Config_Text "/Config/"
+#define Topic_Commands_Text "/Commands/"
+#define Topic_All_Text "/All"
+#define Topic_KeepAlive_Text "/KeepAlive/"
+#define Topic_Dobby_Text "/Commands/Dobby/"
+// Log
+#define Topic_Log_Debug_Text "/Debug"
+#define Topic_Log_Info_Text "/Info"
+#define Topic_Log_Warning_Text "/Warning"
+#define Topic_Log_Error_Text "/Error"
+#define Topic_Log_Fatal_Text "/Fatal"
+// Devices
+#define Topic_Ammeter_Text "/Ammeter/"
+#define Topic_Button_Text "/Button/"
+#define Topic_DHT_Text "/DHT/"
+#define Topic_DC_Voltmeter_Text "/DC_Voltmeter/"
+#define Topic_Dimmer_Text "/Dimmer/"
+#define Topic_Distance_Text "/Distance/"
+#define Topic_MQ_Text "/MQ/"
+#define Topic_Relay_Text "/Relay/"
+#define Topic_PIR_Text "/PIR/"
+#define Topic_MAX31855_Text "/MAX31855/"
+
+String MQTT_Topic[MQTT_Topic_Number_Of] = {
+  // System
+  System_Header + Topic_Config_Text + Device_Hostname,
+  System_Header + Topic_Commands_Text + Device_Hostname,
+  System_Header + Topic_All_Text,
+  System_Header + Topic_KeepAlive_Text + Device_Hostname,
+  System_Header + Topic_Dobby_Text,
+  // Log
+  System_Header + Topic_Log_Debug_Text + Device_Hostname,
+  System_Header + Topic_Log_Info_Text + Device_Hostname,
+  System_Header + Topic_Log_Warning_Text + Device_Hostname,
+  System_Header + Topic_Log_Error_Text + Device_Hostname,
+  System_Header + Topic_Log_Fatal_Text + Device_Hostname,
+  // Devices
+  System_Header + System_Sub_Header + Topic_Ammeter_Text + Device_Hostname,
+  System_Header + System_Sub_Header + Topic_Button_Text + Device_Hostname,
+  System_Header + System_Sub_Header + Topic_DHT_Text + Device_Hostname,
+  System_Header + System_Sub_Header + Topic_DC_Voltmeter_Text + Device_Hostname,
+  System_Header + System_Sub_Header + Topic_Dimmer_Text + Device_Hostname,
+  System_Header + System_Sub_Header + Topic_Distance_Text + Device_Hostname,
+  System_Header + System_Sub_Header + Topic_MQ_Text + Device_Hostname,
+  System_Header + System_Sub_Header + Topic_Relay_Text + Device_Hostname,
+  System_Header + System_Sub_Header + Topic_PIR_Text + Device_Hostname,
+  System_Header + System_Sub_Header + Topic_MAX31855_Text + Device_Hostname,
+};
+
+bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
+  // System
+  true,
+  true,
+  true,
+  false,
+  false,
+  // Log
+  false,
+  false,
+  false,
+  false,
+  false,
+  // Devices
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+};
+
+byte MQTT_Topic_Subscribe_Subtopic[MQTT_Topic_Number_Of] = {
+  // System
+  NONE,
+  HASH,
+  HASH,
+  NONE,
+  NONE,
+  // Log
+  NONE,
+  NONE,
+  NONE,
+  NONE,
+  NONE,
+  // Devices
+  NONE,
+  PLUS,
+  PLUS,
+  NONE,
+  PLUS,
+  PLUS,
+  NONE,
+  PLUS,
+  PLUS,
+  NONE,
+};
+
+bool MQTT_Subscribtion_Active[MQTT_Topic_Number_Of];
+
+
+// ---------------------------------------- ArduinoOTA_Setup() ----------------------------------------
+#include <ESP8266WiFi.h>
+#include <ESP8266mDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
+#include <SPI.h>
+
+bool ArduinoOTA_Active = false;
+
+
+// ------------------------------------------------------------ Log() ------------------------------------------------------------
+// http://github.com/MBojer/MB_Queue
+#include <MB_Queue.h>
+// FIX - Might need to add support for log full handling
+#define Log_Max_Queue_Size 100
+MB_Queue Log_Queue_Topic(Log_Max_Queue_Size);
+MB_Queue Log_Queue_Log_Text(Log_Max_Queue_Size);
+
+#define Log_Level_Debug 0
+#define Log_Level_Info 1
+#define Log_Level_Warning 2
+#define Log_Level_Error 3
+#define Log_Level_Fatal 4
+
+byte Log_Level_Device = Log_Level_Debug;
+
+
+// ############################################################ IPtoString() ############################################################
+String IPtoString(IPAddress IP_Address) {
+
+  String Temp_String = String(IP_Address[0]) + "." + String(IP_Address[1]) + "." + String(IP_Address[2]) + "." + String(IP_Address[3]);
+
+  return Temp_String;
+
+} // IPtoString
+ 
+
+// ############################################################ Log() ############################################################
+// Writes text to MQTT and Serial
+void Log(String Topic, String Log_Text) {
+
+  // Check if its a log or a publish message
+  // Log
+  // No reason to check debug, if log level is set to debug then everything gets posted
+  
+  Serial.println(Topic + " - " + Log_Text);
+} // Log()
+
+void Log(String Topic, int Log_Text) {
+  Log(Topic, String(Log_Text));
+} // Log - Reference only
+
+void Log(String Topic, float Log_Text) {
+  Log(Topic, String(Log_Text));
+} // Log - Reference only
+
+
+// ############################################################ ArduinoOTA_Setup() ############################################################
+void ArduinoOTA_Setup() {
+
+  ArduinoOTA.setHostname(Device_Hostname.c_str());
+  ArduinoOTA.setPassword("StillNotSinking");
+
+  ArduinoOTA.onStart([]() {
+    Log(MQTT_Topic[Topic_Log_Info] + "/ArduinoOTA", "ArduinoOTA ... Started");
+    ArduinoOTA_Active = true;
+    MQTT_KeepAlive_Ticker.detach();
+    String type;
+    if (ArduinoOTA.getCommand() == U_FLASH) {
+      type = "sketch";
+    } else { // U_SPIFFS
+      type = "filesystem";
+    }
+
+    // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+    Log(MQTT_Topic[Topic_Log_Info] + "/ArduinoOTA", "Start updating " + type);
+  });
+
+  ArduinoOTA.onEnd([]() {
+    Log(MQTT_Topic[Topic_Log_Info] + "/ArduinoOTA", "ArduinoOTA ... End");
+    // MQTT_Client.disconnect();
+    ArduinoOTA_Active = false;
+  });
+
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+
+  ArduinoOTA.onError([](ota_error_t error) {
+    ArduinoOTA_Active = false;
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) {
+      Log(MQTT_Topic[Topic_Log_Warning] + "/ArduinoOTA", "Auth Failed");
+    } else if (error == OTA_BEGIN_ERROR) {
+      Log(MQTT_Topic[Topic_Log_Warning] + "/ArduinoOTA", "Begin Failed");
+    } else if (error == OTA_CONNECT_ERROR) {
+      Log(MQTT_Topic[Topic_Log_Warning] + "/ArduinoOTA", "Connect Failed");
+    } else if (error == OTA_RECEIVE_ERROR) {
+      Log(MQTT_Topic[Topic_Log_Warning] + "/ArduinoOTA", "Receive Failed");
+    } else if (error == OTA_END_ERROR) {
+      Log(MQTT_Topic[Topic_Log_Warning] + "/ArduinoOTA", "End Failed");
+    }
+  });
+
+  ArduinoOTA.begin();
+
+} // ArduinoOTA_Setup()
+
+
+
+// ############################################################ WiFi_Setup() ############################################################
+void WiFi_Setup() {
+
+  bool WiFi_Reset_Required = false;
+
+  WiFi.hostname(Device_Hostname);
+  Log(MQTT_Topic[Topic_Log_Debug] + "/WiFi", "Set Device_Hostname to: " + Device_Hostname);
+
+  if (WiFi.getMode() != WIFI_STA) {
+    Log(MQTT_Topic[Topic_Log_Debug] + "/WiFi", "Changing 'mode' to 'WIFI_STA'");
+    WiFi.mode(WIFI_STA);
+    WiFi_Reset_Required = true;
+  }
+
+  if (WiFi.getAutoConnect() != true) {
+    WiFi.setAutoConnect(true);
+    Log(MQTT_Topic[Topic_Log_Debug] + "/WiFi", "Changing 'AutoConnect' to 'true'");
+  }
+
+  if (WiFi.getAutoReconnect() != true) {
+    WiFi.setAutoReconnect(true);
+    Log(MQTT_Topic[Topic_Log_Debug] + "/WiFi", "Changing 'AutoReconnect' to 'true'");
+  }
+
+  if (WiFi.SSID() != WiFi_SSID) {
+    WiFi.SSID();
+    Log(MQTT_Topic[Topic_Log_Debug] + "/WiFi", "Changing 'SSID' to '" + WiFi_SSID + "'");
+    WiFi_Reset_Required = true;
+  }
+
+  // WiFi_Client.setNoDelay(true);
+
+  if (WiFi_Reset_Required == true) {
+    Log(MQTT_Topic[Topic_Log_Debug] + "/WiFi", "Reset required");
+    WiFi.disconnect(false);
+  }
+
+  // Callbakcs
+  gotIpEventHandler = WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP& event) {
+    Log(MQTT_Topic[Topic_Log_Info] + "/WiFi", "Connected to SSID: '" + WiFi_SSID + "' - IP: '" + IPtoString(WiFi.localIP()) + "' - MAC Address: '" + WiFi.macAddress() + "'");
+    // Indicator_LED(LED_WiFi, false);
+    WiFi_Disconnect_Message_Send = false;
+  });
+
+  disconnectedEventHandler = WiFi.onStationModeDisconnected([](const WiFiEventStationModeDisconnected& event) {
+    // Check if the disconnected message have already been send if it has do nothing.
+    if (WiFi_Disconnect_Message_Send == false) {
+      
+      // Do nothing if its within the first 5 sec of boot
+      if (millis() < 5000) {
+        return;
+      }
+      
+      Log(MQTT_Topic[Topic_Log_Warning] + "/WiFi", "Disconnected from SSID: " + WiFi_SSID);
+      // Indicator_LED(LED_WiFi, true);
+      WiFi_Disconnect_Message_Send = true;
+    }
+  });
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Log(MQTT_Topic[Topic_Log_Info] + "/WiFi", "Connecting to SSID: " + WiFi_SSID);
+    WiFi.begin(WiFi_SSID.c_str(), WiFi_Password.c_str());
+  }
+
+  // Set wifi to persistent so the defice reconnects asap
+  WiFi.persistent(true);
+
+  Log(MQTT_Topic[Topic_Log_Info] + "/WiFi", "Configuration compleate");
+} // WiFi_Setup()
+
+
+// ############################################################ setup() ############################################################
+// FIX - ADD log messages below
+void setup() {
+  
+  // ------------------------------ Serial ------------------------------
+  Serial.setTimeout(100);
+  Serial.begin(115200);
+  Serial.println();
+
+  // ------------------------------ WiFi ------------------------------
+  WiFi_Setup();
+
+  // MDNS.begin(Device_Hostname.c_str());
+  // MDNS.addService("Dobby", "Something", 1337);
+
+
+  // ------------------------------ ArduinoOTA ------------------------------
+  ArduinoOTA_Setup();
+    
+
+  
+} // setup()
+
+
+// ############################################################ loop() ############################################################
+void loop() {
+
+  ArduinoOTA.handle();
+
+} // loop()

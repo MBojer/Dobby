@@ -1408,7 +1408,7 @@ def Trigger_Message_Check(Topic, Payload, Retained, Trigger_id):
             if Action == 0:
                 # Check agains current alert state
                 if Action == Trigger_State:
-                    Log("Debug", "Mail_Trigger", str(Name), 'Already clearted ignoring new clear value: ' + str(Payload))
+                    Log("Debug", "Mail_Trigger", str(Name), 'Already cleared ignoring new clear value: ' + str(Payload))
                 else:
                     Trigger_Change = True
 
@@ -1439,7 +1439,7 @@ def Trigger_Message_Check(Topic, Payload, Retained, Trigger_id):
             if Action == 0:
                 # Check agains current alert state
                 if Action == Trigger_State:
-                    Log("Debug", "Mail_Trigger", str(Name), 'Already clearted ignoring new clear value: ' + str(Payload))
+                    Log("Debug", "Mail_Trigger", str(Name), 'Already cleared ignoring new clear value: ' + str(Payload))
                 else:
                     Trigger_Change = True
 

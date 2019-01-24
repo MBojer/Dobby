@@ -1,3 +1,26 @@
+-------------------- 102007 --------------------
+Added Dimmer
+Added Relay
+Added Button
+Added Switch
+Added MQ
+
+-------------------- 102006 --------------------
+Added Serial CLI
+Added FS Config UDP
+Added MQTT Commands
+
+-------------------- 102005 --------------------
+Working MQTT Setup - PubSubClient - Still needs work but connects with user, pass and last will 
+NOTE: Adafruit MQTT Client is not useful since server has to be set before setup
+
+-------------------- 102004 --------------------
+Added OTA Support
+
+-------------------- 102003 --------------------
+Cleared the script
+Added WiFi stable
+
 -------------------- 102002 --------------------
 Added support for MAX31855
 Removed the "2" from MQ2 since the code should support all MQ type sensors

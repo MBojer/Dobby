@@ -1,0 +1,15 @@
+f = open('Dobby.json')
+f.read()
+f.close()
+
+
+
+
+import json
+
+f = open('Dobby.json', 'r')
+c = ujson.loads(f.readall())
+
+
+
+parsed = ujson.loads(f)
