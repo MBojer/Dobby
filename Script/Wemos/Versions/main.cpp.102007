@@ -15,7 +15,7 @@ extern "C" {
 
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 102008
+#define Version 102007
 // First didget = Software type 1-Production 2-Beta 3-Alpha
 // Secound and third didget = Major version number
 // Fourth to sixth = Minor version number
@@ -226,13 +226,6 @@ bool MQTT_Subscribtion_Active[MQTT_Topic_Number_Of];
 bool ArduinoOTA_Active = false;
 
 
-// ---------------------------------------- FTP Server ----------------------------------------
-#include <ESP8266FtpServer.h>
-
-// Set #define FTP_DEBUG in ESP8266FtpServer.h to see ftp verbose on serial
-FtpServer FTP_Server;
-
-
 // ------------------------------------------------------------ Log() ------------------------------------------------------------
 // http://github.com/MBojer/MB_Queue
 #include <MB_Queue.h>
@@ -255,7 +248,7 @@ byte Log_Level_Device = Log_Level_Debug;
 
 
 // ------------------------------------------------------------ CLI ------------------------------------------------------------
-#define Command_List_Length 22
+#define Command_List_Length 21
 const char* Commands_List[Command_List_Length] = {
   "hostname",
   "wifi ssid",
@@ -274,7 +267,6 @@ const char* Commands_List[Command_List_Length] = {
   "fs config load",
   "fs config drop",
   "show mac",
-  "show wifi",
   "save",
   "check",
   "reboot",
@@ -1014,10 +1006,6 @@ void Serial_CLI_Command_Check() {
 
   else if (CLI_Input_String == "show mac") {
     Serial.println("MAC Address: " + WiFi.macAddress());
-  }
-  
-  else if (CLI_Input_String == "show wifi") {
-    Serial.println("Connected to SSID: '" + WiFi_SSID + "' - IP: '" + IP_To_String(WiFi.localIP()) + "' - MAC Address: '" + WiFi.macAddress() + "'");
   }
 
   else {
@@ -1811,12 +1799,8 @@ void WiFi_On_Connect() {
     MQTT_State = MQTT_State_Connecting;
     // Disable indicator led
     Indicator_LED(LED_WiFi, false);
-    // FTP Server
-    //username, password for ftp.  set ports in ESP8266FtpServer.h  (default 21, 50009 for PASV)
-    FTP_Server.begin("dobby","heretoserve");
     // Request config
-    Log(MQTT_Topic[Topic_Dobby] + "Config", Hostname + "," + Config_ID + ",FTP," + IP_To_String(WiFi.localIP()));
-
+    Log(MQTT_Topic[Topic_Dobby] + "Config", Hostname + "," + Config_ID + ",UDP," + IP_To_String(WiFi.localIP()));
 } // WiFi_On_Connect()
 
 
@@ -2084,9 +2068,6 @@ void MQTT_Connect() {
         MQTT_State = MQTT_State_Connected;
         // Disable indicator led
         Indicator_LED(LED_MQTT, false);
-        // Start MQTT_KeepAlive
-        MQTT_KeepAlive_Ticker.attach(MQTT_KeepAlive_Interval, MQTT_KeepAlive);
-
       } 
       else {
         if (MQTT_State != MQTT_State_Error) {
@@ -3026,7 +3007,5 @@ void loop() {
   Relay_Auto_OFF_Loop();
   Button_Loop();
   Switch_Loop();
-
-  FTP_Server.handleFTP();        //make sure in loop you call handleFTP()!!  
 
 } // loop()

@@ -39,15 +39,12 @@ from email.MIMEText import MIMEText
 # FTP
 import ftplib
 from StringIO import StringIO
-# For unique file id
-import uuid
-import io
 
 # For uDP Config
 import socket
 
 # System variables
-Version = 101016
+Version = 101017
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
@@ -366,25 +363,15 @@ def MQTT_Config_New(Payload):
 
     Payload = Payload.split(",")
 
-    Request_Type = "MQTT"
-
     # Check if UDP config have been requested
     UDP_Request = False
     # if ",UDP" in Payload:
     #     print "MARKER UDP"
     #     UDP_Request = True
-    # Test,12,UDP,192.168.0.60
 
     try:
         if Payload[2]:
             UDP_Request = True
-            if Payload[2] == "FTP":
-                Request_Type = "FTP"
-            elif Payload[2] == "UDP":
-                Request_Type = "UDP"
-            else:
-                Log("Warning", "MQTTConfig", "Request", "Unknown request type:" + Request_Type)
-                return
     except ValueError and IndexError:
         pass
 
@@ -452,55 +439,25 @@ def MQTT_Config_New(Payload):
         Interation = Interation + 1
 
     # Check if MQTT or UDP
-    # MQTT Request
-    if Request_Type == "MQTT":
+    # MQTT
+    if UDP_Request is False:
         Log("Info", "MQTTConfig", "Publish Config", Payload[0])
         # Publish json
         MQTT_Client.publish(System_Header + "/Config/" + Payload[0], payload=json.dumps(Config_Dict) + ";", qos=0, retain=False)
         return
 
     # UDP Request
-    elif Request_Type == "UPD":
+    else:
         Log("Info", "UDPConfig", "Publish Config", Payload[0] + " - IP: " + Payload[3])
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.sendto(json.dumps(Config_Dict).encode('utf-8'), (Payload[3], 8888))
         sock.close()
 
-    # FTP Request
-    elif Request_Type == "FTP":
-        Log("Info", "FTPConfig", "Upload Config", Payload[0] + " - IP: " + Payload[3])
-
-        # Generate unique config id
-        Config_File_Name = "/var/tmp/Dobby/" + str(Payload[0])
-
-        # Check if temp dir exists
-        if not os.path.exists("/var/tmp/Dobby/"):
-            os.makedirs("/var/tmp/Dobby/")
-
-        # Write json to file
-        # NOTE - Cant get "with open" to work for some odd reason
-        Config_File = open("%s.json" % Config_File_Name, "w")
-        json.dump(Config_Dict, Config_File)
-        Config_File.flush
-        Config_File.close
-
-        # Upload file
-        # FIX - Change user and pass
-        FTP_Connection = ftplib.FTP(Payload[3],'dobby','heretoserve')
-
-        # Open and read file to send
-        with open(Config_File_Name + ".json", 'r') as Config_File:
-            FTP_Connection.storbinary('STOR Dobby.json', open(Config_File_Name + ".json", 'rb'))
-
-        # close file and FTP
-        FTP_Connection.quit()
-
-        # Not deleting file so the last generated config is saved, uncomment below to delete file
-        # os.remove(Config_File_Name)
-
-        # Send reboot command to device
-        MQTT_Client.publish(System_Header + "/Commands/" + str(Payload[0]) + "/Power", payload="Reboot" + ";", qos=0, retain=False)
+        print "Done"
+        # with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as UDP_Socket:
+        #     UDP_Socket.sendto(json.dumps(Config_Dict).encode('utf-8'), (Payload[3], 8888))
+        # print Done
 
 
 def MQTT_Config(Payload):

@@ -1,3 +1,6 @@
+-------------------- 102008 --------------------
+Added - FS Config FTP - The devie is now running a FTP server so the config can be uploaded to spiffs directly
+
 -------------------- 102007 --------------------
 Added Dimmer
 Added Relay
@@ -38,7 +41,6 @@ Removed Arduino Link
 Added MAX31855 support
 
 -------------------- 101059 --------------------
-
 Reverting arduino link to send ID when requesting in stead of string.
 requestfrom with string does not seem to work
 
