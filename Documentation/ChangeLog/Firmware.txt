@@ -1,3 +1,6 @@
+-------------------- 102009 --------------------
+Working on DHT22 support
+
 -------------------- 102008 --------------------
 Added - FS Config FTP - The devie is now running a FTP server so the config can be uploaded to spiffs directly
 

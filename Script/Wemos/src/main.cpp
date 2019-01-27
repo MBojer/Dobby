@@ -15,7 +15,7 @@ extern "C" {
 
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 102008
+#define Version 102009
 // First didget = Software type 1-Production 2-Beta 3-Alpha
 // Secound and third didget = Major version number
 // Fourth to sixth = Minor version number
@@ -430,6 +430,31 @@ Ticker MQ_Ticker;
 #define MQ_Refresh_Rate 100
 
 
+// ------------------------------------------------------------ DHT() ------------------------------------------------------------
+#include <SimpleDHT.h>
+SimpleDHT22 dht22;
+
+bool DHT_Configured;
+
+#define DHT_Max_Number_Of 6
+byte DHT_Pins[DHT_Max_Number_Of] = {255, 255, 255, 255, 255, 255};
+
+unsigned long DHT_Last_Read = 0;            // When the sensor was last read
+
+Ticker DHT_Ticker;
+
+// Do not put this below 2000ms it will make the DHT22 give errors
+#define DHT_Refresh_Rate 2000
+float DHT_Current_Value_Humidity[DHT_Max_Number_Of] = {0, 0, 0, 0, 0, 0};
+float DHT_Current_Value_Temperature[DHT_Max_Number_Of] = {0, 0, 0, 0, 0, 0};
+float DHT_Min_Value_Humidity[DHT_Max_Number_Of] = {0, 0, 0, 0, 0, 0};
+float DHT_Min_Value_Temperature[DHT_Max_Number_Of] = {0, 0, 0, 0, 0, 0};
+float DHT_Max_Value_Humidity[DHT_Max_Number_Of] = {0, 0, 0, 0, 0, 0};
+float DHT_Max_Value_Temperature[DHT_Max_Number_Of] = {0, 0, 0, 0, 0, 0};
+
+#define DHT_Distable_At_Error_Count 10
+byte DHT_Error_Counter[DHT_Max_Number_Of] = {0, 0, 0, 0, 0, 0};
+
 
 // ############################################################ Headers ############################################################
 // ############################################################ Headers ############################################################
@@ -454,6 +479,7 @@ byte Pin_To_Number(String Pin_Name);
 bool Relay(String &Topic, String &Payload);
 bool Dimmer(String &Topic, String &Payload);
 bool Switch(String &Topic, String &Payload);
+bool DHT(String &Topic, String &Payload);
 
 void MQ_Loop();
 
@@ -1585,6 +1611,7 @@ bool FS_Config_Load() {
     }
   }
 
+
   // ############### MQ ###############
   if (root.get<String>("MQ_Pin_A0") != "") {
     Log(MQTT_Topic[Topic_Log_Debug] + "/MQ", "Configuring");
@@ -1609,12 +1636,32 @@ bool FS_Config_Load() {
         // Log configuration compleate
         Log(MQTT_Topic[Topic_MQ] + "/MQ", "Configuration compleate");
       }
-      else {
-        Log(MQTT_Topic[Topic_Log_Error] + "/MQ", "Configuration failed pin in use");
+    else {
+      Log(MQTT_Topic[Topic_Log_Error] + "/MQ", "Configuration failed pin in use");
+    }
+  }
+
+  
+  // ############### DHT ###############
+  if (root.get<String>("DHT_Pins") != "") {
+    // Fill variables
+    Log(MQTT_Topic[Topic_Log_Info] + "/DHT", "Configuring");
+    FS_Config_Settings_Set(DHT_Pins, DHT_Max_Number_Of, root.get<String>("DHT_Pins"), MQTT_Topic[Topic_Log_Info] + "/DHT", "DHT Pins");
+
+    // Check pins
+    for (byte i = 0; i < DHT_Max_Number_Of; i++) {
+      if (DHT_Pins[i] != 255 && Pin_Monitor(Reserve_Normal, DHT_Pins[i]) == Pin_Free) {
+        // Subscribe
+        MQTT_Subscribe(MQTT_Topic[Topic_DHT], true, PLUS);
+        // Enable configuration
+        DHT_Configured = true;
       }
     }
+    Log(MQTT_Topic[Topic_Log_Info] + "/DHT", "Configuration compleate");
+  }
   return true;
-}
+
+} // FS_Config_Load()
 
 
 // ############################################################ FS_List() ############################################################
@@ -2530,6 +2577,7 @@ void MQTT_Queue_Check() {
     else if (Relay(Topic, Payload) == true) return;
     else if (Dimmer(Topic, Payload) == true) return;
     else if (Switch(Topic, Payload) == true) return;
+    else if (DHT(Topic, Payload) == true) return;
   }
   
 } // MQTT_Queue_Check()
@@ -2962,6 +3010,142 @@ bool MQ(String &Topic, String &Payload) {
 } // MQ
 
 
+// ############################################################ DHT_Loop() ############################################################
+void DHT_Loop() {
+
+  if (DHT_Configured == false || ArduinoOTA_Active == true) {
+    return;
+  }
+
+  for (byte Sensor_Number = 0; Sensor_Number < DHT_Max_Number_Of; Sensor_Number++) {
+    if (DHT_Pins[Sensor_Number] != 255) {
+
+      unsigned long DHT_Current_Read = millis();
+
+      // Check if its ok to read from the sensor
+      if (DHT_Current_Read - DHT_Last_Read >= DHT_Refresh_Rate) {
+
+        int Error_Code = SimpleDHTErrSuccess;
+        // Read sensors values
+        Error_Code = dht22.read2(DHT_Pins[Sensor_Number], &DHT_Current_Value_Temperature[Sensor_Number], &DHT_Current_Value_Humidity[Sensor_Number], NULL);
+
+        // Error check
+        if (Error_Code != SimpleDHTErrSuccess) {
+          // Error count check
+          if (DHT_Error_Counter[Sensor_Number] > DHT_Distable_At_Error_Count) {
+            // Log Error
+            Log(MQTT_Topic[Topic_Log_Error] + "/DHT/" + String(Sensor_Number + 1), "Disabling DHT " + String(Sensor_Number + 1) + " due to excessive errors. Error count: " + String(DHT_Error_Counter[Sensor_Number]) + " Threshold: " + String(DHT_Distable_At_Error_Count));
+            // Disable sensor pin
+            DHT_Pins[Sensor_Number] = 255;
+
+            bool DHT_Still_Active = false;
+
+            // Check if any workind DHT sensors left
+            for (byte ii = 0; ii < DHT_Max_Number_Of; ii++) {
+              if (DHT_Pins[ii] != 255) {
+                DHT_Still_Active = true;
+              }
+            }
+
+            // If no sensors left disable DHT
+            if (DHT_Still_Active == false) {
+              DHT_Configured = false;
+              Log(MQTT_Topic[Topic_Log_Error] + "/DHT", "No DHT22 sensors enabled, disabling DHT");
+            }
+          }
+          else {
+            Log(MQTT_Topic[Topic_Log_Warning] + "/DHT/" + String(Sensor_Number + 1), "Read DHT22 failed, Error: " + String(Error_Code, HEX));
+            DHT_Error_Counter[Sensor_Number] = DHT_Error_Counter[Sensor_Number] + 1;
+          }
+        }
+        // All ok
+        else {
+          // Reset error counter
+          DHT_Error_Counter[Sensor_Number] = 0;
+          // Reset default - Testing only one value assuming reast is default as well
+          if (DHT_Min_Value_Temperature[Sensor_Number] == -1337) {
+            DHT_Min_Value_Temperature[Sensor_Number] = DHT_Current_Value_Temperature[Sensor_Number];
+            DHT_Max_Value_Temperature[Sensor_Number] = DHT_Current_Value_Temperature[Sensor_Number];
+            DHT_Min_Value_Humidity[Sensor_Number] = DHT_Current_Value_Humidity[Sensor_Number];
+            DHT_Max_Value_Humidity[Sensor_Number] = DHT_Current_Value_Humidity[Sensor_Number];
+          }
+          // Save Min/Max
+          else {
+            DHT_Min_Value_Temperature[Sensor_Number] = min(DHT_Min_Value_Temperature[Sensor_Number], DHT_Current_Value_Temperature[Sensor_Number]);
+            DHT_Max_Value_Temperature[Sensor_Number] = max(DHT_Max_Value_Temperature[Sensor_Number], DHT_Current_Value_Temperature[Sensor_Number]);
+            DHT_Min_Value_Humidity[Sensor_Number] = min(DHT_Min_Value_Humidity[Sensor_Number], DHT_Current_Value_Humidity[Sensor_Number]);
+            DHT_Max_Value_Humidity[Sensor_Number] = max(DHT_Max_Value_Humidity[Sensor_Number], DHT_Current_Value_Humidity[Sensor_Number]);
+          }
+        }
+
+        // Save the last time you read the sensor
+        DHT_Last_Read = millis();
+      }
+    }
+  }
+
+} // DHT_Loop()
+
+
+// ############################################################ DHT() ############################################################
+bool DHT(String &Topic, String &Payload) {
+
+  if (DHT_Configured == false) {
+    return false;
+  }
+
+  if (Topic.indexOf(MQTT_Topic[Topic_DHT]) != -1) {
+
+    Topic.replace(MQTT_Topic[Topic_DHT] + "/", "");
+
+    byte Selected_DHT = Topic.toInt() - 1;
+
+    if (Topic.toInt() <= DHT_Max_Number_Of) {
+
+      Payload = Payload.substring(0, Payload.indexOf(";"));
+
+      if (Payload == "?") {
+        Log(MQTT_Topic[Topic_DHT] + "/" + String(Selected_DHT + 1) + "/Humidity", String(DHT_Current_Value_Humidity[Selected_DHT]));
+        Log(MQTT_Topic[Topic_DHT] + "/" + String(Selected_DHT + 1) + "/Temperature", String(DHT_Current_Value_Temperature[Selected_DHT]));
+        return true;
+      }
+
+      else if (Payload == "json") {
+
+        // Create json buffer
+        DynamicJsonBuffer jsonBuffer(80);
+        JsonObject& root_DHT = jsonBuffer.createObject();
+
+        // encode json string
+        root_DHT.set("Current Humidity", DHT_Current_Value_Humidity[Selected_DHT]);
+        root_DHT.set("Current Temperature", DHT_Current_Value_Temperature[Selected_DHT]);
+        root_DHT.set("Min Humidity", DHT_Min_Value_Humidity[Selected_DHT]);
+        root_DHT.set("Max Humidity", DHT_Max_Value_Humidity[Selected_DHT]);
+        root_DHT.set("Min Temperature", DHT_Min_Value_Temperature[Selected_DHT]);
+        root_DHT.set("Max Temperature", DHT_Max_Value_Temperature[Selected_DHT]);
+
+        String DHT_String;
+
+        // Build json
+        root_DHT.printTo(DHT_String);
+
+        Log(MQTT_Topic[Topic_DHT] + "/" + String(Topic.toInt()) + "/json/State", DHT_String);
+
+        // Reset Min/Max
+        DHT_Min_Value_Temperature[Selected_DHT] = DHT_Current_Value_Temperature[Selected_DHT];
+        DHT_Max_Value_Temperature[Selected_DHT] = DHT_Current_Value_Temperature[Selected_DHT];
+        DHT_Min_Value_Humidity[Selected_DHT] = DHT_Current_Value_Humidity[Selected_DHT];
+        DHT_Max_Value_Humidity[Selected_DHT] = DHT_Current_Value_Humidity[Selected_DHT];
+
+        return true;
+      }
+
+    }
+  }
+  return false;
+} // DHT()
+
+
 // ############################################################ setup() ############################################################
 void setup() {
   
@@ -2969,6 +3153,8 @@ void setup() {
   Serial.setTimeout(100);
   Serial.begin(115200);
   Serial.println();
+  Serial.println("USE ME FOR SOMETING - BELOW"); // RM
+  Serial.println(ARDUINO_BOARD); // RM
 
   Log(MQTT_Topic[Topic_Log_Info], "Booting Dobby - Wemos D1 Mini firmware version: " + String(Version));
 
@@ -3019,6 +3205,9 @@ void loop() {
   // MQTT
   MQTT_Loop();
 
+  // FTP Server
+  FTP_Server.handleFTP();
+
   // FS Config
   FS_Config_UDP_Loop();
 
@@ -3026,7 +3215,7 @@ void loop() {
   Relay_Auto_OFF_Loop();
   Button_Loop();
   Switch_Loop();
+  DHT_Loop();
 
-  FTP_Server.handleFTP();        //make sure in loop you call handleFTP()!!  
 
 } // loop()
