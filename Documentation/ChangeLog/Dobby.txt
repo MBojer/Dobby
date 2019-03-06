@@ -1,3 +1,13 @@
+######################################## 101018 ########################################
+-- Added MQTT to SQL - Publish the topic to return the value to and a "&" and then sql command to "System Header + /Dobby/Commands/MQTTSQL
+                       Note supports only one return calue
+
+######################################## 101018 ########################################
+-- Added Backup of device and system config to FTP URL
+
+######################################## 101017 ########################################
+-- Splitting device config into several tables
+
 ######################################## 101016 ########################################
 -- Added - Support for FS Config via FTP
 

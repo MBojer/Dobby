@@ -35,10 +35,11 @@ sudo apt-get install -y git mosquitto mosquitto-clients supervisor python-pip pi
 # Update pip
 yes | sudo pip install --upgrade pip
 
-yes | sudo pip install flask logging paho-mqtt psutil mysql-python gitpython
+# Install Dependencies
+yes | sudo pip install flask logging paho-mqtt psutil mysql-python gitpython schedule six
 
-# Install dependencies - Dash
-yes | sudo pip install dash dash-html-components dash-core-components pandas dash-auth dash-table-experiments six
+# Install Dash
+yes | sudo pip install dash==0.36.0 dash-html-components==0.13.5 dash-core-components==0.43.0 dash-auth==1.2.0 dash-table==3.1.11
 
 # Pull and move
 git clone https://github.com/MBojer/Dobby.git
@@ -46,6 +47,7 @@ sudo mv Dobby /etc/Dobby
 
 # Make Directories
 sudo mkdir /var/log/Dobby/
+sudo mkdir /etc/Dobby/Backup/
 
 # User rights
 sudo chown -R dobby:dobby /etc/Dobby/
@@ -65,3 +67,10 @@ sudo supervisorctl update
 
 # mosquitto Config
 sudo ln -s /etc/Dobby/Install/Config_Files/mosquitto/Dobby_Auto.conf /etc/mosquitto/conf.d/Dobby_Auto.conf
+
+# Create certificate for Dash
+# https://blog.miguelgrinberg.com/post/running-your-flask-application-over-https
+openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365
+mkdir /etc/Dobby/Cert
+mv cert.pem /etc/Dobby/Cert/
+mv key.pem /etc/Dobby/Cert/

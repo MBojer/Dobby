@@ -15,6 +15,7 @@ import dash_auth
 from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_table_experiments as dte
 import dash_table as dt
 
 # Neede to be able to shutdown dash
@@ -30,7 +31,7 @@ import datetime
 import MySQLdb
 
 # Pandas
-# import pandas as pd
+import pandas as pd
 
 # Scacda
 import plotly.graph_objs as go
@@ -50,7 +51,7 @@ def Server_Shutdown():
 
 # ======================================== MQTT Publish ========================================
 def MQTT_Publish(Topic, Payload):
-    MQTT.single(Topic, Payload, hostname=MQTT_Broker, port=MQTT_Port, auth={'username': MQTT_Username, 'password': MQTT_Password})
+    MQTT.single(Topic, Payload, hostname=MQTT_Broker.Value[0], port=MQTT_Port.Value[0], auth={'username': MQTT_Username.Value[0], 'password': MQTT_Password.Value[0]})
 
 
 # ======================================== SQL Open /Close ========================================
@@ -102,6 +103,19 @@ def SQL_To_List(SQL_String):
         Return_List.append(i[0])
 
     return Return_List
+
+
+# ======================================== SQL_Read_df ========================================
+def SQL_Read_df(SQL_String):
+    # Open db connection
+    db_SQL_Connection = Open_db('')
+
+    df = pd.read_sql(SQL_String, con=db_SQL_Connection)
+
+    # Close db connection
+    db_SQL_Connection.close()
+
+    return df
 
 
 # ======================================== SQL_Read ========================================
@@ -301,11 +315,9 @@ def Tabs_List():
 
     Tabs_List.append(dcc.Tab(label='Alerts', value='Alerts_Tab'))
 
-    Tabs_List.append(dcc.Tab(label='Buttons', value='Buttons_Tab'))
-
-    Tabs_List.append(dcc.Tab(label='Counters', value='Counters_Tab'))
-
     Tabs_List.append(dcc.Tab(label='Config', value='Config_Tab'))
+
+    Tabs_List.append(dcc.Tab(label='Buttons', value='Buttons_Tab'))
 
     # Tabs_List.append(dcc.Tab(label='Devices', value='Config_Tab'))
 
@@ -338,59 +350,63 @@ def Log_Graph_Tab_Dropdown_List():
 # import json
 
 # MISC
-Version = 102011
+Version = 102010
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
 
-# Dobby
-# FIX - Find a better way to get the info below
-# MQTT_Broker = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Broker';", con=db_pd_Connection)
-# MQTT_Port = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Port';", con=db_pd_Connection)
-# MQTT_Username = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Username';", con=db_pd_Connection)
-# MQTT_Password = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Password';", con=db_pd_Connection)
-# System_Header = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='System' AND Target='Dobby' AND Name='Header';", con=db_pd_Connection)
-# Log_db = pd.read_sql("Select Value From Dobby.SystemConfig where Target='Dobby' AND Header='Log' AND `Name`='db';", con=db_pd_Connection)
-MQTT_Broker = "192.168.0.2"
-MQTT_Port = "1883"
-MQTT_Username = "DasBoot"
-MQTT_Password = "NoSinking"
-System_Header = "/Boat"
-Log_db = "DobbyLog"
 
 # MySQL
 MySQL_Server = 'localhost'
 MySQL_Username = 'dobby'
 MySQL_Password = 'HereToServe'
 
+db_pd_Connection = MySQLdb.connect(host=MySQL_Server, user=MySQL_Username, passwd=MySQL_Password)
+
 db_Connection = Open_db("Dobby")
 db_Curser = db_Connection.cursor()
 
-# Get number of buttons
+# db_Curser.execute("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Broker';")
+# db_Fetch = db_Curser.fetchone()
+# MQTT_Broker = db_Fetch[0]
+
 db_Curser.execute("SELECT COUNT(id) FROM Dobby.DashButtons;")
-db_DashButtons = db_Curser.fetchone()
-
-# Add users and passwords
-# User auth list
-db_Curser.execute("SELECT Username, Password FROM Dobby.Users;")
-db_User_Info = db_Curser.fetchall()
-
-# Close db connection
-Close_db(db_Connection, db_Curser)
-
+db_Fetch = db_Curser.fetchone()
 # FIX - Move to global var its ok :-)
-DashButtons_Number_Of = db_DashButtons[0]
+DashButtons_Number_Of = db_Fetch[0]
 
 # FIX - Find a betting solution, maybe make a dummy button
 # If DashButtons_Number_Of == 0 the script will crash
 if DashButtons_Number_Of == 0:
     DashButtons_Number_Of = 1
 
-# Create user list
+
+
+# Close db connection
+Close_db(db_Connection, db_Curser)
+
+
+# Dobby
+MQTT_Broker = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Broker';", con=db_pd_Connection)
+MQTT_Port = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Port';", con=db_pd_Connection)
+MQTT_Username = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Username';", con=db_pd_Connection)
+MQTT_Password = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Password';", con=db_pd_Connection)
+System_Header = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='System' AND Target='Dobby' AND Name='Header';", con=db_pd_Connection)
+Log_db = pd.read_sql("Select Value From Dobby.SystemConfig where Target='Dobby' AND Header='Log' AND `Name`='db';", con=db_pd_Connection)
+
+# Add users and passwords
+# User auth list
+db_User_List = pd.read_sql("SELECT Username, Password FROM Dobby.Users;", con=db_pd_Connection)
+
+db_pd_Connection.close()
+
 User_List = []
 
-for i in range(len(db_User_Info)):
-    User_List.append([db_User_Info[i][0], db_User_Info[i][1]])
+for i in db_User_List.index:
+    User_List.append([db_User_List.Username[i], db_User_List.Password[i]])
+
+del db_User_List
+
 
 # Dash
 app = dash.Dash()
@@ -412,20 +428,19 @@ app.config['suppress_callback_exceptions'] = True
 app.layout = html.Div([
 
 
-    dcc.Tabs(id="tabs", value='Config_Tab', children=Tabs_List()),
+    dcc.Tabs(id="tabs", value='Buttons_Tab', children=Tabs_List()),
 
     html.Div(id='Main_Tabs'),
 
     # No idea why this needs to be here, if its not the tabs with datatables does not load
-    # html.Div([
-    #     dt.DataTable(rows=[{}]),
-    #     ], style={"display": "none"}),
+    html.Div([
+        dte.DataTable(rows=[{}]),
+        ], style={"display": "none"}),
 
     # Places to store variables
     html.Div([
         html.Div(id='Alerts_Tab_Variables', children=""),
         html.Div(id='Buttons_Tab_Variables', children=""),
-        html.Div(id='Counters_Tab_Variables', children=""),
         html.Div(id='Config_Tab_Variables', children=""),
         # html.Div(id='Device_Tab_Variables', children=""),
         html.Div(id='Live_Tab_Variables', children=""),
@@ -446,7 +461,6 @@ app.layout = html.Div([
     [
         State('Alerts_Tab_Variables', 'children'),
         State('Buttons_Tab_Variables', 'children'),
-        State('Counters_Tab_Variables', 'children'),
         State('Config_Tab_Variables', 'children'),
         # State('Device_Tab_Variables', 'children'),
         State('Live_Tab_Variables', 'children'),
@@ -455,7 +469,7 @@ app.layout = html.Div([
         State('System_Tab_Variables', 'children'),
         ]
     )
-def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Tab_Variables, Config_Tab_Variables, Live_Tab_Variables, Log_Graph_Tab_Variables, System_Log_Tab_Variables, System_Tab_Variables):
+def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Config_Tab_Variables, Live_Tab_Variables, Log_Graph_Tab_Variables, System_Log_Tab_Variables, System_Tab_Variables):
     # ======================================== Alerts Tab ========================================
     # ======================================== Alerts Tab ========================================
     # ======================================== Alerts Tab ========================================
@@ -464,26 +478,16 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
 
         return html.Div([
             # Config table
-        #     dt.DataTable(
-        #         id='Alerts_Table',
-        #         rows=[],
-        #         columns=['Source', 'Text', 'Status', 'Timestamp'],
-        #         min_height='72vh',
-        #         resizable=True,
-        #         editable=True,
-        #         filterable=True,
-        #         sortable=True,
-        #         ),
-            dt.DataTable(
+            dte.DataTable(
                 id='Alerts_Table',
+                rows=[],
                 columns=['Source', 'Text', 'Status', 'Timestamp'],
-                # columns=[Generate_System_Log_Table_Columns(System_Log_Tab_Variables.get('System_Log_Dropdown', "None"))],
-                # min_height='72vh',
-                # resizable=True,
+                min_height='72vh',
+                resizable=True,
                 editable=True,
-                sorting=True,
-                data=[{}],
-            ),
+                filterable=True,
+                sortable=True,
+                ),
         ], style={'marginBottom': 50, 'marginTop': 25}, id='Alerts_Tab')
 
     # ======================================== Buttons Tab ========================================
@@ -509,29 +513,6 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
                 )
         ], id='Buttons_Tab')
 
-    # ======================================== Counters Tab ========================================
-    # ======================================== Counters Tab ========================================
-    # ======================================== Counters Tab ========================================
-    elif tab == 'Counters_Tab':
-
-        Counters_Tab_Variables = Generate_Variable_Dict(Counters_Tab_Variables)
-
-        return html.Div([
-            
-            dt.DataTable(
-                    id='Counters_Table',
-                    columns=[{'id': 'Counter', 'name': 'Counter'}, {'id': 'Value', 'name':'Value'}],
-                    # columns=[Generate_System_Log_Table_Columns(System_Log_Tab_Variables.get('System_Log_Dropdown', "None"))],
-                    # min_height='72vh',
-                    # resizable=True,
-                    editable=False,
-                    sorting=True,
-                    data=[{}],
-                ),
-            html.Button('Read', id='Counters_Read', n_clicks=int(Counters_Tab_Variables.get('Counters_Read', 0)), style={'margin-top': '5px'}),
-            
-        ], id='Counters_Tab')
-
     # ======================================== Live Tab ========================================
     # ======================================== Live Tab ========================================
     # ======================================== Live Tab ========================================
@@ -544,7 +525,7 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
                 # Dropdown to select logs
                 dcc.Dropdown(
                     id='Live_Dropdown',
-                    options=[{'label': Trigger, 'value': Trigger} for Trigger in SQL_To_List("SELECT DISTINCT Name FROM `" + Log_db + "`.Log_Graph;")],
+                    options=[{'label': Trigger, 'value': Trigger} for Trigger in SQL_To_List("SELECT DISTINCT Name FROM `" + Log_db.Value[0] + "`.Log_Graph;")],
                     multi=True,
                     value=Live_Tab_Variables.get('Live_Dropdown', None),
                 ),
@@ -602,26 +583,16 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
                     value=Config_Tab_Variables.get('Config_Dropdown_Line', None),
                     ),
                 # Config table
-                # dt.DataTable(
-                #     id='Config_Table',
-                #     rows=[],
-                #     columns=['Setting', 'Value'],
-                #     min_height='72vh',
-                #     resizable=True,
-                #     editable=True,
-                #     filterable=True,
-                #     sortable=True,
-                #     ),
-                dt.DataTable(
+                dte.DataTable(
                     id='Config_Table',
-                    columns=[{'id': 'Setting', 'name': 'Setting'}, {'id': 'Value', 'name':'Value'}],
-                    # columns=[Generate_System_Log_Table_Columns(System_Log_Tab_Variables.get('System_Log_Dropdown', "None"))],
-                    # min_height='72vh',
-                    # resizable=True,
+                    rows=[],
+                    columns=['Setting', 'Value'],
+                    min_height='72vh',
+                    resizable=True,
                     editable=True,
-                    sorting=True,
-                    data=[{}],
-                ),
+                    filterable=True,
+                    sortable=True,
+                    ),
                 html.Button('Read', id='Config_Read', n_clicks=int(Config_Tab_Variables.get('Config_Read', 0)), style={'margin-top': '5px'}),
                 html.Button('Delete Row', id='Config_Delete_Row', n_clicks=int(Config_Tab_Variables.get('Config_Delete_Row', 0)), style={'margin-left': '10px', 'margin-top': '5px'}),
                 html.Button('Save', id='Config_Save', n_clicks=int(Config_Tab_Variables.get('Config_Save', 0)), style={'margin-left': '10px', 'margin-top': '5px'}),
@@ -782,6 +753,9 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
     )
 def Buttons_Tab_Buttons(*args):
 
+    
+    print "hit"
+
     # Import variables from div able
     Buttons_Tab_Variables = Generate_Variable_Dict(args[len(args) - 1])
 
@@ -811,53 +785,6 @@ def Buttons_Tab_Buttons(*args):
 
     return Generate_Variable_String(Buttons_Tab_Variables)
 
-# ======================================== Counters Tab - Callbacks ========================================
-# Read content
-@app.callback(
-    Output('Counters_Table', 'data'),
-    [
-        Input('Counters_Tab_Variables', 'children')
-    ],
-    )
-def Counters_Tab_Table_Rows(Counters_Tab_Variables):
-
-    Counters_Tab_Variables = Generate_Variable_Dict(Counters_Tab_Variables)
-
-    # get last 'Reset' value
-    Last_Reset_ID = SQL_Read('SELECT id FROM DobbyLog.Log_Trigger where Name="Cold Water Flow" and Value="Reset" order by id desc Limit 1;')
-
-    if (Last_Reset_ID == ()):
-        Last_Reset_ID = 0
-    else:
-        Last_Reset_ID = Last_Reset_ID[0][0]
-
-    # Get values since last reset
-    db_Data = SQL_Read('SELECT Value FROM DobbyLog.Log_Trigger where Name="Cold Water Flow" and id > "' + str(Last_Reset_ID) + '" order by id desc;')    
-
-    Counter_State = 0
-
-    # Get the value before each boot message and add them together to the first value
-    if db_Data[0][0] != "Boot":
-        Counter_State = int(db_Data[0][0])
-
-    Add_Next = False
-
-    for i in range(len(db_Data)):
-        # If Value == "Boot" add next value if not
-        if db_Data[i][0] == 'Boot':
-            Add_Next = True
-        
-        elif Add_Next == True:
-            Counter_State = Counter_State + int(db_Data[i][0])
-            Add_Next = False
-
-    Return_Dict = {}
-    Return_Dict["Counter"] = "Cold Water Flow"
-    Return_Dict["Value"] = Counter_State
-
-    return [Return_Dict]
-
-
 # ======================================== Config Tab - Callbacks ========================================
 # Config_Tab_Variables
 @app.callback(
@@ -870,7 +797,7 @@ def Counters_Tab_Table_Rows(Counters_Tab_Variables):
         Input('Config_Save', 'n_clicks'),
         ],
     [
-        State('Config_Table', 'data'),
+        State('Config_Table', 'rows'),
         State('Config_Tab_Variables', 'children'),
         ]
     )
@@ -921,13 +848,9 @@ def Config_Tab_Variables(Config_Dropdown, Config_Dropdown_Line, Config_Read, Con
 
                 # if -- Change me -- is value then a field that needs a value has not been set hence break and do nothing
                 # FIX - Add error message for below
+
                 if Config_Table[i]['Value'] == '-- Change me --':
                     break
-
-                # Field clear set cell to null
-                if Config_Table[i]['Value'] == '':
-                    # FIX - Find a wau to set db cell to null
-                    Config_Changes[Config_Table[i]['Setting'][0]] = ''
 
                 elif Config_Table[i]['Value'][0] != Current_Config_Row['Value'][0]:
                     # Add chnages to chnages dict
@@ -1060,7 +983,7 @@ def Config_Tab_Line_Dropdown(Config_Dropdown, Config_Tab_Variables):
 
 
 @app.callback(
-    Output('Config_Table', 'data'),
+    Output('Config_Table', 'rows'),
     [
         Input('Config_Dropdown', 'value'),
         Input('Config_Dropdown_Line', 'value'),
@@ -1132,7 +1055,7 @@ def Device_Config_Tab_Variables(Device_Config_Dropdown, Device_Config_Read, Devi
                 if Action is not None:
                     # Set Last_Click to none to prevent repress when changing back to tab
                     Device_Config_Tab_Variables['Last_Click'] = None
-                    MQTT.single(System_Header + "/Commands/" + str(Device_Config_Tab_Variables['Device_Config_Dropdown']) + "/Power", Action + ";", hostname=MQTT_Broker, port=MQTT_Port, auth={'username': MQTT_Username, 'password': MQTT_Password})
+                    MQTT.single(System_Header.Value[0] + "/Commands/" + str(Device_Config_Tab_Variables['Device_Config_Dropdown']) + "/Power", Action + ";", hostname=MQTT_Broker.Value[0], port=MQTT_Port.Value[0], auth={'username': MQTT_Username.Value[0], 'password': MQTT_Password.Value[0]})
 
             Device_Config_Tab_Variables[Button_List_Text[i]] = Button_List[i]
             break
@@ -1215,7 +1138,7 @@ def Device_Config_Tab_Config_Show(Device_Config_Tab_Variables, Device_Config_Sav
     # ======================================== Send Config ========================================
     elif Device_Config_Tab_Variables.get('Last_Click', "None") == "Device_Config_Send":
         Device_Config_Tab_Variables['Last_Click'] = None
-        MQTT.single(System_Header + "/Commands/Dobby/Config", Device_Config_Tab_Variables['Device_Config_Dropdown'] + ",-1;", hostname=MQTT_Broker, port=MQTT_Port, auth={'username': MQTT_Username, 'password': MQTT_Password})
+        MQTT.single(System_Header.Value[0] + "/Commands/Dobby/Config", Device_Config_Tab_Variables['Device_Config_Dropdown'] + ",-1;", hostname=MQTT_Broker.Value[0], port=MQTT_Port.Value[0], auth={'username': MQTT_Username.Value[0], 'password': MQTT_Password.Value[0]})
 
     # ======================================== Return table ========================================
     Return_Dict = Generate_Device_Config_Dict(Device_Config_Tab_Variables['Device_Config_Dropdown'], db_Write_Curser)
@@ -1268,14 +1191,14 @@ def Log_Graph_Tab_Variables(Log_Graph_Dropdown, Log_Graph_Dropdown_Entry, Log_Gr
             Slider_Name_String = Slider_Name_String + "`Name`='" + str(Selection) + "'"
             i = i + 1
 
-        db_Connection = Open_db(Log_db)
+        db_Connection = Open_db(Log_db.Value[0])
         db_Curser = db_Connection.cursor()
 
         try:
-            db_Curser.execute("SELECT DateTime FROM `" + Log_db + "`.`" + Log_Graph_Dropdown.replace(" ", "_") + "` WHERE " + Slider_Name_String + " ORDER BY id ASC LIMIT 1;")
+            db_Curser.execute("SELECT DateTime FROM `" + Log_db.Value[0] + "`.`" + Log_Graph_Dropdown.replace(" ", "_") + "` WHERE " + Slider_Name_String + " ORDER BY id ASC LIMIT 1;")
             Min_Date = db_Curser.fetchone()
 
-            db_Curser.execute("SELECT DateTime FROM `" + Log_db + "`.`" + Log_Graph_Dropdown.replace(" ", "_") + "` WHERE " + Slider_Name_String + " ORDER BY id DESC LIMIT 1;")
+            db_Curser.execute("SELECT DateTime FROM `" + Log_db.Value[0] + "`.`" + Log_Graph_Dropdown.replace(" ", "_") + "` WHERE " + Slider_Name_String + " ORDER BY id DESC LIMIT 1;")
             Max_Date = db_Curser.fetchone()
 
         except (MySQLdb.Error, MySQLdb.Warning) as e:
@@ -1498,7 +1421,7 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
 
     # ======================================== Read Logs ========================================
     else:
-        db_Connection = Open_db(Log_db)
+        db_Connection = Open_db(Log_db.Value[0])
         db_Curser = db_Connection.cursor()
 
         Data = []
@@ -1511,8 +1434,8 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
                 for Row in Log_Graph_Tab_Variables['Log_Graph_Dropdown_Rj']:
                     Data.append(
                         go.Scatter(
-                            x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`" + Log_Graph_Tab_Variables['Log_Graph_Dropdown'].replace(" ", "_") + "` WHERE Name='" + str(Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
-                            y=SQL_To_List("SELECT `" + Row + "` FROM `" + Log_db + "`.`" + Log_Graph_Tab_Variables['Log_Graph_Dropdown'].replace(" ", "_") + "` WHERE Name='" + str(Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                            x=SQL_To_List("SELECT DateTime FROM `" + Log_db.Value[0] + "`.`" + Log_Graph_Tab_Variables['Log_Graph_Dropdown'].replace(" ", "_") + "` WHERE Name='" + str(Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                            y=SQL_To_List("SELECT `" + Row + "` FROM `" + Log_db.Value[0] + "`.`" + Log_Graph_Tab_Variables['Log_Graph_Dropdown'].replace(" ", "_") + "` WHERE Name='" + str(Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
                             name=str(Name + " - " + Row),
                             mode='lines+markers',
                         )
@@ -1551,9 +1474,9 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
                     Date_Search_String = " AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' AND datetime<'" + str(Log_Graph_Tab_Variables['Slider_Value_High']) + "'"
 
                     # print "PIK:" + Tag_Search_String
-                    # print "SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"
+                    # print "SELECT DateTime FROM `" + Log_db.Value[0] + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"
 
-                    db_Curser.execute("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;")
+                    db_Curser.execute("SELECT DateTime FROM `" + Log_db.Value[0] + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;")
                     temp = db_Curser.fetchall()
 
                     # print "s"
@@ -1561,8 +1484,8 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
 
                     Data.append(
                             go.Scatter(
-                                x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"),
-                                y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"),
+                                x=SQL_To_List("SELECT DateTime FROM `" + Log_db.Value[0] + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"),
+                                y=SQL_To_List("SELECT Value FROM `" + Log_db.Value[0] + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"),
                                 # x=[1, 2],
                                 # y=[1, 2],
                                 name=Plot_Name,
@@ -1576,15 +1499,15 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
                     # print Data
 
                     # pass
-                    # print "SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"
+                    # print "SELECT Value FROM `" + Log_db.Value[0] + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"
 
                     # fix json tags here something is up here is a -- No Tag -- is selected it will select all from the once that has tacs
 
                     # if "Min" in Tag_Name:
                     #     Data.append(
                     #         go.Scatter(
-                    #             x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
-                    #             y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             x=SQL_To_List("SELECT DateTime FROM `" + Log_db.Value[0] + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             y=SQL_To_List("SELECT Value FROM `" + Log_db.Value[0] + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
                     #             name=str(Name + " - " + Tag_Name),
                     #             mode='lines+markers',
                     #             line=dict(
@@ -1596,8 +1519,8 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
                     # elif "Max" in Tag_Name:
                     #     Data.append(
                     #         go.Scatter(
-                    #             x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
-                    #             y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             x=SQL_To_List("SELECT DateTime FROM `" + Log_db.Value[0] + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             y=SQL_To_List("SELECT Value FROM `" + Log_db.Value[0] + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
                     #             name=str(Name + " - " + Tag_Name),
                     #             mode='lines+markers',
                     #             line=dict(
@@ -1609,8 +1532,8 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
                     # elif "Current" in Tag_Name:
                     #     Data.append(
                     #         go.Scatter(
-                    #             x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
-                    #             y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             x=SQL_To_List("SELECT DateTime FROM `" + Log_db.Value[0] + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             y=SQL_To_List("SELECT Value FROM `" + Log_db.Value[0] + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
                     #             name=str(Name + " - " + Tag_Name),
                     #             mode='lines+markers',
                     #         )
@@ -1619,8 +1542,8 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
                     # else:
                     #     Data.append(
                     #         go.Scatter(
-                    #             x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
-                    #             y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             x=SQL_To_List("SELECT DateTime FROM `" + Log_db.Value[0] + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             y=SQL_To_List("SELECT Value FROM `" + Log_db.Value[0] + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
                     #             name=str(Name + " - " + Tag_Name),
                     #             mode='lines+markers',
                     #         )
@@ -1629,8 +1552,8 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
                 #     # Create and style traces
                 #     Data.append(
                 #         go.Scatter(
-                #             x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
-                #             y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                #             x=SQL_To_List("SELECT DateTime FROM `" + Log_db.Value[0] + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                #             y=SQL_To_List("SELECT Value FROM `" + Log_db.Value[0] + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
                 #             name=str(Name),
                 #             mode='lines+markers',
                 #         )
@@ -1778,6 +1701,7 @@ app.css.append_css({'external_url': 'http://rawgit.com/lwileczek/Dash/master/und
 
 print "Dash Core Components: " + str(dcc.__version__)
 print "Dash HTML Components: " + str(html.__version__)
+print "Dash Table Experiments: " + str(dte.__version__)
 print "Dash Table: " + str(dt.__version__)
 
 if __name__ == '__main__':

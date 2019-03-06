@@ -1,5 +1,25 @@
+-------------------- 102014 --------------------
+
+-------------------- 102013 --------------------
+Added DS18B20
+Fix DHT stability, Indicator led was interfiering with it.
+
+-------------------- 102012 --------------------
+Added Flow meter - Need to convert pulses to liters
+Flow:
+- Publishes "Boot" at boot to indicate counter reset
+
+-------------------- 102011 --------------------
+Fixed PIR
+Fixed MQTT reconnect
+
+-------------------- 102010 --------------------
+Added DC Voltmeter
+
 -------------------- 102009 --------------------
-Working on DHT22 support
+Added DHT
+Added PIR
+Cannot post more than 10 message per look so publish is once per loop
 
 -------------------- 102008 --------------------
 Added - FS Config FTP - The devie is now running a FTP server so the config can be uploaded to spiffs directly

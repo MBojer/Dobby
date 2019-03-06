@@ -656,13 +656,15 @@ def System_Tab_Buttons(System_Quit_Button, System_Tab_Variables):
 @app.callback(
     Output('Buttons_Tab_Variables', 'children'),
     [
-        Input('DBTN_' + str(i), 'n_clicks') for i in range(DashButtons_Number_Of['COUNT(id)'])
+        Input('DBTN_' + str(i), 'n_clicks') for i in range(SQL_Read('SELECT COUNT(id) FROM Dobby.DashButtons;'))
         ],
     [
         State('Buttons_Tab_Variables', 'children'),
         ],
     )
 def Buttons_Tab_Buttons(*args):
+
+    print "HIT"
 
     # Import variables from div able
     Buttons_Tab_Variables = Generate_Variable_Dict(args[len(args) - 1])

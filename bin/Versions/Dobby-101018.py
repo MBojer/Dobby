@@ -48,7 +48,7 @@ import io
 import socket
 
 # System variables
-Version = 101019
+Version = 101018
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
@@ -322,23 +322,6 @@ def On_MQTT_Message(mosq, obj, msg):
     Msg_Thread.start()
 
 
-# ---------------------------------------- MQTT_SQL ----------------------------------------
-def MQTT_SQL(Payload):
-
-    Payload = Payload.split("&")
-
-    db_Connection = Open_db("")
-    db_Curser = db_Connection.cursor()
-
-    db_Curser.execute(Payload[1])
-    db_Resoult = db_Curser.fetchone()
-
-    Close_db(db_Connection, db_Curser)
-
-    MQTT_Client.publish(Payload[0], str(db_Resoult[0]), qos=0, retain=False)
-
-
-
 # ---------------------------------------- MQTT Commands ----------------------------------------
 def MQTT_Commands(Topic, Payload):
     Topic = Topic.replace(System_Header + "/Commands/Dobby/", "")
@@ -367,10 +350,7 @@ def MQTT_Commands(Topic, Payload):
 
     elif Topic in "Test":
         Log("Test", "MQTTCommands", "Executing", Topic + " - " + Payload)
-        return
 
-    elif Topic in "MQTTSQL":
-        MQTT_SQL(Payload)
         return
 
     Log("Warning", "MQTTCommands", "Request", Topic + " - " + Payload + " - Not found")

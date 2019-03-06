@@ -20,3 +20,5 @@ Script/Wemos/platformio.ini
 .gitignore
 .vscode/*
 Script/Wemos/platformio.ini
+/Cert
+/Backup

@@ -15,7 +15,7 @@ extern "C" {
 
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 102013
+#define Version 102011
 // First didget = Software type 1-Production 2-Beta 3-Alpha
 // Secound and third didget = Major version number
 // Fourth to sixth = Minor version number
@@ -83,7 +83,7 @@ bool MQTT_Subscrive_Compleate = false;
 #define PLUS 1
 #define HASH 2
 
-const byte MQTT_Topic_Number_Of = 23;
+const byte MQTT_Topic_Number_Of = 21;
 
 // System
 #define Topic_Config 0
@@ -109,8 +109,6 @@ const byte MQTT_Topic_Number_Of = 23;
 #define Topic_PIR 18
 #define Topic_MAX31855 19
 #define Topic_Switch 20
-#define Topic_Flow 21
-#define Topic_DS18B20 22
 
 // System
 #define Topic_Config_Text "/Config/"
@@ -136,8 +134,6 @@ const byte MQTT_Topic_Number_Of = 23;
 #define Topic_PIR_Text "/PIR/"
 #define Topic_MAX31855_Text "/MAX31855/"
 #define Topic_Switch_Text "/Switch/"
-#define Topic_Flow_Text "/Flow/"
-#define Topic_DS18B20_Text "/DS18B20/"
 
 String MQTT_Topic[MQTT_Topic_Number_Of] = {
 	// System
@@ -164,8 +160,6 @@ String MQTT_Topic[MQTT_Topic_Number_Of] = {
 	System_Header + System_Sub_Header + Topic_PIR_Text + Hostname,
 	System_Header + System_Sub_Header + Topic_MAX31855_Text + Hostname,
 	System_Header + System_Sub_Header + Topic_Switch_Text + Hostname,
-	System_Header + System_Sub_Header + Topic_Flow_Text + Hostname,
-	System_Header + System_Sub_Header + Topic_DS18B20_Text + Hostname,
 };
 
 bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
@@ -182,8 +176,6 @@ bool MQTT_Topic_Subscribe_Active[MQTT_Topic_Number_Of] = {
 	false,
 	false,
 	// Devices
-	false,
-	false,
 	false,
 	false,
 	false,
@@ -221,8 +213,6 @@ byte MQTT_Topic_Subscribe_Subtopic[MQTT_Topic_Number_Of] = {
 	PLUS,
 	PLUS,
 	NONE,
-	NONE,
-	PLUS,
 	NONE,
 };
 
@@ -346,14 +336,12 @@ bool Indicator_LED_State_Active[LED_Number_Of_States] = {true, false, false, fal
 #define Pin_Free 1
 #define Pin_SCL 2
 #define Pin_SDA 3
-#define Pin_OneWire 4
 #define Pin_Error 255
 // Action
 #define Reserve_Normal 0
 #define Reserve_I2C_SCL 1
 #define Reserve_I2C_SDA 2
 #define Check_State 3
-#define Reserve_OneWire 4
 
 #define Pin_Monitor_Pins_Number_Of 10
 String Pin_Monitor_Pins_Names[Pin_Monitor_Pins_Number_Of] = {"D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "A0"};
@@ -361,7 +349,7 @@ byte Pin_Monitor_Pins_List[Pin_Monitor_Pins_Number_Of] = {D0, D1, D2, D3, D4, D5
 
 byte Pin_Monitor_Pins_Active[Pin_Monitor_Pins_Number_Of] = {Pin_Free, Pin_Free, Pin_Free, Pin_Free, Pin_Free, Pin_Free, Pin_Free, Pin_Free, Pin_Free, Pin_Free};
 
-String Pin_Monitor_State_Text[5] = {"In Use", "Free", "I2C SCL", "I2C SDA", "OneWire"};
+String Pin_Monitor_State_Text[4] = {"In Use", "Free", "I2C SCL", "I2C SDA"};
 
 
 // ------------------------------------------------------------ Relay ------------------------------------------------------------
@@ -490,80 +478,12 @@ byte PIR_Selected_Level[PIR_Max_Number_Of] = {1, 1, 1, 1, 1, 1};
 
 
 // ------------------------------------------------------------ DC Voltmeter ------------------------------------------------------------
-bool DC_Voltmeter_Configured = false;
-
 byte DC_Voltmeter_Pins = 255;
-
 float DC_Voltmeter_R1 = 0.0; // 30000.0
 float DC_Voltmeter_R2 = 0.0; // 7500.0
 float DC_Voltmeter_Curcit_Voltage = 0.0; // 3.3
 float DC_Voltmeter_Offset = 0.0;
 
-
-// ------------------------------------------------------------ Flow ------------------------------------------------------------
-bool Flow_Configured = false;
-
-#define Flow_Max_Number_Of 6
-byte Flow_Pins[Flow_Max_Number_Of] = {255, 255, 255, 255, 255, 255};
-
-volatile unsigned long Flow_Pulse_Counter[Flow_Max_Number_Of];
-volatile bool Flow_Change[Flow_Max_Number_Of];
-
-#define Flow_Publish_Delay 750
-unsigned long Flow_Publish_At[Flow_Max_Number_Of];
-
-
-// ------------------------------------------------------------ DS18B20 ------------------------------------------------------------
-// Based on: https://github.com/Yveaux/esp8266-Arduino/blob/master/esp8266com/esp8266/libraries/OneWire/examples/DS18x20_Temperature/DS18x20_Temperature.pde
-#include <OneWire.h>
-
-bool DS18B20_Configured = false;
-
-#define DS18B20_Max_Number_Of 1
-byte DS18B20_Pins[DS18B20_Max_Number_Of] = {D1};
-
-byte DS18B20_Address[8];
-byte DS18B20_Type;
-
-unsigned long DS18B20_Last_Read = 0; // When the sensor was last read
-
-Ticker DS18B20_Ticker;
-
-#define DS18B20_Refresh_Rate 1000
-float DS18B20_Current[DS18B20_Max_Number_Of] = {0};
-float DS18B20_Min[DS18B20_Max_Number_Of] = {0};
-float DS18B20_Max[DS18B20_Max_Number_Of] = {0};
-
-OneWire DS18B20_Sensor(DS18B20_Pins[0]);
-
-
-// ------------------------------------------------------------ Distance ------------------------------------------------------------
-#include <RunningAverage.h>
-#define Distance_Max_Number_Of 3
-
-#define Distance_Refresh_Rate 250
-// Dont start reading before 4 sec after boot just to let the system compleate boot
-unsigned long Distance_Sensor_Read_At = 4000;
-
-bool Distance_Configured = false;
-byte Distance_Pins_Echo[Distance_Max_Number_Of] = {255, 255, 255};
-byte Distance_Pins_Trigger[Distance_Max_Number_Of] = {255, 255, 255};
-
-int Distance_ON_At[Distance_Max_Number_Of] = {0, 0, 0};
-int Distance_OFF_At[Distance_Max_Number_Of] = {0, 0, 0};
-String Distance_Target_ON[Distance_Max_Number_Of];
-String Distance_Target_OFF[Distance_Max_Number_Of];
-
-bool Distance_Sensor_State[Distance_Max_Number_Of];
-
-#define Distance_RunningAverage_Length 25
-RunningAverage Distance_RA_1(Distance_RunningAverage_Length);
-RunningAverage Distance_RA_2(Distance_RunningAverage_Length);
-RunningAverage Distance_RA_3(Distance_RunningAverage_Length);
-float Distance_Last_Reading[Distance_Max_Number_Of];
-
-#define Distance_Sensor_Publish_Delay 1500
-unsigned long Distance_Sensor_Publish_At[Distance_Max_Number_Of];
 
 
 // ############################################################ Headers ############################################################
@@ -592,16 +512,6 @@ bool Switch(String &Topic, String &Payload);
 bool DHT(String &Topic, String &Payload);
 bool DC_Voltmeter(String &Topic, String &Payload);
 bool PIR(String &Topic, String &Payload);
-bool DS18B20(String &Topic, String &Payload);
-bool Distance(String &Topic, String &Payload);
-void Distance_Loop();
-
-void ICACHE_RAM_ATTR Flow_Callback_0();
-void ICACHE_RAM_ATTR Flow_Callback_1();
-void ICACHE_RAM_ATTR Flow_Callback_2();
-void ICACHE_RAM_ATTR Flow_Callback_3();
-void ICACHE_RAM_ATTR Flow_Callback_4();
-void ICACHE_RAM_ATTR Flow_Callback_5();
 
 void MQ_Loop();
 
@@ -807,11 +717,6 @@ void Indicator_LED(byte LED_State, bool Change_To) {
 void ESP_Reboot() {
 
 	Log(MQTT_Topic[Topic_Log_Info], "Rebooting");
-	// Publish queue log
-	while(Log_Queue_Topic.Queue_Is_Empthy == false){
-		Log_Loop();
-	}
-
 	MQTT_Client.disconnect();
 	Serial.flush();
 	delay(500);
@@ -1620,7 +1525,7 @@ bool FS_Config_Load() {
 		if (root.get<String>("Switch_Target_OFF") != "") {
 			FS_Config_Settings_Set(Switch_Target_OFF, Switch_Max_Number_Of, root.get<String>("Switch_Target_OFF"), MQTT_Topic[Topic_Log_Debug] + "/Switch", "Switch Target OFF");
 		}
-	} // Switch
+	}
 
 
 	// ############### MQ ###############
@@ -1745,157 +1650,8 @@ bool FS_Config_Load() {
 			DC_Voltmeter_Offset = root.get<float>("DC_Voltmeter_Offset");
 		}
 
-		DC_Voltmeter_Configured = true;
-
 		Log(MQTT_Topic[Topic_Log_Info] + "/PIR", "Configuration compleate");
-	} // DC Voltmeter
-
-	// ############### Flow ###############
-	if (root.get<String>("Flow_Pins") != "") {
-		
-		Log(MQTT_Topic[Topic_Log_Info] + "/Flow", "Configuring");
-
-		MQTT_Subscribe(MQTT_Topic[Topic_Flow], true, PLUS);
-		FS_Config_Settings_Set(Flow_Pins, Flow_Max_Number_Of, root.get<String>("Flow_Pins"), MQTT_Topic[Topic_Log_Debug] + "/Flow", "Flow Pins");
-
-		Flow_Configured = true;
-		// Set pinMode
-		for (byte i = 0; i < Flow_Max_Number_Of; i++) {
-			if (Flow_Pins[i] != 255) {
-				if (Pin_Monitor(Reserve_Normal, Flow_Pins[i]) == Pin_Free) {
-					pinMode(Flow_Pins[i], INPUT_PULLUP);
-					// FIX - Find a better way to do this
-					if (i == 0) attachInterrupt(Flow_Pins[i], Flow_Callback_0, FALLING);
-					else if (i == 1) attachInterrupt(Flow_Pins[i], Flow_Callback_1, FALLING);
-					else if (i == 2) attachInterrupt(Flow_Pins[i], Flow_Callback_2, FALLING);
-					else if (i == 3) attachInterrupt(Flow_Pins[i], Flow_Callback_3, FALLING);
-					else if (i == 4) attachInterrupt(Flow_Pins[i], Flow_Callback_4, FALLING);
-					else if (i == 5) attachInterrupt(Flow_Pins[i], Flow_Callback_5, FALLING);
-					// Publish "Boot" to /State topic to indicate reset of counter
-					Log(MQTT_Topic[Topic_Flow] + "/" + String(i + 1) + "/State", "Boot");
-				}
-			}
-		}
-		Log(MQTT_Topic[Topic_Log_Info] + "/Flow", "Configuration compleate");
-	} // Flow
-
-	
-	// ############### DS18B20 ###############
-	if (root.get<String>("DS18B20_Configured") == "1") {
-
-		Log(MQTT_Topic[Topic_Log_Info] + "/DS18B20", "Configuring");
-
-		MQTT_Subscribe(MQTT_Topic[Topic_DS18B20], true, PLUS);
-		FS_Config_Settings_Set(DS18B20_Pins, DS18B20_Max_Number_Of, Number_To_Pin(DS18B20_Pins[0]), MQTT_Topic[Topic_Log_Debug] + "/DS18B20", "DS18B20 Pins");
-
-		// Reserve pin
-		for (byte i = 0; i < DS18B20_Max_Number_Of; i++) {
-			if (DS18B20_Pins[i] != 255) {
-				if (Pin_Monitor(Reserve_OneWire, DS18B20_Pins[i]) == Pin_OneWire) {
-
-					// Set true now so it can be set to false if failure
-					DS18B20_Configured = true;
-
-					// Search for the sensor
-					if (!DS18B20_Sensor.search(DS18B20_Address)) {
-						Log(MQTT_Topic[Topic_Log_Error] + "/DS18B20/1", "Sensor not connected disabling DS18B20");
-						DS18B20_Configured = false;
-						break;
-					}
-					// Log sensor was found
-					String DS18B20_Address_String = String(DS18B20_Address[0], HEX);
-					for (i = 1; i < 8; i++) {
-						// Zero patching
-						String Add_String = String(DS18B20_Address[i], HEX);
-						if (Add_String.length() == 1) {
-							Add_String = "0" + Add_String;
-						}
-						DS18B20_Address_String = DS18B20_Address_String + ":" + Add_String;
-					}
-					Log(MQTT_Topic[Topic_Log_Debug] + "/DS18B20/1", "Found sensor on address: " + DS18B20_Address_String);
-
-					// CRC Check
-					if (OneWire::crc8(DS18B20_Address, 7) != DS18B20_Address[7]) {
-						Log(MQTT_Topic[Topic_Log_Debug] + "/DS18B20/1", "Address CRC check failed, disabling DS18B20");
-						DS18B20_Configured = false;
-						break;
-					}
-
-					// the first ROM byte indicates which chip
-					switch (DS18B20_Address[0]) {
-						case 0x10:
-							Log(MQTT_Topic[Topic_Log_Debug] + "/DS18B20/1", "Type: DS18S20 or old DS1820");
-							DS18B20_Type = 1;
-							break;
-						case 0x28:
-							Log(MQTT_Topic[Topic_Log_Debug] + "/DS18B20/1", "Type: DS18B20");
-							DS18B20_Type = 0;
-							break;
-						case 0x22:
-							Log(MQTT_Topic[Topic_Log_Debug] + "/DS18B20/1", "Type: DS1822");
-							DS18B20_Type = 0;
-							break;
-						default:
-							Log(MQTT_Topic[Topic_Log_Error] + "/DS18B20/1", "Invalid sensor in type: " + String(DS18B20_Type) + " Disabling DS18B20");
-							DS18B20_Configured = false;
-							break;
-					}
-					DS18B20_Sensor.reset();
-					DS18B20_Sensor.select(DS18B20_Address);
-					DS18B20_Sensor.write(0x44, 1);        // start conversion, with parasite power on at the end
-				}
-			}
-		}
-		if (DS18B20_Configured == true) {
-			Log(MQTT_Topic[Topic_Log_Info] + "/DS18B20", "Configuration compleate");
-		}
-		else {
-			Log(MQTT_Topic[Topic_Log_Error] + "/DS18B20", "Configuration failed");
-		}
-
-	} // DS18B20
-	
-
-	// ############### Distance ###############
-  // FIX - Pretty up below
-  if (root.get<String>("Distance_Pins_Trigger") != "") {
-    Log(MQTT_Topic[Topic_Log_Info] + "/Distance", "Configuring");
-    FS_Config_Settings_Set(Distance_Pins_Trigger, Distance_Max_Number_Of, root.get<String>("Distance_Pins_Trigger"), MQTT_Topic[Topic_Log_Info] + "/Distance", "Distance Pins Trigger");
-    // Set pinMode
-    for (byte i = 0; i < Distance_Max_Number_Of; i++) {
-      if (Distance_Pins_Trigger[i] != 255 && Pin_Monitor(Reserve_Normal, Distance_Pins_Trigger[i]) == Pin_Free) {
-        pinMode(Distance_Pins_Trigger[i], OUTPUT);
-        Distance_Configured = true;
-      }
-    }
-
-    if (root.get<String>("Distance_Pins_Echo") != "") {
-      FS_Config_Settings_Set(Distance_Pins_Echo, Distance_Max_Number_Of, root.get<String>("Distance_Pins_Echo"), MQTT_Topic[Topic_Log_Info] + "/Distance", "Distance Pins Echo");
-      // Set pinMode
-      for (byte i = 0; i < Distance_Max_Number_Of; i++) {
-        if (Distance_Pins_Echo[i] != 255 && Pin_Monitor(Reserve_Normal, Distance_Pins_Echo[i]) == Pin_Free) {
-          pinMode(Distance_Pins_Echo[i], INPUT);
-        }
-      }
-    }
-
-    if (root.get<String>("Distance_ON_At") != "") {
-      FS_Config_Settings_Set(Distance_ON_At, Distance_Max_Number_Of, root.get<String>("Distance_ON_At"), MQTT_Topic[Topic_Log_Debug] + "/Distance", "Distance ON At");
-    }
-    if (root.get<String>("Distance_OFF_At") != "") {
-      FS_Config_Settings_Set(Distance_OFF_At, Distance_Max_Number_Of, root.get<String>("Distance_OFF_At"), MQTT_Topic[Topic_Log_Debug] + "/Distance", "Distance OFF At");
-    }
-    if (root.get<String>("Distance_Target_ON") != "") {
-      FS_Config_Settings_Set(Distance_Target_ON, Distance_Max_Number_Of, root.get<String>("Distance_Target_ON"), MQTT_Topic[Topic_Log_Debug] + "/Distance", "Distance Target ON");
-    }
-    if (root.get<String>("Distance_Target_OFF") != "") {
-      FS_Config_Settings_Set(Distance_Target_OFF, Distance_Max_Number_Of, root.get<String>("Distance_Target_OFF"), MQTT_Topic[Topic_Log_Debug] + "/Distance", "Distance Target OFF");
-    }
-
-    // Subscribe to topic
-    MQTT_Subscribe(MQTT_Topic[Topic_Distance], true, PLUS);
-    Log(MQTT_Topic[Topic_Log_Info] + "/Distance", "Configuration compleate");
-  }
+	}
 
 	return true;
 
@@ -2054,14 +1810,10 @@ void ArduinoOTA_Setup() {
 	});
 
 	ArduinoOTA.onEnd([]() {
-		ArduinoOTA_Active = false;
 		Log(MQTT_Topic[Topic_Log_Info] + "/ArduinoOTA", "ArduinoOTA ... End");
-		while(Log_Queue_Topic.Queue_Is_Empthy == false){
-			Log_Loop();
-		}
-		Serial.flush();
 		MQTT_Client.disconnect();
 		delay(500);
+		WiFi.disconnect();
 	});
 
 	ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
@@ -2234,8 +1986,6 @@ void Rebuild_MQTT_Topics() {
 	MQTT_Topic[Topic_PIR] = System_Header + System_Sub_Header + Topic_PIR_Text + Hostname;
 	MQTT_Topic[Topic_MAX31855] = System_Header + System_Sub_Header + Topic_MAX31855_Text + Hostname;
 	MQTT_Topic[Topic_Switch] = System_Header + System_Sub_Header + Topic_Switch_Text + Hostname;
-	MQTT_Topic[Topic_Flow] = System_Header + System_Sub_Header + Topic_Flow_Text + Hostname;
-	MQTT_Topic[Topic_DS18B20] = System_Header + System_Sub_Header + Topic_DS18B20_Text + Hostname;
 }
 
 
@@ -2559,7 +2309,6 @@ byte Pin_Monitor(byte Action, byte Pin_Number) {
 	// #define Reserve_I2C_SCL 1
 	// #define Reserve_I2C_SDA 2
 	// #define Check_State 3
-	// #define Reserve_OneWire 4
 
 
 	// Check if pin has been set
@@ -2671,33 +2420,6 @@ byte Pin_Monitor(byte Action, byte Pin_Number) {
 			Log(MQTT_Topic[Topic_Log_Debug] + "/PinMonitor", "Pin " + Number_To_Pin(Pin_Number) + " already used as I2C SDA");
 			// Return state
 			return Pin_SDA;
-		}
-		// Pin is in use
-		else {
-			// Log event
-			Log(MQTT_Topic[Topic_Log_Error] + "/PinMonitor", "Pin " + Number_To_Pin(Pin_Number) + " is in use");
-			// Return state
-			return Pin_Monitor_Pins_Active[Selected_Pin];
-		}
-	}
-
-	// Reserve a OneWire Pin
-	else if (Action == Reserve_OneWire) {
-		// Pin is free
-		if (Pin_Monitor_Pins_Active[Selected_Pin] == Pin_Free) {
-			// Reserve pin
-			Pin_Monitor_Pins_Active[Selected_Pin] = Pin_OneWire;
-			// Log event
-			Log(MQTT_Topic[Topic_Log_Debug] + "/PinMonitor", "Pin " + Number_To_Pin(Pin_Number) + " is free");
-			// Return state
-			return Pin_OneWire;
-		}
-		// Pin already used as OneWire
-		else if (Pin_Monitor_Pins_Active[Selected_Pin] == Pin_OneWire) {
-			// Log event
-			Log(MQTT_Topic[Topic_Log_Debug] + "/PinMonitor", "Pin " + Number_To_Pin(Pin_Number) + " already used as OneWire");
-			// Return state
-			return Pin_OneWire;
 		}
 		// Pin is in use
 		else {
@@ -2856,8 +2578,6 @@ void MQTT_Queue_Check() {
 		else if (DHT(Topic, Payload) == true) return;
 		else if (DC_Voltmeter(Topic, Payload) == true) return;
 		else if (PIR(Topic, Payload) == true) return;
-		else if (DS18B20(Topic, Payload) == true) return;
-		else if (Distance(Topic, Payload) == true) return;
 	}
 	
 } // MQTT_Queue_Check()
@@ -3123,54 +2843,6 @@ bool Button_Loop() {
 } // Button_Loop
 
 
-// ############################################################ Flow Callbacks() ############################################################
-// FIX - See if there is a better way to do this then the 6 callbacks
-void ICACHE_RAM_ATTR Flow_Callback_0() {
-  Flow_Pulse_Counter[0] ++;
-  Flow_Change[0] = true;
-}
-void ICACHE_RAM_ATTR Flow_Callback_1() {
-  Flow_Pulse_Counter[1] ++;
-  Flow_Change[1] = true;
-}
-void ICACHE_RAM_ATTR Flow_Callback_2() {
-  Flow_Pulse_Counter[2] ++;
-  Flow_Change[2] = true;
-}
-void ICACHE_RAM_ATTR Flow_Callback_3() {
-  Flow_Pulse_Counter[3] ++;
-  Flow_Change[3] = true;
-}
-void ICACHE_RAM_ATTR Flow_Callback_4() {
-  Flow_Pulse_Counter[4] ++;
-  Flow_Change[4] = true;
-}
-void ICACHE_RAM_ATTR Flow_Callback_5() {
-  Flow_Pulse_Counter[5] ++;
-  Flow_Change[5] = true;
-}
-
-
-// ############################################################ Flow_Loop() ############################################################
-void Flow_Loop() {
-
-	if (Flow_Configured == false) {
-		return;
-	}
-
-	for (byte i = 0; i < Flow_Max_Number_Of; i++) {
-		if (Flow_Publish_At[i] < millis() && Flow_Change[i] == true) {
-			
-			Log(MQTT_Topic[Topic_Switch] + "/" + String(i + 1) + "/State", String(Flow_Pulse_Counter[i]));
-	
-			Flow_Change[i] = false;
-			Flow_Publish_At[i] = millis() + Flow_Publish_Delay;
-		}		
-	}
-
-} // Flow_Loop()
-
-
 // ############################################################ Switch() ############################################################
 bool Switch(String &Topic, String &Payload) {
 
@@ -3222,12 +2894,13 @@ bool Switch_Loop() {
 			return false;
 		}
 
-		for (byte i = 0; i < Switch_Max_Number_Of; i++) {
+		bool Switch_State;
 
+		for (byte i = 0; i < Switch_Max_Number_Of; i++) {
 			// If pin in use
 			if (Switch_Pins[i] != 255) {
 				// Check if state chenged
-				bool Switch_State = digitalRead(Switch_Pins[i]);
+				Switch_State = digitalRead(Switch_Pins[i]);
 
 				if (Switch_State != Switch_Last_State[i]) {
 
@@ -3636,10 +3309,6 @@ bool PIR(String &Topic, String &Payload) {
 bool DC_Voltmeter(String &Topic, String &Payload) {
 
   if (Topic.indexOf(MQTT_Topic[Topic_DC_Voltmeter]) != -1) {
-	if (DC_Voltmeter_Configured == false) {
-		return true;
-	}
-
     if (Payload.indexOf("?") != -1) {
 
       // read the value at analog input
@@ -3655,322 +3324,6 @@ bool DC_Voltmeter(String &Topic, String &Payload) {
 
   return false;
 }
-
-
-// ############################################################ DS18B20() ############################################################
-bool DS18B20(String &Topic, String &Payload) {
-
-	if (DS18B20_Configured == false || ArduinoOTA_Active == true) {
-		return false;
-	}
-
-	if (Topic.indexOf(MQTT_Topic[Topic_DS18B20]) != -1) {
-
-		Topic.replace(MQTT_Topic[Topic_DS18B20] + "/", "");
-
-		byte Selected_DS18B20 = Topic.toInt() - 1;
-
-		if (Topic.toInt() <= DS18B20_Max_Number_Of) {
-
-			Payload = Payload.substring(0, Payload.indexOf(";"));
-
-			if (Payload == "?") {
-				Log(MQTT_Topic[Topic_DS18B20] + "/" + String(Selected_DS18B20 + 1) + "/State", String(DS18B20_Current[Selected_DS18B20]));
-				return true;
-			}
-
-			else if (Payload == "json") {
-
-				// Create json buffer
-				DynamicJsonBuffer jsonBuffer(80);
-				JsonObject& root_DS18B20 = jsonBuffer.createObject();
-
-				// encode json string
-				root_DS18B20.set("Current Temperature", DS18B20_Current[Selected_DS18B20]);
-				root_DS18B20.set("Min Temperature", DS18B20_Min[Selected_DS18B20]);
-				root_DS18B20.set("Max Temperature", DS18B20_Max[Selected_DS18B20]);
-
-				String DS18B20_String;
-
-				// Build json
-				root_DS18B20.printTo(DS18B20_String);
-
-				Log(MQTT_Topic[Topic_DS18B20] + "/" + String(Topic.toInt()) + "/json/State", DS18B20_String);
-
-				// Reset Min/Max
-				DS18B20_Min[Selected_DS18B20] = DS18B20_Current[Selected_DS18B20];
-				DS18B20_Max[Selected_DS18B20] = DS18B20_Current[Selected_DS18B20];
-
-				return true;
-			}
-
-		}
-	}
-	return false;
-} // DS18B20()
-
-
-// ############################################################ DS18B20_Loop() ############################################################
-void DS18B20_Loop() {
-
-	if (DS18B20_Configured == false || ArduinoOTA_Active == true) {
-		return;
-	}
-
-	// Wait for the device to boot before start reading
-	if (millis() < 4000) {
-		return;
-	}
-
-	// Check if its ok to read from the sensor
-	if (millis() - DS18B20_Last_Read >= DS18B20_Refresh_Rate) {
-	
-		byte DS18B20_Data[12];
-
-		// Prep for reading
-		DS18B20_Sensor.reset();
-		DS18B20_Sensor.select(DS18B20_Address);    
-		DS18B20_Sensor.write(0xBE);         // Read Scratchpad
-
-		// Read sensors values
-		for (byte i = 0; i < 9; i++) {           // we need 9 bytes
-			DS18B20_Data[i] = DS18B20_Sensor.read();
-		}
-
-		// CRC Check
-		if (DS18B20_Data[8] != OneWire::crc8(DS18B20_Data, 8)) {
-			Serial.print("CRC PASS");
-		}
-		
-		// Convert the data to actual temperature
-		// because the result is a 16 bit signed integer, it should
-		// be stored to an "int16_t" type, which is always 16 bits
-		// even when compiled on a 32 bit processor.
-		int16_t raw = (DS18B20_Data[1] << 8) | DS18B20_Data[0];
-		if (DS18B20_Type) {
-			raw = raw << 3; // 9 bit resolution default
-			if (DS18B20_Data[7] == 0x10) {
-				// "count remain" gives full 12 bit resolution
-				raw = (raw & 0xFFF0) + 12 - DS18B20_Data[6];
-			}
-		} 
-		else {
-			byte cfg = (DS18B20_Data[4] & 0x60);
-			// at lower res, the low bits are undefined, so let's zero them
-			if (cfg == 0x00) raw = raw & ~7;  // 9 bit resolution, 93.75 ms
-			else if (cfg == 0x20) raw = raw & ~3; // 10 bit res, 187.5 ms
-			else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
-			//// default is 12 bit resolution, 750 ms conversion time
-		}
-
-		byte Sensor_Number = 0;
-
-		// Save values
-		DS18B20_Current[Sensor_Number] = (float)raw / 16.0;
-		DS18B20_Min[Sensor_Number] = min(DS18B20_Min[Sensor_Number], DS18B20_Current[Sensor_Number]);
-		DS18B20_Max[Sensor_Number] = max(DS18B20_Max[Sensor_Number], DS18B20_Current[Sensor_Number]);
-
-		DS18B20_Sensor.reset();
-		DS18B20_Sensor.select(DS18B20_Address);
-		DS18B20_Sensor.write(0x44, 1);        // start conversion, with parasite power on at the end
-
-		// Save the last time you read the sensor
-		DS18B20_Last_Read = millis();
-	}
-
-} // DS18B20_Loop()
-
-
-// ############################################################ Echo() ############################################################
-// Reads the distance
-float Echo(byte Echo_Pin_Trigger, byte Echo_Pin_Echo) {
-
-  // Clears the Echo_Pin_Trigger
-  digitalWrite(Echo_Pin_Trigger, LOW);
-  delayMicroseconds(2);
-
-  // Sets the Echo_Pin_Trigger on HIGH state for 10 micro seconds
-  digitalWrite(Echo_Pin_Trigger, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(Echo_Pin_Trigger, LOW);
-
-  // Reads the Echo_Pin_Echo, returns the sound wave travel time in microseconds
-  unsigned long Duration = pulseIn(Echo_Pin_Echo, HIGH, 75000);
-
-  // Calculating the distance
-  float Distance = (Duration / 2) * 0.0343;
-
-  return Distance;
-
-} // Echo
-
-
-// ############################################################ Distance_Loop() ############################################################
-void Distance_Loop() {
-
-  if (Distance_Configured == false || ArduinoOTA_Active == true) {
-    return;
-  }
-
-	if (Distance_Sensor_Read_At < millis()) {
-  	for (byte i = 0; i < Distance_Max_Number_Of; i++) {
-			// Check if both pns is set
-			if (Distance_Pins_Trigger[i] != 255 || Distance_Pins_Echo[i] != 255) {
-				// Read distance
-				Distance_Last_Reading[i] = Echo(Distance_Pins_Trigger[i], Distance_Pins_Echo[i]);
-				// Set running averidge
-				if (i == 0) Distance_RA_1.addValue(Distance_Last_Reading[i]);
-				if (i == 1) Distance_RA_2.addValue(Distance_Last_Reading[i]);
-				if (i == 2) Distance_RA_3.addValue(Distance_Last_Reading[i]);
-			}
-			// Check if distace sensor is configured
-			if (Distance_ON_At[i] != 0) {
-				// if so then check if actions is needed
-
-				// Check if pubish delay is active, if so do nothing
-				if (Distance_Sensor_Publish_At[i] > millis()) {
-					return;
-				}
-
-				// If Distance_ON_Reversed is true then ON is the lowest number
-				bool Distance_ON_Reversed = false;
-
-				String Topic;
-				String Payload;
-				String Changed_State_To;
-
-				float Current_Average;
-
-				if (i == 0) Current_Average = Distance_RA_1.getAverage();
-				else if (i == 1) Current_Average = Distance_RA_2.getAverage();
-				else if (i == 2) Current_Average = Distance_RA_3.getAverage();
-
-				// Deturman if the ON target is smaller or larger then the OFF target
-				if (Distance_OFF_At[i] < Distance_ON_At[i]) {
-					Distance_ON_Reversed = true;
-				}
-
-				// ON_At is the smalles number
-				if (Distance_ON_Reversed == true) {
-					// Check if reading is smaller than Distance_ON_At
-					if (Distance_ON_At[i] <= Current_Average) {
-						// Check if sensor is already on
-						// Sensor not on
-						if (Distance_Sensor_State[i] == false) {
-							// Build Topic and Payload
-							Topic = Distance_Target_ON[i].substring(0, Distance_Target_ON[i].indexOf("&"));
-							Payload = Distance_Target_ON[i].substring(Distance_Target_ON[i].indexOf("&") + 1, Distance_Target_ON[i].length());
-							Changed_State_To = "ON";
-							// Change sensor state to on
-							Distance_Sensor_State[i] = true;
-						}
-					}
-
-					// Check if reading is larger than Distance_OFF_AT
-					if (Distance_OFF_At[i] >= Current_Average) {
-						// Check if sensor is already on
-						// Sensor not on
-						if (Distance_Sensor_State[i] == true) {
-							// Build Topic and Payload
-							Topic = Distance_Target_OFF[i].substring(0, Distance_Target_OFF[i].indexOf("&"));
-							Payload = Distance_Target_OFF[i].substring(Distance_Target_OFF[i].indexOf("&") + 1, Distance_Target_OFF[i].length());
-							Changed_State_To = "OFF";
-							// Change sensor state to on
-							Distance_Sensor_State[i] = false;
-						}
-					}
-				}
-
-				// ON_At is the largest number
-				else if (Distance_ON_Reversed == false) {
-					// Check if reading is larger than Distance_ON_At
-					if (Distance_ON_At[i] >= Current_Average) {
-						// Check if sensor is already on
-						// Sensor not on
-						if (Distance_Sensor_State[i] == false) {
-							// Build Topic and Payload
-							Topic = Distance_Target_ON[i].substring(0, Distance_Target_ON[i].indexOf("&"));
-							Payload = Distance_Target_ON[i].substring(Distance_Target_ON[i].indexOf("&") + 1, Distance_Target_ON[i].length());
-							Changed_State_To = "ON";
-							// Change sensor state to on
-							Distance_Sensor_State[i] = true;
-						}
-					}
-
-					// Check if reading is larger than Distance_OFF_AT
-					else if (Distance_OFF_At[i] <= Current_Average) {
-						// Check if sensor is already on
-						// Sensor not on
-						if (Distance_Sensor_State[i] == true) {
-							// Build Topic and Payload
-							Topic = Distance_Target_OFF[i].substring(0, Distance_Target_OFF[i].indexOf("&"));
-							Payload = Distance_Target_OFF[i].substring(Distance_Target_OFF[i].indexOf("&") + 1, Distance_Target_OFF[i].length());
-							Changed_State_To = "OFF";
-							// Change sensor state to on
-							Distance_Sensor_State[i] = false;
-						}
-					}
-				}
-
-				if (Topic != "") {
-					// Publish sensor state change
-					Log(Topic, Payload);
-					// Log event
-					Log(MQTT_Topic[Topic_Distance] + "/Sensor/State", "'Distance Sensor' " + String(i + 1) + " Triggered " + Changed_State_To + " at: " + String(Current_Average));
-					// Set publish delay
-					Distance_Sensor_Publish_At[i] = millis() + Distance_Sensor_Publish_Delay;
-				}
-			}
-		}
-	}
-} // Distance_Loop()
-
-// ############################################################ Distance() ############################################################
-// Handles MQTT Read request
-bool Distance(String &Topic, String &Payload) {
-
-  if (Topic.indexOf(MQTT_Topic[Topic_Distance]) != -1) {
-    // Ignore state publish from localhost
-    if (Topic.indexOf("/State") == -1)  {
-
-      Topic.replace(MQTT_Topic[Topic_Distance] + "/", "");
-
-      if (Topic.toInt() <= 0 || Topic.toInt() > Distance_Max_Number_Of) {
-        Log(MQTT_Topic[Topic_Log_Error] + "/Distance", "Distance Sensor " + Topic + " is not a valid distance sensor");
-        return true;
-      }
-
-      if (Distance_Pins_Trigger[Topic.toInt() - 1] == 255 || Distance_Pins_Echo[Topic.toInt() - 1] == 255) {
-        Log(MQTT_Topic[Topic_Log_Error] + "/Distance", "Distance Sensor " + Topic + " is not configured");
-        return true;
-      }
-
-      // Returns RunningAveridge
-      if (Payload.indexOf("?") != -1) {
-        float Distance = 0;
-
-        if (Topic.toInt() == 1) Distance = Distance_RA_1.getAverage();
-        else if (Topic.toInt() == 2) Distance = Distance_RA_2.getAverage();
-        else if (Topic.toInt() == 3) Distance = Distance_RA_3.getAverage();
-
-        Log(MQTT_Topic[Topic_Distance] + "/" + Topic + "/State", String(Distance));
-        return true;
-      }
-      // Returns only last reading
-      else if (Payload.indexOf("Raw") != -1) {
-        Log(MQTT_Topic[Topic_Distance] + "/" + Topic + "/Raw/State", String(Distance_Last_Reading[Topic.toInt() - 1]));
-        return true;
-      }
-      // Returns sensor state
-      else if (Payload.indexOf("Sensor") != -1) {
-        Log(MQTT_Topic[Topic_Distance] + "/" + Topic + "/Sensor/State", String(Distance_Sensor_State[Topic.toInt() - 1]));
-        return true;
-      }
-    }
-  }
-
-  return false;
-} // Distance()
 
 
 // ############################################################ setup() ############################################################
@@ -4002,8 +3355,7 @@ void setup() {
 
 
 	// ------------------------------ Indicator_LED ------------------------------
-	if (Pin_Monitor(Check_State, D4) == Pin_Free) {		
-		Indicator_LED_Configured = true;
+	if (Indicator_LED_Configured == true) {
 		pinMode(D4, OUTPUT);
 		Indicator_LED(LED_Config, true);
 	}
@@ -4019,6 +3371,7 @@ void setup() {
 	// ------------------------------ MQTT ------------------------------
 	MQTT_Client.setServer(String_To_IP(MQTT_Broker), MQTT_Port.toInt());
 	MQTT_Client.setCallback(MQTT_Callback);
+
 
 	// Disable indicator led
 	Indicator_LED(LED_Config, false);
@@ -4046,9 +3399,6 @@ void loop() {
 	Switch_Loop();
 	DHT_Loop();
 	PIR_Loop();
-	Flow_Loop();
-	DS18B20_Loop();
-	Distance_Loop();
 
 	Log_Loop();
 

@@ -22,7 +22,6 @@ import random
 import psutil
 
 # MQTTFunctions
-import subprocess
 from subprocess import call
 
 # json
@@ -48,7 +47,7 @@ import io
 import socket
 
 # System variables
-Version = 101019
+Version = 101017
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
@@ -62,9 +61,6 @@ MQTT_Client = MQTT.Client(client_id="Dobby", clean_session=True)
 Mail_Trigger_Subscribe_List = []
 # MonitorAgent_Subscribe_List = []
 
-# Backup()
-import schedule
-import pipes
 
 # ---------------------------------------- MISC ----------------------------------------
 def Is_json(myjson):
@@ -322,23 +318,6 @@ def On_MQTT_Message(mosq, obj, msg):
     Msg_Thread.start()
 
 
-# ---------------------------------------- MQTT_SQL ----------------------------------------
-def MQTT_SQL(Payload):
-
-    Payload = Payload.split("&")
-
-    db_Connection = Open_db("")
-    db_Curser = db_Connection.cursor()
-
-    db_Curser.execute(Payload[1])
-    db_Resoult = db_Curser.fetchone()
-
-    Close_db(db_Connection, db_Curser)
-
-    MQTT_Client.publish(Payload[0], str(db_Resoult[0]), qos=0, retain=False)
-
-
-
 # ---------------------------------------- MQTT Commands ----------------------------------------
 def MQTT_Commands(Topic, Payload):
     Topic = Topic.replace(System_Header + "/Commands/Dobby/", "")
@@ -367,10 +346,7 @@ def MQTT_Commands(Topic, Payload):
 
     elif Topic in "Test":
         Log("Test", "MQTTCommands", "Executing", Topic + " - " + Payload)
-        return
 
-    elif Topic in "MQTTSQL":
-        MQTT_SQL(Payload)
         return
 
     Log("Warning", "MQTTCommands", "Request", Topic + " - " + Payload + " - Not found")
@@ -1775,10 +1751,6 @@ def Dobby_init():
     # APC_Monitor
     global Log_Level_APC_Monitor
     Log_Level_APC_Monitor = Get_SystemConfig_Value(db_Curser, "APC_Monitor", "Log", "Level", QuitOnError=False).lower()
-    
-    # Backup
-    global Backup_URL_FTP
-    Backup_URL_FTP = Get_SystemConfig_Value(db_Curser, "Backup", "URL", "FTP", QuitOnError=False).lower()
 
     # Check if the needed databases exists
     Create_db(db_Curser, Log_db)
@@ -1881,7 +1853,7 @@ class File_Change_Checker:
         Log("Info", "File Change Checker", "Checker", "Starting")
 
         # Get current time stamp
-        self.Last_Modified = os.path.getmtime('/etc/Dobby/bin/Dobby.py')
+        self.Last_Modified = os.path.getmtime(os.path.realpath(__file__))
     
         # Sart checker thread
         File_Change_Checker_Thread = threading.Thread(target=self.Checker, kwargs={})
@@ -1891,245 +1863,12 @@ class File_Change_Checker:
     def Checker(self):
 
         while True:
-            if os.path.getmtime('/etc/Dobby/bin/Dobby.py') != self.Last_Modified:
-                
-                # Check if Dobby is starte by supervisor
-                Dobby_Status = subprocess.check_output('sudo supervisorctl status Dobby', shell=True)
-
-                # If started via supervisor then restart Dobby
-                if "RUNNING" in Dobby_Status:
-                    Log("Info", "File Change Checker", "Checker", "Script started via supervisor so restarting script")
-                    os.system("sudo supervisorctl restart Dobby")
-                else:
-                    Log("Debug", "File Change Checker", "Checker", "Script not starting via supervisor no action taken")
-                    self.Last_Modified = os.path.getmtime('/etc/Dobby/bin/Dobby.py')
-
+            if os.path.getmtime(os.path.realpath(__file__)) != self.Last_Modified:
+                Log("Info", "File Change Checker", "Checker", "Change detected restarting script")
+                os._exit(1)
             time.sleep(self.Refresh_Rate)
         
-
-# ---------------------------------------- FTP_Upload_Dir() ----------------------------------------
-def FTP_Upload_Dir(FTP_Connection, Local_Path, Remote_Path):
-
-    # Find dir name so it can be added to remote path
-    Upload_Dir_Name = Local_Path.split('/')
-    Upload_Dir_Name = Upload_Dir_Name[len(Upload_Dir_Name) - 1]
-
-    # Check if remote dir exists
-    if FTP_Dir_Check(FTP_Connection, Remote_Path + '/' + Upload_Dir_Name) == False:
-        Log("Debug", "System", "FTP Upload Dir", "Unable to create dir: " + Remote_Path + '/' + Upload_Dir_Name)
-        return False
     
-    for File_Name in os.listdir(Local_Path):
-
-        FTP_Connection.set_pasv(False)
-
-        Log("Debug", "System", "FTP Upload Dir", "Uploading: " + str(File_Name))
-
-        with open(Local_Path + '/' + File_Name, 'rb'):
-            FTP_Connection.storbinary('STOR ' + File_Name, open(Local_Path + '/' + File_Name, 'rb'))
-
-    Log("Debug", "System", "FTP Upload Dir", "Upload of: '" + str(Upload_Dir_Name) + "' compleate")
-
-# ---------------------------------------- FTP_Dir_Check() ----------------------------------------
-def FTP_Dir_Check(FTP_Connection, Remote_Dir):
-
-    if Remote_Dir != "":
-        # Split Path
-        Remote_Dir = Remote_Dir.split('/')
-        Try_Path = ''
-        for i in range(len(Remote_Dir)):
-            Try_Path = Try_Path + Remote_Dir[i] + '/'
-            try:
-                FTP_Connection.cwd(Try_Path)
-            except ftplib.error_perm as err:
-
-                if str(err) == '550 Failed to change directory.':
-                    FTP_Connection.mkd(Try_Path)
-                    Log("Debug", "System", "FTP Dir Checker", "Created dir: " + str(Try_Path))
-                    FTP_Connection.cwd(Try_Path)
-                else:
-                    Log("Debug", "System", "FTP Dir Checker", "Got error: " + str(err) + " trying to create dir: " + str(Try_Path))
-                    return False
-        return True
-
-
-# ---------------------------------------- Backup() ----------------------------------------
-# Backups up the following once a day to the URL set in SystemSettings
-class Backup:
-
-    # When to trigger daily db backup
-    Backup_db_At = "04:20"
-
-    # When to trigger weekly SD backup
-    Backup_SD_At = "04:40"
-
-    Backup_Path = '/etc/Dobby/Backup'
-
-    def __init__(self):
-        # Log event
-        Log("Info", "Backup", "Checker", "Starting")
-
-        # Schedule jobs
-        # db
-        schedule.every().day.at(self.Backup_db_At).do(self.Run_db_Backup)
-        # SD
-        schedule.every().tuesday.at(self.Backup_db_At).do(self.Run_SD_Backup)
-
-        # Sart checker thread
-        File_Change_Checker_Thread = threading.Thread(target=self.Checker, kwargs={})
-        File_Change_Checker_Thread.daemon = True
-        File_Change_Checker_Thread.start()
-
-    def Checker(self):
-
-        while True:
-            schedule.run_pending()
-            time.sleep(5)
-    
-    def Run_db_Backup(self):
-        DB_NAME = 'Dobby'
-
-        Log("Info", "Backup", "Checker", "db Backup Starting")
-        
-        # Getting current DateTime to create the separate backup folder like "20180817-123433".
-        DATETIME = time.strftime('%Y%m%d-%H%M%S')
-        Backup_Path_Today = self.Backup_Path + '/' + DATETIME
-        
-        # Checking if backup folder already exists or not. If not exists will create it.
-        try:
-            os.stat(Backup_Path_Today)
-        except:
-            os.mkdir(Backup_Path_Today)
-        
-        # Code for checking if you want to take single database backup or assinged multiple backups in DB_NAME.
-        if os.path.exists(DB_NAME):
-            file1 = open(DB_NAME)
-            multi = True
-        else:
-            multi = False
-        
-        # Log event
-        Log("Debug", "Backup", "Checker", "Starting backup of db: " + str(DB_NAME))
-        
-        # Starting actual database backup process.
-        if multi:
-            in_file = open(DB_NAME,"r")
-            flength = len(in_file.readlines())
-            in_file.close()
-            p = 1
-            dbfile = open(DB_NAME,"r")
-        
-            while p <= flength:
-                db = dbfile.readline()   # reading database name from file
-                db = db[:-1]         # deletes extra line
-                dumpcmd = "mysqldump -h localhost -u dobby -pHereToServe " + db + " > " + pipes.quote(Backup_Path_Today) + "/" + db + ".sql"
-                os.system(dumpcmd)
-                # gzipcmd = "gzip " + pipes.quote(Backup_Path_Today) + "/" + db + ".sql"
-                # os.system(gzipcmd)
-                p = p + 1
-            dbfile.close()
-        else:
-            db = DB_NAME
-            dumpcmd = "mysqldump -h localhost -u dobby -pHereToServe " + db + " > " + pipes.quote(Backup_Path_Today) + "/" + db + ".sql"
-            os.system(dumpcmd)
-            # gzipcmd = "gzip " + pipes.quote(Backup_Path_Today) + "/" + db + ".sql"
-            # os.system(gzipcmd)
-
-        Log("Debug", "Backup", "Checker", "Local db backup created")
-        
-        # Create temp string of system var
-        # FIX - Load from dc each time
-        Backup_URL_FTP_String = Backup_URL_FTP
-
-        # Split URL it to verious parts
-        # ftp://dobby:heretoserve@18.188.134.96/home/dobby/backup/
-        Backup_URL_FTP_String = Backup_URL_FTP_String.replace('ftp://', '')
-
-        # Username
-        Backup_URL_FTP_String = Backup_URL_FTP_String.split(':')
-        FTP_Username = Backup_URL_FTP_String[0]
-        # Remove username from string
-        Backup_URL_FTP_String = Backup_URL_FTP_String[1].split('@')
-
-        # Password
-        FTP_Password = Backup_URL_FTP_String[0]
-        
-        # FTP Host
-        FTP_Host = Backup_URL_FTP_String[1].split('/')
-        FTP_Host = FTP_Host[0]
-
-        # FTP Remote Dir
-        FTP_Remote_Dir = Backup_URL_FTP_String[1].replace(FTP_Host, '', 1)
-
-        # Open a ftp connection
-        FTP_Connection = ftplib.FTP(FTP_Host, FTP_Username, FTP_Password)
-
-        # Check if dir exists on Backup FTP
-        FTP_Upload_Dir(FTP_Connection, Backup_Path_Today, FTP_Remote_Dir)
-
-        # Close FTP Connection
-        FTP_Connection.quit()
-
-        Log("Info", "Backup", "Checker", "db Backup Compleate")
-
-
-    def Run_SD_Backup(self):
-        Log("Info", "Backup", "Checker", "SD Backup Starting")
-        Log("Warning", "Backup", "Checker", "System might be slow due to backup")
-        
-        # Getting current DateTime to create the separate backup folder like "20180817-123433".
-        DATETIME = time.strftime('%Y%m%d-%H%M%S')
-        Backup_Path_Today = self.Backup_Path + '/' + DATETIME
-        
-        # Checking if backup folder already exists or not. If not exists will create it.
-        try:
-            os.stat(Backup_Path_Today)
-        except:
-            os.mkdir(Backup_Path_Today)
-        
-        # Log event
-        Log("Debug", "Backup", "Checker", "Starting backup SD Card")
-        
-        SD_Backup_String = "sudo dd if=/dev/mmcblk0p2 of=" + Backup_Path_Today + "/" + str(socket.gethostname() + "_" + time.strftime('%Y-%m-%d')) + ".img bs=1M"
-        os.system(SD_Backup_String)
-        
-        Log("Debug", "Backup", "Checker", "Local backup created")
-        
-        # Create temp string of system var
-        # FIX - Load from dc each time
-        Backup_URL_FTP_String = Backup_URL_FTP
-
-        # Split URL it to verious parts
-        Backup_URL_FTP_String = Backup_URL_FTP_String.replace('ftp://', '')
-
-        # Username
-        Backup_URL_FTP_String = Backup_URL_FTP_String.split(':')
-        FTP_Username = Backup_URL_FTP_String[0]
-        # Remove username from string
-        Backup_URL_FTP_String = Backup_URL_FTP_String[1].split('@')
-
-        # Password
-        FTP_Password = Backup_URL_FTP_String[0]
-        
-        # FTP Host
-        FTP_Host = Backup_URL_FTP_String[1].split('/')
-        FTP_Host = FTP_Host[0]
-
-        # FTP Remote Dir
-        FTP_Remote_Dir = Backup_URL_FTP_String[1].replace(FTP_Host, '', 1)
-
-        # Open a ftp connection
-        FTP_Connection = ftplib.FTP(FTP_Host, FTP_Username, FTP_Password)
-
-        # Check if dir exists on Backup FTP
-        FTP_Upload_Dir(FTP_Connection, Backup_Path_Today, FTP_Remote_Dir)
-
-        # Close FTP Connection
-        FTP_Connection.quit()
-
-        Log("Info", "Backup", "Checker", "Backup Compleate")
-
-
 # ---------------------------------------- Main Script ----------------------------------------
 # Fill variables
 Dobby_init()
@@ -2151,8 +1890,4 @@ APC_Monitor()
 # File change checked
 File_Change_Checker()
 
-# Backup
-Backup()
-
-# Start MQTT Loop
 MQTT_Client.loop_forever()
