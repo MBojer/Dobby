@@ -731,7 +731,7 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
                     id='System_Log_Number_Of_Input',
                     placeholder='Number of lines to read',
                     type='number',
-                    value='100',
+                    value='25',
                 ),
                 # Slider to slect timeframe
                 # dcc.RangeSlider(
@@ -758,7 +758,6 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
         System_Tab_Variables = Generate_Variable_Dict(System_Tab_Variables)
 
         return html.Div([
-            html.Button('Check for updates', id='System_Update_Button', n_clicks=0, style={'margin-top': '5px'}),
             html.Button('Quit', id='System_Quit_Button', n_clicks=0, style={'margin-left': '5px', 'margin-top': '5px'}),
         ], id='System_Tab')
 
@@ -1746,23 +1745,14 @@ def System_Log_Tab_Table_Rows(System_Log_Tab_Variables):
     Output('System_Tab_Variables', 'children'),
     [
         Input('System_Quit_Button', 'n_clicks'),
-        Input('System_Update_Button', 'n_clicks'),
         ],
     [
         State('System_Tab_Variables', 'children'),
         ],
     )
-def System_Tab_Buttons(System_Quit_Button, System_Update_Button, System_Tab_Variables):
+def System_Tab_Buttons(System_Quit_Button, System_Tab_Variables):
 
-    # Import variables from div able
-    System_Tab_Variables = Generate_Variable_Dict(System_Tab_Variables)
-
-    if int(System_Tab_Variables.get('System_Update_Button', 0)) != int(System_Update_Button):
-        System_Tab_Variables['System_Update_Button'] = System_Update_Button
-
-        print "working here"
-
-    elif int(System_Tab_Variables.get('System_Quit_Button', 0)) != int(System_Quit_Button):
+    if int(System_Tab_Variables.get('System_Quit_Button', 0)) != int(System_Quit_Button):
         System_Tab_Variables['System_Quit_Button'] = System_Quit_Button
 
         print "System shutdown requested, shutting down"

@@ -21,4 +21,5 @@ Script/Wemos/platformio.ini
 .vscode/*
 Script/Wemos/platformio.ini
 /Cert
+/Test
 /Backup

@@ -519,6 +519,9 @@ def MQTT_Config_New(Payload):
         # Not deleting file so the last generated config is saved, uncomment below to delete file
         # os.remove(Config_File_Name)
 
+        # 2 sec delay so the device can reconnect after ftp upload
+        time.sleep(2.500)
+
         # Send reboot command to device
         MQTT_Client.publish(System_Header + "/Commands/" + str(Payload[0]) + "/Power", payload="Reboot" + ";", qos=0, retain=False)
 

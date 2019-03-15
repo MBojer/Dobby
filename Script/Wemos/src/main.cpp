@@ -2808,6 +2808,7 @@ bool MQTT_Commands(String &Topic, String &Payload) {
 	else if (Topic == "FSConfig") {
 		if (Payload == "Save") FS_Config_Save();
 		else if (Payload == "Drop") FS_Config_Drop();
+		else if (Payload == "Request") Log(MQTT_Topic[Topic_Dobby] + "Config", Hostname + "," + Config_ID + ",FTP," + IP_To_String(WiFi.localIP()));
 		else Unknown_Command = true;
 	}
 
@@ -4043,7 +4044,7 @@ void loop() {
 	// Devices
 	Relay_Auto_OFF_Loop();
 	Button_Loop();
-	Switch_Loop();
+	Switch_Loop(); 
 	DHT_Loop();
 	PIR_Loop();
 	Flow_Loop();
