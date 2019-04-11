@@ -3,6 +3,7 @@
 -------------------- 102013 --------------------
 Added DS18B20
 Fix DHT stability, Indicator led was interfiering with it.
+Added Hardware info to keepalive
 
 -------------------- 102012 --------------------
 Added Flow meter - Need to convert pulses to liters

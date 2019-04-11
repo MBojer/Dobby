@@ -18,7 +18,7 @@ Script/Wemos/.vscode/settings.json
 Script/Wemos/.vscode/extensions.json
 Script/Wemos/platformio.ini
 .gitignore
-.vscode/*
+/.vscode
 Script/Wemos/platformio.ini
 /Cert
 /Test

@@ -1,6 +1,15 @@
+================================================== 102013 ==================================================
+Added Devices Tab
+
+================================================== 102012 ==================================================
+Split Mail Trigger into Alert Trigger and Mail Trigger
+Added live update to System Log
+
 ================================================== 102011 ==================================================
 Replaced Dash Table Experiments with Dash Datatable
 Got rid of pandas
+Got live graph working for log trigger
+Added Counters
 
 ================================================== 102010 ==================================================
 Added DashButtons

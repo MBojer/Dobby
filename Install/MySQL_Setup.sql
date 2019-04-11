@@ -13,6 +13,43 @@ GRANT ALL PRIVILEGES ON Dobby.* TO 'dobby'@'%'
 GRANT ALL PRIVILEGES ON DobbyLog.* TO 'dobby'@'%'
     WITH GRANT OPTION;
 
+
+CREATE TABLE `Dobby`.`Action_Trigger` (
+  `id` int(11) NOT NULL,
+  `Name` varchar(45) NOT NULL,
+  `Enabled` tinyint(1) NOT NULL,
+  `Alert State` tinyint(1) NOT NULL DEFAULT '0',
+  `MQTT Target` varchar(45) NOT NULL,
+  `MQTT Payload Clear` decimal(6,2) NOT NULL,
+  `MQTT Payload Trigger` decimal(6,2) NOT NULL,
+  `Alert Target` varchar(45) NOT NULL,
+  `Alert Payload Clear` varchar(45) NOT NULL,
+  `Alert Payload Trigger` varchar(45) NOT NULL,
+  `Triggered DateTime` timestamp NULL DEFAULT NULL,
+  `Last_Modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+CREATE TABLE `EP_Logger`.`EP_Logger` (
+  `id` int(11) NOT NULL,
+  `Name` varchar(45) NOT NULL,
+  `Enabled` tinyint(1) NOT NULL,
+  `Serial Port` varchar(45) NOT NULL,
+  `Log Rate` smallint(5) NOT NULL DEFAULT '180',
+  `Next Ping` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `Last Ping` datetime DEFAULT NULL,
+  `Battery Volts 0x3104` tinyint(1) NOT NULL DEFAULT '1',
+  `Charger Amps 0x3105` tinyint(1) NOT NULL DEFAULT '1',
+  `Charger Watts 0x3106` tinyint(1) NOT NULL DEFAULT '1',
+  `PV Volts 0x3100` tinyint(1) NOT NULL DEFAULT '1',
+  `PV Amps 0x3101` tinyint(1) NOT NULL DEFAULT '1',
+  `PV Watts 0x3102` tinyint(1) NOT NULL DEFAULT '1',
+  `Last_Modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
 CREATE TABLE `Dobby`.`DashButtons` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `Name` varchar(45) NOT NULL,
@@ -144,7 +181,7 @@ CREATE TABLE `Dobby`.`Log_Trigger` (
   UNIQUE KEY `Topic_UNIQUE` (`Topic`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE `Dobby`.`MQTTFunctions` (
+CREATE TABLE `Dobby`.`MQTT_Functions` (
   `id` int(16) NOT NULL AUTO_INCREMENT,
   `CommandNumber` int(2) NOT NULL,
   `Function` varchar(25) NOT NULL,
@@ -188,6 +225,7 @@ CREATE TABLE `Dobby`.`SystemConfig` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "System", "Header", "/Test");
 
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Dobby", "MQTT", "Broker", "localhost");
@@ -213,7 +251,7 @@ INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("KeepAli
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("KeepAliveMonitor", "Log", "Length", "2500");
 
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MQTTConfig", "Log", "Level", "Info");
-INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MQTTFunctions", "Log", "Level", "Info");
+INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("MQTT Functions", "Log", "Level", "Info");
 
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Mail_Trigger", "Log", "Level", "Info");
 INSERT INTO `Dobby`.`SystemConfig` (Target, Header, Name, Value) Values("Mail_Trigger", "Log", "Length", "5000");

@@ -1,10 +1,6 @@
 #!/usr/bin/python
 
-# Improvements
-# Add limit slider to live graph
-# Get live graph working
-
-# Changelog
+# # Changelog
 # See Changelog/Dash.txt
 
 from pathlib import Path
@@ -29,11 +25,11 @@ import datetime
 # MySQL
 import MySQLdb
 
-# Pandas
-# import pandas as pd
-
 # Scacda
 import plotly.graph_objs as go
+
+# MISC
+import os
 
 
 # ================================================================================ Functions ================================================================================
@@ -130,13 +126,113 @@ def Column_Name_Check(Column_Name):
 
     if Column_Name == 'DeviceConfig':
         Name_Field_String = 'Hostname'
-    if Column_Name == 'Device Config Base':
-        Name_Field_String = 'Hostname'
     elif Column_Name == 'Users':
         Name_Field_String = 'Username'
+    elif Column_Name == 'Users':
+        Name_Field_String = 'Username'
+    elif Column_Name == 'MQTT Functions':
+        Name_Field_String = 'Function'
 
     return Name_Field_String
 
+
+# ======================================== Generate_Config_List_System ========================================
+def Generate_Config_List_System(Config_Dropdown, Config_Dropdown_Line, db_Curser=None):
+
+    
+    if Config_Dropdown is None or Config_Dropdown == 'None' or Config_Dropdown_Line is None or Config_Dropdown_Line == 'None':
+        return [{'id': 'Header', 'name': 'Header'}, {'id': 'Name', 'name': 'Name'}, {'id': 'Value', 'name': 'Value'}]
+
+    db_Connection = Open_db("Dobby")
+    db_Curser = db_Connection.cursor()
+    
+    try:
+        db_Curser.execute("SELECT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA`='Dobby' AND `TABLE_NAME`='" + Config_Dropdown.replace(" ", "_") + "';")
+        Settings = db_Curser.fetchall()
+
+        if Config_Dropdown_Line != "-- New Entry --":
+            db_Curser.execute("SELECT * FROM Dobby." + Config_Dropdown.replace(" ", "_") + " WHERE `Target`='" + Config_Dropdown_Line + "';")
+            Values = db_Curser.fetchall()
+
+        # New Entry
+        else:
+            db_Curser.execute("SELECT Column_Default, IS_NULLABLE FROM Information_Schema.Columns WHERE table_schema='Dobby' AND table_name='" + Config_Dropdown.replace(" ", "_") + "';")
+            Values = db_Curser.fetchall()
+
+    except (MySQLdb.Error, MySQLdb.Warning):
+        Close_db(db_Connection, db_Curser)
+        return []
+
+    if Settings is None:
+        Close_db(db_Connection, db_Curser)
+        return [{}]
+
+    Close_db(db_Connection, db_Curser)
+
+    Config_Ignore_List = ['id', 'FuTarget', 'Last_Modified']
+
+    Row_List = []
+
+    # Generate value list
+    for Value in Values:
+        Row_Dict = {}
+        # Split list into values
+        for i in range(len(Value)):
+            if Settings[i][0] not in Config_Ignore_List:
+                Row_Dict[Settings[i][0]] = Value[i]
+        Row_List.append(Row_Dict)
+
+    return Row_List
+
+
+# ======================================== Generate_Config_List_Functions ========================================
+def Generate_Config_List_Functions(Config_Dropdown, Config_Dropdown_Line, db_Curser=None):
+
+    if Config_Dropdown is None or Config_Dropdown == 'None' or Config_Dropdown_Line is None or Config_Dropdown_Line == 'None':
+        return [{'CommandNumber': '', 'Function': '', 'Type': '', 'Command': '', 'DelayAfter': ''}]
+
+    db_Connection = Open_db("Dobby")
+    db_Curser = db_Connection.cursor()
+    
+    try:
+        db_Curser.execute("SELECT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA`='Dobby' AND `TABLE_NAME`='" + Config_Dropdown.replace(" ", "_") + "';")
+        Settings = db_Curser.fetchall()
+
+        if Config_Dropdown_Line != "-- New Entry --":
+            db_Curser.execute("SELECT * FROM Dobby." + Config_Dropdown.replace(" ", "_") + " WHERE `Function`='" + Config_Dropdown_Line + "';")
+            Values = db_Curser.fetchall()
+
+        # # New Entry
+        # else:
+        #     db_Curser.execute("SELECT Column_Default, IS_NULLABLE FROM Information_Schema.Columns WHERE table_schema='Dobby' AND table_name='" + Config_Dropdown.replace(" ", "_") + "';")
+        #     Values = db_Curser.fetchall()
+
+    except (MySQLdb.Error, MySQLdb.Warning) as e:
+            
+        Close_db(db_Connection, db_Curser)
+        return []
+
+    if Settings is None:
+        Close_db(db_Connection, db_Curser)
+        return [{}]
+
+    Close_db(db_Connection, db_Curser)
+
+    Config_Ignore_List = ['id', 'Function', 'Last_Modified']
+
+    Row_List = []
+
+    # Generate value list
+    for Value in Values:
+        Row_Dict = {}
+        # Split list into values
+        for i in range(len(Value)):
+            if Settings[i][0] not in Config_Ignore_List:
+                Row_Dict[Settings[i][0]] = Value[i]
+        Row_List.append(Row_Dict)
+
+    return Row_List
+  
 
 # ======================================== Generate_Config_List ========================================
 def Generate_Config_List(Config_Dropdown, Config_Dropdown_Line, db_Curser=None):
@@ -163,12 +259,13 @@ def Generate_Config_List(Config_Dropdown, Config_Dropdown_Line, db_Curser=None):
         if Config_Dropdown_Line != "-- New Entry --":
             db_Curser.execute("SELECT * FROM Dobby." + Config_Dropdown.replace(" ", "_") + " WHERE `" + Name_Field_String + "`='" + Config_Dropdown_Line + "';")
             Values = db_Curser.fetchone()
-            # New Entry
+
+        # New Entry
         else:
             db_Curser.execute("SELECT Column_Default, IS_NULLABLE FROM Information_Schema.Columns WHERE table_schema='Dobby' AND table_name='" + Config_Dropdown.replace(" ", "_") + "';")
             Values = db_Curser.fetchall()
 
-    except (MySQLdb.Error, MySQLdb.Warning):
+    except (MySQLdb.Error, MySQLdb.Warning) as e:
         if Close_db_Connection is True:
             # Close db connection
             Close_db(db_Connection, db_Curser)
@@ -239,7 +336,9 @@ def Generate_Variable_Dict(String):
     else:
         String = str(String).replace("u'", "'")
 
+    
         for i in String.split('<*>'):
+
             # Skip if line is ''
             if i == '':
                 continue
@@ -307,7 +406,7 @@ def Tabs_List():
 
     Tabs_List.append(dcc.Tab(label='Config', value='Config_Tab'))
 
-    # Tabs_List.append(dcc.Tab(label='Devices', value='Config_Tab'))
+    Tabs_List.append(dcc.Tab(label='Devices', value='Devices_Tab'))
 
     Tabs_List.append(dcc.Tab(label='Live', value='Live_Tab'))
 
@@ -322,12 +421,33 @@ def Tabs_List():
 
 def Config_Tab_Dropdown_List():
 
-    return ['APC Monitor', 'DashButtons', 'DeviceConfig', 'Device Config Base', 'Log Trigger', 'Mail Trigger', 'Spammer', 'Users']
+    return ['Action Trigger', 'APC Monitor', 'DashButtons', 'DeviceConfig', 'EP Logger', 'Log Trigger', 'Mail Trigger', 'MQTT Functions', 'Spammer', 'SystemConfig', 'Users']
 
 
 def Log_Graph_Tab_Dropdown_List():
 
-    return ['APC Monitor', 'Log Trigger', 'KeepAliveMonitor']
+    Return_List = []
+    db_Resoult = None
+
+    db_Connection = Open_db(Log_db)
+    db_Curser = db_Connection.cursor()
+
+    Test_List = ['APC Monitor', 'Log Trigger', 'KeepAliveMonitor']
+
+    for Table in Test_List:
+        try:
+            # Check if APC Monitor table exists and has content
+            db_Curser.execute("SELECT id FROM " + Table.replace(" ", "_") + " order by id desc limit 1;")
+            db_Resoult = db_Curser.fetchone()
+
+            if db_Resoult is not None:
+                Return_List.append(Table)
+
+        # If and db error assume that the table is not there
+        except:
+            pass
+
+    return Return_List
 
 
 # MISC
@@ -338,7 +458,7 @@ def Log_Graph_Tab_Dropdown_List():
 # import json
 
 # MISC
-Version = 102011
+Version = 102013
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
@@ -351,7 +471,7 @@ Version = 102011
 # MQTT_Password = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='MQTT' AND Target='Dobby' AND Name='Password';", con=db_pd_Connection)
 # System_Header = pd.read_sql("SELECT Value FROM Dobby.SystemConfig WHERE Header='System' AND Target='Dobby' AND Name='Header';", con=db_pd_Connection)
 # Log_db = pd.read_sql("Select Value From Dobby.SystemConfig where Target='Dobby' AND Header='Log' AND `Name`='db';", con=db_pd_Connection)
-MQTT_Broker = "192.168.0.2"
+MQTT_Broker = "localhost"
 MQTT_Port = "1883"
 MQTT_Username = "DasBoot"
 MQTT_Password = "NoSinking"
@@ -412,14 +532,9 @@ app.config['suppress_callback_exceptions'] = True
 app.layout = html.Div([
 
 
-    dcc.Tabs(id="tabs", value='Config_Tab', children=Tabs_List()),
+    dcc.Tabs(id="tabs", value='Devices_Tab', children=Tabs_List()),
 
     html.Div(id='Main_Tabs'),
-
-    # No idea why this needs to be here, if its not the tabs with datatables does not load
-    # html.Div([
-    #     dt.DataTable(rows=[{}]),
-    #     ], style={"display": "none"}),
 
     # Places to store variables
     html.Div([
@@ -427,7 +542,7 @@ app.layout = html.Div([
         html.Div(id='Buttons_Tab_Variables', children=""),
         html.Div(id='Counters_Tab_Variables', children=""),
         html.Div(id='Config_Tab_Variables', children=""),
-        # html.Div(id='Device_Tab_Variables', children=""),
+        html.Div(id='Devices_Tab_Variables', children=""),
         html.Div(id='Live_Tab_Variables', children=""),
         html.Div(id='Log_Graph_Tab_Variables', children=""),
         html.Div(id='System_Log_Tab_Variables', children=""),
@@ -448,14 +563,14 @@ app.layout = html.Div([
         State('Buttons_Tab_Variables', 'children'),
         State('Counters_Tab_Variables', 'children'),
         State('Config_Tab_Variables', 'children'),
-        # State('Device_Tab_Variables', 'children'),
+        State('Devices_Tab_Variables', 'children'),
         State('Live_Tab_Variables', 'children'),
         State('Log_Graph_Tab_Variables', 'children'),
         State('System_Log_Tab_Variables', 'children'),
         State('System_Tab_Variables', 'children'),
         ]
     )
-def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Tab_Variables, Config_Tab_Variables, Live_Tab_Variables, Log_Graph_Tab_Variables, System_Log_Tab_Variables, System_Tab_Variables):
+def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Tab_Variables, Config_Tab_Variables, Devices_Tab_Variables, Live_Tab_Variables, Log_Graph_Tab_Variables, System_Log_Tab_Variables, System_Tab_Variables):
     # ======================================== Alerts Tab ========================================
     # ======================================== Alerts Tab ========================================
     # ======================================== Alerts Tab ========================================
@@ -520,7 +635,7 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
             
             dt.DataTable(
                     id='Counters_Table',
-                    columns=[{'id': 'Counter', 'name': 'Counter'}, {'id': 'Value', 'name':'Value'}],
+                    columns=[{'id': 'Counter', 'name': 'Counter'}, {'id': 'Ticks', 'name': 'Ticks'}, {'id': 'Value', 'name':'Value'}],
                     # columns=[Generate_System_Log_Table_Columns(System_Log_Tab_Variables.get('System_Log_Dropdown', "None"))],
                     # min_height='72vh',
                     # resizable=True,
@@ -531,6 +646,51 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
             html.Button('Read', id='Counters_Read', n_clicks=int(Counters_Tab_Variables.get('Counters_Read', 0)), style={'margin-top': '5px'}),
             
         ], id='Counters_Tab')
+
+    # ======================================== Devices Tab ========================================
+    # ======================================== Devices Tab ========================================
+    # ======================================== Devices Tab ========================================
+    elif tab == 'Devices_Tab':
+
+        Devices_Tab_Variables = Generate_Variable_Dict(Devices_Tab_Variables)
+
+        return html.Div([
+
+            # Dropdown to selecte device
+            dcc.Dropdown(
+                id='Devices_Dropdown',
+                options=[{'label': Trigger, 'value': Trigger} for Trigger in SQL_To_List("SELECT DISTINCT Name FROM `" + Log_db + "`.Log_Trigger;")],
+                multi=True,
+                value=Devices_Tab_Variables.get('Live_Dropdown', None),
+            ),
+
+            # Status Table
+            dt.DataTable(
+                id='Devices_Table_Config',
+                columns=[{'id': 'Name', 'name': 'Name'}, {'id': 'Value', 'name':'Value'}],
+                editable=True,
+                sorting=True,
+                data=[{}],
+            ),
+
+            html.Button('Refresh', id='Devices_Refresh', n_clicks=int(Devices_Tab_Variables.get('Devices_Refresh', 0)), style={'margin-top': '5px', 'margin-bottom': '5px'}),
+
+
+            # Config Table
+            dt.DataTable(
+                id='Devices_Table_Status',
+                columns=[{'id': 'Setting', 'name': 'Setting'}, {'id': 'Value', 'name':'Value'}],
+                editable=True,
+                sorting=True,
+                data=[{}],
+            ),
+
+            html.Button('Read', id='Devices_Read', n_clicks=int(Devices_Tab_Variables.get('Devices_Read', 0)), style={'margin-top': '5px', 'margin-bottom': '5px'}),
+            html.Button('Save', id='Devices_Save', n_clicks=int(Devices_Tab_Variables.get('Devices_Save', 0)), style={'margin-left': '10px', 'margin-top': '5px', 'margin-bottom': '5px'}),
+            html.Button('Push Config', id='Devices_Push', n_clicks=int(Devices_Tab_Variables.get('Devices_Push', 0)), style={'margin-left': '10px', 'margin-top': '5px', 'margin-bottom': '5px'}),
+            
+        ], id='Devices_Tab_Variables')
+
 
     # ======================================== Live Tab ========================================
     # ======================================== Live Tab ========================================
@@ -544,11 +704,20 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
                 # Dropdown to select logs
                 dcc.Dropdown(
                     id='Live_Dropdown',
-                    options=[{'label': Trigger, 'value': Trigger} for Trigger in SQL_To_List("SELECT DISTINCT Name FROM `" + Log_db + "`.Log_Graph;")],
+                    options=[{'label': Trigger, 'value': Trigger} for Trigger in SQL_To_List("SELECT DISTINCT Name FROM `" + Log_db + "`.Log_Trigger;")],
                     multi=True,
                     value=Live_Tab_Variables.get('Live_Dropdown', None),
                 ),
 
+                # Dropdown to select json tags
+                dcc.Dropdown(
+                    id='Live_Dropdown_json',
+                    options=[],
+                    value=Live_Tab_Variables.get('Live_Dropdown_json', None),
+                    multi=True,
+                    ),
+
+                # The graph
                 dcc.Graph(
                     id='Live_Graph',
                     style={
@@ -558,6 +727,13 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
                         }
                     ),
 
+                # Auto update
+                dcc.Interval(
+                    id='Live_Interval_Component',
+                    interval=2500, # in milliseconds
+                    n_intervals=0
+                ),
+
                 html.Div(
                     id='Live_Tab',
                     style={
@@ -566,14 +742,23 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
                         'display': 'inline-block'
                         },
                     children=[
-                        dcc.RangeSlider(
+                        dcc.Slider(
                             id='Live_Slider',
-                            min=0,
-                            max=100,
+                            min=1,
+                            max=24,
                             step=1,
-                            value=[95, 100],
-                            allowCross=False,
-                            marks={},
+                            value=6,
+                            marks={
+                                1: '5m',
+                                3: '15m',
+                                6: '30m',
+                                9: '45m',
+                                12: '1h',
+                                15: '1h15m',
+                                18: '1h30m',
+                                21: '1h45m',
+                                24: '2h'
+                            },
                         ),
                     ],
                 ),
@@ -600,31 +785,20 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
                     id='Config_Dropdown_Line',
                     options=[],
                     value=Config_Tab_Variables.get('Config_Dropdown_Line', None),
+                    multi=False,
                     ),
-                # Config table
-                # dt.DataTable(
-                #     id='Config_Table',
-                #     rows=[],
-                #     columns=['Setting', 'Value'],
-                #     min_height='72vh',
-                #     resizable=True,
-                #     editable=True,
-                #     filterable=True,
-                #     sortable=True,
-                #     ),
+                html.Button('Read', id='Config_Read', n_clicks=int(Config_Tab_Variables.get('Config_Read', 0)), style={'margin-top': '5px'}),
+                html.Button('Delete Row', id='Config_Delete_Row', n_clicks=int(Config_Tab_Variables.get('Config_Delete_Row', 0)), style={'margin-left': '10px', 'margin-top': '5px'}),
+                html.Button('Save', id='Config_Save', n_clicks=int(Config_Tab_Variables.get('Config_Save', 0)), style={'margin-left': '10px', 'margin-top': '5px'}),
+                html.Button('Push Config', id='Config_Push', n_clicks=int(Config_Tab_Variables.get('Config_Push', 0)), style={'margin-left': '10px', 'margin-top': '5px'}),
                 dt.DataTable(
                     id='Config_Table',
-                    columns=[{'id': 'Setting', 'name': 'Setting'}, {'id': 'Value', 'name':'Value'}],
-                    # columns=[Generate_System_Log_Table_Columns(System_Log_Tab_Variables.get('System_Log_Dropdown', "None"))],
-                    # min_height='72vh',
-                    # resizable=True,
+                    # columns=[{'id': 'Setting', 'name': 'Setting'}, {'id': 'Value', 'name':'Value'}],
+                    columns=[{}],
                     editable=True,
                     sorting=True,
                     data=[{}],
                 ),
-                html.Button('Read', id='Config_Read', n_clicks=int(Config_Tab_Variables.get('Config_Read', 0)), style={'margin-top': '5px'}),
-                html.Button('Delete Row', id='Config_Delete_Row', n_clicks=int(Config_Tab_Variables.get('Config_Delete_Row', 0)), style={'margin-left': '10px', 'margin-top': '5px'}),
-                html.Button('Save', id='Config_Save', n_clicks=int(Config_Tab_Variables.get('Config_Save', 0)), style={'margin-left': '10px', 'margin-top': '5px'}),
                 ],
             ),
 
@@ -684,7 +858,7 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
                             min=0,
                             max=100,
                             step=1,
-                            value=[95, 100],
+                            value=[Log_Graph_Tab_Variables.get('Slider_Value_Low', 95), Log_Graph_Tab_Variables.get('Slider_Value_High', 100)],
                             allowCross=False,
                             marks={},
                         ),
@@ -716,38 +890,56 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
                     # min_height='72vh',
                     # resizable=True,
                     # editable=True,
+                    # filtering=True,
                     sorting=True,
                     data=[{}],
                 ),
                 # Button to read logs
-                html.Button(
-                    'Read log',
-                    id='System_Log_Read_Button',
-                    n_clicks=0,
-                    style={'margin-top': '5px'}
+                html.Div(
+                    style={'display': 'inline-block'},
+                    children=[
+                        html.Div(
+                            children=[
+                                html.Button(
+                                    'Read log',
+                                    id='System_Log_Read_Button',
+                                    n_clicks=0,
+                                    style={'margin-top': '5px', "margin-right": "5px"}
+                                ),
+                            ],
+                            style={'display': 'inline-block'}
+                        ),
+                        # Input to enter number of lines to read
+                        html.Div(
+                            children=[
+                                dcc.Input(
+                                    id='System_Log_Number_Of_Input',
+                                    placeholder='Number of lines to read',
+                                    type='number',
+                                    value='25',
+                                    style={'margin-top': '5px', "margin-right": "5px"}
+                                ),
+                            ],
+                            style={'display': 'inline-block'}
+                        ),
+                        html.Div(
+                            children=[
+                                dcc.Checklist(
+                                    id='System_Log_Auto_Refresh',
+                                    options=[{'label': 'Auto Refresh', 'value': 'AutoRefresh'}],
+                                    values=[System_Log_Tab_Variables.get('System_Log_Auto_Refresh', "AutoRefresh")],
+                                ),
+                            ],
+                            style={'display': 'inline-block'},
+                        ),
+                    ],
                 ),
-                # Input to enter number of lines to read
-                dcc.Input(
-                    id='System_Log_Number_Of_Input',
-                    placeholder='Number of lines to read',
-                    type='number',
-                    value='25',
+                # Auto update
+                dcc.Interval(
+                    id='System_Log_Interval_Component',
+                    interval=1500, # in milliseconds
+                    n_intervals=0
                 ),
-                # Slider to slect timeframe
-                # dcc.RangeSlider(
-                #     id='System_Log_From_To_Slider',
-                #     min=0,2
-                #     max=100,
-                #     step=1,
-                #     value=[95, 100],
-                #     allowCross=False,
-                #     marks={},
-                # ),
-                # dcc.Dropdown(
-                #     id='System_Log_Number_Of_Dropdown',
-                #     options=[{'label': System_Log_Tab_Option, 'value': System_Log_Tab_Option} for System_Log_Tab_Option in [10, 100, 1000, 10000]],
-                #     value=System_Log_Tab_Variables.get('System_Log_Dropdown', None),
-                # ),
             ],
         )
 
@@ -758,6 +950,7 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
         System_Tab_Variables = Generate_Variable_Dict(System_Tab_Variables)
 
         return html.Div([
+            html.Button('Test BT Speaker', id='System_Test_BT_Button', n_clicks=0, style={'margin-left': '5px', 'margin-top': '5px'}),
             html.Button('Quit', id='System_Quit_Button', n_clicks=0, style={'margin-left': '5px', 'margin-top': '5px'}),
         ], id='System_Tab')
 
@@ -822,39 +1015,19 @@ def Counters_Tab_Table_Rows(Counters_Tab_Variables):
 
     Counters_Tab_Variables = Generate_Variable_Dict(Counters_Tab_Variables)
 
-    # get last 'Reset' value
-    Last_Reset_ID = SQL_Read('SELECT id FROM DobbyLog.Log_Trigger where Name="Cold Water Flow" and Value="Reset" order by id desc Limit 1;')
+    # get counter data
+    Counter_Data = SQL_Read('SELECT Name, Ticks, `Calculated Value` FROM Dobby.Counters;')
 
-    if (Last_Reset_ID == ()):
-        Last_Reset_ID = 0
-    else:
-        Last_Reset_ID = Last_Reset_ID[0][0]
+    Return_List = []
 
-    # Get values since last reset
-    db_Data = SQL_Read('SELECT Value FROM DobbyLog.Log_Trigger where Name="Cold Water Flow" and id > "' + str(Last_Reset_ID) + '" order by id desc;')    
+    for Counter_Info in Counter_Data:
+        Return_Dict = {}
+        Return_Dict["Counter"] = Counter_Info[0]
+        Return_Dict["Ticks"] = Counter_Info[1]
+        Return_Dict["Value"] = Counter_Info[2]
+        Return_List.append(Return_Dict)
 
-    Counter_State = 0
-
-    # Get the value before each boot message and add them together to the first value
-    if db_Data[0][0] != "Boot":
-        Counter_State = int(db_Data[0][0])
-
-    Add_Next = False
-
-    for i in range(len(db_Data)):
-        # If Value == "Boot" add next value if not
-        if db_Data[i][0] == 'Boot':
-            Add_Next = True
-        
-        elif Add_Next == True:
-            Counter_State = Counter_State + int(db_Data[i][0])
-            Add_Next = False
-
-    Return_Dict = {}
-    Return_Dict["Counter"] = "Cold Water Flow"
-    Return_Dict["Value"] = Counter_State
-
-    return [Return_Dict]
+    return Return_List
 
 
 # ======================================== Config Tab - Callbacks ========================================
@@ -867,18 +1040,20 @@ def Counters_Tab_Table_Rows(Counters_Tab_Variables):
         Input('Config_Read', 'n_clicks'),
         Input('Config_Delete_Row', 'n_clicks'),
         Input('Config_Save', 'n_clicks'),
+        Input('Config_Push', 'n_clicks'),
         ],
     [
         State('Config_Table', 'data'),
         State('Config_Tab_Variables', 'children'),
         ]
     )
-def Config_Tab_Variables(Config_Dropdown, Config_Dropdown_Line, Config_Read, Config_Delete_Row, Config_Save, Config_Table, Config_Tab_Variables):
+def Config_Tab_Variables(Config_Dropdown, Config_Dropdown_Line, Config_Read, Config_Delete_Row, Config_Save, Config_Push, Config_Table, Config_Tab_Variables):
 
     Config_Tab_Variables = Generate_Variable_Dict(Config_Tab_Variables)
 
     # Dropdowns
     Config_Tab_Variables['Config_Dropdown'] = Config_Dropdown
+    
     if Config_Dropdown is None:
         Config_Tab_Variables['Config_Dropdown'] = "None"
         Config_Tab_Variables['Config_Dropdown_Line'] = "None"
@@ -889,6 +1064,27 @@ def Config_Tab_Variables(Config_Dropdown, Config_Dropdown_Line, Config_Read, Con
             Config_Tab_Variables['Config_Dropdown_Line'] = Config_Dropdown_Line
 
     # # Button
+    # Push Config
+    if int(Config_Tab_Variables.get('Config_Push', 0)) != int(Config_Push):
+        if Config_Dropdown == 'DeviceConfig' and Config_Dropdown_Line != None:
+            # FIX - Add Devices Tab
+
+            # Open db connection to get Hostname
+            db_Connection = Open_db(Log_db)
+            db_Curser = db_Connection.cursor()
+
+            # Get the latest IP from KeepAliveMonitor
+            db_Curser.execute("SELECT IP FROM " + Log_db + ".KeepAliveMonitor WHERE Device='" + Config_Dropdown_Line + "' ORDER BY ID DESC LIMIT 1;")
+            Device_IP = db_Curser.fetchone()
+
+            # Close db connection
+            Close_db(db_Connection, db_Curser)
+
+            # Check if we got an IP
+            if Device_IP is not None:
+                MQTT_Publish(System_Header + "/Commands/Dobby/Config", Config_Dropdown_Line + ",-1,FTP," + str(Device_IP[0]))
+
+    # Delete Row
     if int(Config_Tab_Variables.get('Config_Delete_Row', 0)) != int(Config_Delete_Row):
         db_Connection = Open_db("Dobby")
         db_Curser = db_Connection.cursor()
@@ -897,7 +1093,8 @@ def Config_Tab_Variables(Config_Dropdown, Config_Dropdown_Line, Config_Read, Con
         Row_id = db_Curser.fetchone()
         Row_id = str(Row_id[0])
 
-        print "Delete Row"
+        # print "Uncomment below to enable Delete Row"
+        
         db_Curser.execute("DELETE FROM `Dobby`.`" + Config_Dropdown.replace(" ", "_") + "` WHERE `id`='" + Row_id + "';")
 
         Close_db(db_Connection, db_Curser)
@@ -974,8 +1171,6 @@ def Config_Tab_Variables(Config_Dropdown, Config_Dropdown_Line, Config_Read, Con
                     Value_String = Value_String.replace("'CURRENT_TIMESTAMP'", "CURRENT_TIMESTAMP")
 
                     db_Curser.execute("INSERT INTO `Dobby`.`" + Config_Dropdown.replace(" ", "_") + "` (" + Setting_String + ") VALUES (" + Value_String + ");")
-                    # RM
-                    print "INSERT INTO `Dobby`.`" + Config_Dropdown.replace(" ", "_") + "` (" + Setting_String + ") VALUES (" + Value_String + ");"
 
                 # Get device id for use in sql changes below
                 else:
@@ -1002,7 +1197,7 @@ def Config_Tab_Variables(Config_Dropdown, Config_Dropdown_Line, Config_Read, Con
                     # Update Last modified
                     db_Curser.execute("UPDATE `Dobby`.`" + Config_Dropdown.replace(" ", "_") + "` SET `Last_Modified`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + Row_id + "';")
 
-                    Config_List = ["DeviceConfig", "Device Config Base"]
+                    Config_List = ["DeviceConfig"]
 
                     if Config_Dropdown in Config_List:
                         # Get Current Config_ID
@@ -1022,7 +1217,6 @@ def Config_Tab_Variables(Config_Dropdown, Config_Dropdown_Line, Config_Read, Con
     return Generate_Variable_String(Config_Tab_Variables)
 
 
-# ======================================== Config Tab - Callbacks ========================================
 @app.callback(
     Output('Config_Dropdown_Line', 'options'),
     [
@@ -1041,8 +1235,16 @@ def Config_Tab_Line_Dropdown(Config_Dropdown, Config_Tab_Variables):
 
     db_Connection = Open_db("Dobby")
     db_Curser = db_Connection.cursor()
+    
+    db_Fetch = ""
 
-    db_Curser.execute("SELECT id, `" + Name_Field_String + "` FROM `Dobby`.`" + Config_Dropdown.replace(" ", "_") + "` ORDER BY `" + Name_Field_String + "`;")
+    if Config_Dropdown == "MQTT Functions":
+        db_Curser.execute("SELECT DISTINCT Function FROM `Dobby`.`" + Config_Dropdown.replace(" ", "_") + "` ORDER BY `Function`;")
+    elif Config_Dropdown == "SystemConfig":
+        db_Curser.execute("SELECT DISTINCT Target FROM `Dobby`.`" + Config_Dropdown.replace(" ", "_") + "` ORDER BY `Target`;")
+    else:
+        db_Curser.execute("SELECT `" + Name_Field_String + "` FROM `Dobby`.`" + Config_Dropdown.replace(" ", "_") + "` ORDER BY `" + Name_Field_String + "`;")
+
     db_Fetch = db_Curser.fetchall()
 
     # Close db connection
@@ -1052,8 +1254,8 @@ def Config_Tab_Line_Dropdown(Config_Dropdown, Config_Tab_Variables):
 
     Return_List.append({'label': '-- New Entry --', 'value': '-- New Entry --'})
 
-    for Key, Value in db_Fetch:
-        Return_List.append({'label': Value, 'value': Value})
+    for Value in db_Fetch:
+        Return_List.append({'label': Value[0], 'value': Value[0]})
 
     return Return_List
 
@@ -1085,15 +1287,46 @@ def Config_Tab_Table(Config_Dropdown, Config_Dropdown_Line, Config_Read, Config_
         return Generate_Config_List(Config_Dropdown, 'None')
 
     else:
-        return Generate_Config_List(Config_Dropdown, Config_Dropdown_Line)
+        if Config_Dropdown == "MQTT Functions":
+            return Generate_Config_List_Functions(Config_Dropdown, Config_Dropdown_Line)
+        elif Config_Dropdown == "SystemConfig":
+            return Generate_Config_List_System(Config_Dropdown, Config_Dropdown_Line)
+        else:
+            return Generate_Config_List(Config_Dropdown, Config_Dropdown_Line)
+
+
+# Change column names
+@app.callback(
+    Output('Config_Table', 'columns'),
+    [
+        Input('Config_Dropdown', 'value'),
+        Input('Config_Tab_Variables', 'children'),
+        ],
+    )
+def Config_Tab_Table_Columns(Config_Tab_Dropdown, Config_Tab_Variables):
+    
+    Config_Tab_Variables = Generate_Variable_Dict(Config_Tab_Variables)
+    
+    # None
+    if Config_Tab_Variables.get('Config_Dropdown', 'None') == "None" or Config_Tab_Variables.get('Config_Dropdown', None) is None:
+        return [{}]
+
+    elif Config_Tab_Variables.get('Config_Dropdown', 'None') == "MQTT Functions":
+        return [{'id': 'CommandNumber', 'name': 'CommandNumber'}, {'id': 'Type', 'name': 'Type'}, {'id': 'Command', 'name': 'Command'}, {'id': 'DelayAfter', 'name': 'DelayAfter'}, ]
+
+    elif Config_Tab_Variables.get('Config_Dropdown', 'None') == "SystemConfig":
+        return [{'id': 'Header', 'name': 'Header'}, {'id': 'Name', 'name': 'Name'}, {'id': 'Value', 'name': 'Value'}]
+        
+    else:
+        return [{'id': 'Setting', 'name': 'Setting'}, {'id': 'Value', 'name':'Value'}]
+
 
 
 # ======================================== Device Config Tab - Callbacks ========================================
-# Device_Config_Tab_Variables
+# Devices_Tab_Variables
 @app.callback(
-    Output('Device_Config_Tab_Variables', 'children'),
+    Output('Devices_Tab_Variables', 'children'),
     [
-        Input('Device_Config_Dropdown', 'value'),
         Input('Device_Config_Dropdown', 'value'),
         Input('Device_Config_Read', 'n_clicks'),
         Input('Device_Config_Save', 'n_clicks'),
@@ -1102,71 +1335,71 @@ def Config_Tab_Table(Config_Dropdown, Config_Dropdown_Line, Config_Read, Config_
         Input('Device_Config_Shutdown', 'n_clicks'),
         ],
     [
-        State('Device_Config_Tab_Variables', 'children')
+        State('Devices_Tab_Variables', 'children')
         ]
     )
-def Device_Config_Tab_Variables(Device_Config_Dropdown, Device_Config_Read, Device_Config_Save, Device_Config_Send, Device_Config_Reboot, Device_Config_Shutdown, Device_Config_Tab_Variables):
+def Devices_Tab_Variables(Device_Config_Dropdown, Device_Config_Read, Device_Config_Save, Device_Config_Send, Device_Config_Reboot, Device_Config_Shutdown, Devices_Tab_Variables):
 
-    Device_Config_Tab_Variables = Generate_Variable_Dict(Device_Config_Tab_Variables)
+    Devices_Tab_Variables = Generate_Variable_Dict(Devices_Tab_Variables)
 
-    Device_Config_Tab_Variables['Device_Config_Dropdown'] = Device_Config_Dropdown
+    Devices_Tab_Variables['Device_Config_Dropdown'] = Device_Config_Dropdown
 
     Button_List = [Device_Config_Read, Device_Config_Save, Device_Config_Send, Device_Config_Reboot, Device_Config_Shutdown]
     Button_List_Text = ['Device_Config_Read', 'Device_Config_Save', 'Device_Config_Send', 'Device_Config_Reboot', 'Device_Config_Shutdown']
 
     # Check if buttons was presses
     for i in range(len(Button_List)):
-        if Button_List[i] != int(Device_Config_Tab_Variables.get(Button_List_Text[i], 0)):
-            Device_Config_Tab_Variables['Last_Click'] = Button_List_Text[i]
+        if Button_List[i] != int(Devices_Tab_Variables.get(Button_List_Text[i], 0)):
+            Devices_Tab_Variables['Last_Click'] = Button_List_Text[i]
 
             # Shutdown / Reboot
-            if Device_Config_Tab_Variables['Device_Config_Dropdown'] is not None or []:
+            if Devices_Tab_Variables['Device_Config_Dropdown'] is not None or []:
                 Action = None
-                if Device_Config_Tab_Variables.get('Last_Click', None) == "Device_Config_Reboot":
-                    if Device_Config_Tab_Variables.get('Device_Config_Reboot', 0) != Device_Config_Reboot:
+                if Devices_Tab_Variables.get('Last_Click', None) == "Device_Config_Reboot":
+                    if Devices_Tab_Variables.get('Device_Config_Reboot', 0) != Device_Config_Reboot:
                         Action = 'Reboot'
-                elif Device_Config_Tab_Variables.get('Last_Click', None) == "Device_Config_Shutdown":
-                    if Device_Config_Tab_Variables.get('Device_Config_Shutdown', 0) != Device_Config_Shutdown:
+                elif Devices_Tab_Variables.get('Last_Click', None) == "Device_Config_Shutdown":
+                    if Devices_Tab_Variables.get('Device_Config_Shutdown', 0) != Device_Config_Shutdown:
                         Action = 'Shutdown'
                 if Action is not None:
                     # Set Last_Click to none to prevent repress when changing back to tab
-                    Device_Config_Tab_Variables['Last_Click'] = None
-                    MQTT.single(System_Header + "/Commands/" + str(Device_Config_Tab_Variables['Device_Config_Dropdown']) + "/Power", Action + ";", hostname=MQTT_Broker, port=MQTT_Port, auth={'username': MQTT_Username, 'password': MQTT_Password})
+                    Devices_Tab_Variables['Last_Click'] = None
+                    MQTT.single(System_Header + "/Commands/" + str(Devices_Tab_Variables['Device_Config_Dropdown']) + "/Power", Action + ";", hostname=MQTT_Broker, port=MQTT_Port, auth={'username': MQTT_Username, 'password': MQTT_Password})
 
-            Device_Config_Tab_Variables[Button_List_Text[i]] = Button_List[i]
+            Devices_Tab_Variables[Button_List_Text[i]] = Button_List[i]
             break
 
-    return Generate_Variable_String(Device_Config_Tab_Variables)
+    return Generate_Variable_String(Devices_Tab_Variables)
 
 
 # Update Device Config rows
 @app.callback(
     Output('Device_Config_Table', 'rows'),
     [
-        Input('Device_Config_Tab_Variables', 'children'),
+        Input('Devices_Tab_Variables', 'children'),
         Input('Device_Config_Save', 'n_clicks'),
         ],
     [
         State('Device_Config_Table', 'rows'),
         ]
     )
-def Device_Config_Tab_Config_Show(Device_Config_Tab_Variables, Device_Config_Save, Device_Config_Table):
+def Device_Config_Tab_Config_Show(Devices_Tab_Variables, Device_Config_Save, Device_Config_Table):
 
     # Open db connection
     db_Write_Connection = Open_db('Dobby')
     db_Write_Curser = db_Write_Connection.cursor()
 
     # Import variables from div able
-    Device_Config_Tab_Variables = Generate_Variable_Dict(Device_Config_Tab_Variables)
+    Devices_Tab_Variables = Generate_Variable_Dict(Devices_Tab_Variables)
 
     # Do nothing if no device have been selected in the dropdown
-    if Device_Config_Tab_Variables['Device_Config_Dropdown'] == "None":
+    if Devices_Tab_Variables['Device_Config_Dropdown'] == "None":
         Close_db(db_Write_Connection, db_Write_Curser)
         return [{'Setting': '', 'Value': ''}]
 
     # ======================================== Save Config ========================================
-    elif Device_Config_Tab_Variables.get('Last_Click', "None") == "Device_Config_Save":
-        Current_Config = Generate_Device_Config_Dict(Device_Config_Tab_Variables['Device_Config_Dropdown'], db_Write_Curser)
+    elif Devices_Tab_Variables.get('Last_Click', "None") == "Device_Config_Save":
+        Current_Config = Generate_Device_Config_Dict(Devices_Tab_Variables['Device_Config_Dropdown'], db_Write_Curser)
 
         # Needed to refer between tables
         i = 0
@@ -1188,7 +1421,7 @@ def Device_Config_Tab_Config_Show(Device_Config_Tab_Variables, Device_Config_Sav
 
         if Config_Changes != {}:
             # Get device id for use in sql changes below
-            db_Write_Curser.execute("SELECT id FROM Dobby.DeviceConfig WHERE Hostname='" + Device_Config_Tab_Variables['Device_Config_Dropdown'] + "';")
+            db_Write_Curser.execute("SELECT id FROM Dobby.DeviceConfig WHERE Hostname='" + Devices_Tab_Variables['Device_Config_Dropdown'] + "';")
             Device_id = db_Write_Curser.fetchone()
             Device_id = str(Device_id[0])
 
@@ -1209,15 +1442,15 @@ def Device_Config_Tab_Config_Show(Device_Config_Tab_Variables, Device_Config_Sav
             # Update Last modified
             db_Write_Curser.execute("UPDATE `Dobby`.`DeviceConfig` SET `Last_Modified`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + Device_id + "';")
 
-            Device_Config_Tab_Variables['Last_Click'] = None
+            Devices_Tab_Variables['Last_Click'] = None
 
     # ======================================== Send Config ========================================
-    elif Device_Config_Tab_Variables.get('Last_Click', "None") == "Device_Config_Send":
-        Device_Config_Tab_Variables['Last_Click'] = None
-        MQTT.single(System_Header + "/Commands/Dobby/Config", Device_Config_Tab_Variables['Device_Config_Dropdown'] + ",-1;", hostname=MQTT_Broker, port=MQTT_Port, auth={'username': MQTT_Username, 'password': MQTT_Password})
+    elif Devices_Tab_Variables.get('Last_Click', "None") == "Device_Config_Send":
+        Devices_Tab_Variables['Last_Click'] = None
+        MQTT.single(System_Header + "/Commands/Dobby/Config", Devices_Tab_Variables['Device_Config_Dropdown'] + ",-1;", hostname=MQTT_Broker, port=MQTT_Port, auth={'username': MQTT_Username, 'password': MQTT_Password})
 
     # ======================================== Return table ========================================
-    Return_Dict = Generate_Device_Config_Dict(Device_Config_Tab_Variables['Device_Config_Dropdown'], db_Write_Curser)
+    Return_Dict = Generate_Device_Config_Dict(Devices_Tab_Variables['Device_Config_Dropdown'], db_Write_Curser)
 
     Close_db(db_Write_Connection, db_Write_Curser)
 
@@ -1399,8 +1632,11 @@ def Log_Graph_Tab_Row_json_Dropdown(Log_Graph_Dropdown, Log_Graph_Tab_Variables)
         # Get tags for each entry
         for Entry in Log_Graph_Tab_Variables['Log_Graph_Dropdown_Entry']:
 
-            db_Curser.execute("SELECT distinct json_Tag FROM DobbyLog.Log_Trigger Where Name = '" + str(Entry) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' AND datetime<'" + str(Log_Graph_Tab_Variables['Slider_Value_High']) + "' ORDER BY json_Tag;")
-            db_Fetch = db_Curser.fetchall()
+            try:
+                db_Curser.execute("SELECT distinct json_Tag FROM DobbyLog.Log_Trigger Where Name = '" + str(Entry) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' AND datetime<'" + str(Log_Graph_Tab_Variables['Slider_Value_High']) + "' ORDER BY json_Tag;")
+                db_Fetch = db_Curser.fetchall()
+            except:
+                return {}
 
             for Value in db_Fetch:
                 if Value[0] == "":
@@ -1448,7 +1684,7 @@ def Log_Graph_Update_Slider_Marks(Log_Graph_Tab_Variables):
 
     Log_Graph_Tab_Variables = Generate_Variable_Dict(Log_Graph_Tab_Variables)
 
-    if Log_Graph_Tab_Variables.get('Log_Graph_Dropdown', 'None') == 'None' or Log_Graph_Tab_Variables.get('Log_Graph_Dropdown_Entry', 'None') == 'None':
+    if Log_Graph_Tab_Variables.get('Log_Graph_Dropdown', 'None') == 'None' or Log_Graph_Tab_Variables.get('Log_Graph_Dropdown_Entry', 'None') == 'None' or Log_Graph_Tab_Variables.get('Slider_Value_High', 'None') == 'None':
         return {}
 
     Time_Span = Log_Graph_Tab_Variables['Slider_Value_High'] - Log_Graph_Tab_Variables['Slider_Value_Low']
@@ -1552,8 +1788,8 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
                     # print "PIK:" + Tag_Search_String
                     # print "SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"
 
-                    db_Curser.execute("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;")
-                    temp = db_Curser.fetchall()
+                    # db_Curser.execute("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;")
+                    # temp = db_Curser.fetchall()
 
                     # print "s"
                     # print temp
@@ -1648,6 +1884,175 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
         return fig
 
 
+
+# ======================================== Live Tab - Callbacks ========================================
+@app.callback(
+    Output('Live_Tab_Variables', 'children'),
+    [
+        Input('Live_Dropdown', 'value'),
+        Input('Live_Dropdown_json', 'value'),
+        Input('Live_Slider', 'value'),
+        ],
+    [
+        State('Live_Tab_Variables', 'children'),
+        ],
+    )
+def Live_Tab_Variables_Callback(Live_Dropdown, Live_Dropdown_json, Live_Slider, Live_Tab_Variables):
+
+    Live_Tab_Variables = Generate_Variable_Dict(Live_Tab_Variables)
+
+    # Main Dropdown
+    if Live_Tab_Variables.get('Live_Dropdown', "None") is "None" or Live_Tab_Variables.get('Live_Dropdown', "None") is None or Live_Tab_Variables.get('Live_Dropdown', "None") == []:
+        Live_Tab_Variables['Live_Dropdown'] = "None"
+    else:
+        Live_Tab_Variables['Live_Dropdown'] = Live_Dropdown
+
+    # json dropdown
+    if Live_Tab_Variables.get('Live_Dropdown_json', ["None"]) is "None" or Live_Tab_Variables.get('Live_Dropdown_json', ["None"]) is None or Live_Tab_Variables.get('Live_Dropdown_json', ["None"]) == []:
+        Live_Tab_Variables['Live_Dropdown_json'] = "None"
+    else:
+        Live_Tab_Variables['Live_Dropdown_json'] = Live_Dropdown_json
+
+    # Check if someting is selected in main if not set json to none
+    if Live_Tab_Variables['Live_Dropdown'] is "None" or Live_Tab_Variables['Live_Dropdown'] is None or Live_Tab_Variables['Live_Dropdown'] == []:
+        Live_Tab_Variables['Live_Dropdown_json'] = "None"
+  
+    Live_Tab_Variables['Live_Slider'] = Live_Slider
+
+    return Generate_Variable_String(Live_Tab_Variables)
+
+
+
+# ================================================================================
+@app.callback(
+    Output('Live_Graph', 'figure'),
+    [
+        Input('Live_Interval_Component', 'n_intervals'),
+        ],
+    [
+        State('Live_Tab_Variables', 'children'),
+        ],
+    )
+def Live_Tab_Auto_Update(Live_Interval_Component, Live_Tab_Variables):
+
+    Live_Tab_Variables = Generate_Variable_Dict(Live_Tab_Variables)
+
+    if Live_Tab_Variables.get('Live_Dropdown_json', "None") == 'None':
+        return {'data': ''}
+
+    
+    # ======================================== Read Logs ========================================
+    # Open db connection
+    db_Connection = Open_db(Log_db)
+    db_Curser = db_Connection.cursor()
+
+    Data = []
+
+    # Log Trigger
+    for Name in Live_Tab_Variables.get('Live_Dropdown', ''):
+
+        # Create and style traces
+        for Tag_Name in Live_Tab_Variables['Live_Dropdown_json']:
+
+            Plot_Name = ''
+            if Tag_Name == '-- No Tag --':
+                Tag_Search_String = ''
+                Plot_Name = Name
+            else:
+                Tag_Search_String = "AND json_Tag='" + str(Tag_Name) + "'"
+                Plot_Name = str(Name + " - " + Tag_Name)
+
+            # Get how far back to sow logs
+            # Get Slider value
+            Min_Int = Live_Tab_Variables.get('Live_Slider', 30)
+            # Convert to int
+            Min_Int = int(Min_Int)
+            # Multiply by 5
+            Min_Int = Min_Int * 5
+
+            Date_Search_String = " AND datetime>'" + str(datetime.datetime.now() - datetime.timedelta(minutes=Min_Int)) + "'"
+
+            # # print "PIK:" + Tag_Search_String
+            # # print "SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"
+
+            # db_Curser.execute("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;")
+            # temp = db_Curser.fetchall()
+
+            # # print "s"
+            # # print temp
+
+            Data.append(
+                    go.Scatter(
+                        x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"),
+                        y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"),
+                        # x=[1, 2],
+                        # y=[1, 2],
+                        name=Plot_Name,
+                        mode='lines+markers',
+                        line=dict(
+                            dash='dash',
+                        )
+                    )
+                )
+    Close_db(db_Connection, db_Curser)
+
+    # Edit the layout
+    layout = dict(
+        # title = 'Average High and Low Temperatures in New York',
+        # xaxis=dict(title='Timestamp'),
+        # yaxis = dict(title = 'Temperature (degrees F)'),
+    )
+
+    fig = dict(data=Data, layout=layout)
+
+    return fig
+
+
+# ================================================================================
+@app.callback(
+    Output('Live_Dropdown_json', 'options'),
+    [
+        Input('Live_Dropdown', 'value'),
+        Input('Live_Tab_Variables', 'children'),
+        ],
+    )
+def Live_Dropdown_json(Live_Dropdown, Live_Tab_Variables):
+
+    # Make variable dic from children
+    Live_Tab_Variables = Generate_Variable_Dict(Live_Tab_Variables)
+
+    if Live_Dropdown is None or Live_Dropdown == 'None' or Live_Dropdown == ['']:
+        return {}
+
+    elif Live_Tab_Variables['Live_Dropdown'] is None or Live_Tab_Variables['Live_Dropdown'] == 'None' or Live_Tab_Variables['Live_Dropdown'] == ['']:
+        return {}
+
+    # Create the return list
+    Return_List = []
+
+    # Open DB commection
+    db_Connection = Open_db("Dobby")
+    db_Curser = db_Connection.cursor()
+
+    for Selected in Live_Dropdown:
+
+        db_Curser.execute("SELECT distinct json_Tag FROM DobbyLog.Log_Trigger Where Name = '" + str(Selected) + "' ORDER BY json_Tag;")
+        db_Fetch = db_Curser.fetchall()
+
+        for i in range(len(db_Fetch)):
+
+            if db_Fetch[i][0] == "":
+                Return_List.append({'label': '-- No Tag --', 'value': '-- No Tag --'})
+
+            else:
+                Return_List.append({'label': db_Fetch[i][0], 'value': db_Fetch[i][0]})
+
+    # Close db connection
+    Close_db(db_Connection, db_Curser)
+
+    return Return_List
+
+
 # ======================================== System Log Tab - Callbacks ========================================
 @app.callback(
     Output('System_Log_Tab_Variables', 'children'),
@@ -1655,12 +2060,13 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
         Input('System_Log_Dropdown', 'value'),
         Input('System_Log_Read_Button', 'n_clicks'),
         Input('System_Log_Number_Of_Input', 'value'),
+        Input('System_Log_Auto_Refresh', 'values'),
         ],
     [
         State('System_Log_Tab_Variables', 'children'),
         ],
     )
-def System_Log_Tab_Dropdown(System_Log_Dropdown, System_Log_Read_Button, System_Log_Number_Of_Input, System_Log_Tab_Variables):
+def System_Log_Tab_Dropdown(System_Log_Dropdown, System_Log_Read_Button, System_Log_Number_Of_Input, System_Log_Auto_Refresh, System_Log_Tab_Variables):
 
     # Import variables from div able
     System_Log_Tab_Variables = Generate_Variable_Dict(System_Log_Tab_Variables)
@@ -1676,6 +2082,8 @@ def System_Log_Tab_Dropdown(System_Log_Dropdown, System_Log_Read_Button, System_
     
     System_Log_Tab_Variables['System_Log_Number_Of_Input'] = System_Log_Number_Of_Input
 
+    System_Log_Tab_Variables['System_Log_Auto_Refresh'] = System_Log_Auto_Refresh
+
     return Generate_Variable_String(System_Log_Tab_Variables)
 
 
@@ -1683,29 +2091,48 @@ def System_Log_Tab_Dropdown(System_Log_Dropdown, System_Log_Read_Button, System_
 @app.callback(
     Output('System_Log_Tab_Table', 'columns'),
     [
-        Input('System_Log_Tab_Variables', 'children')
+        Input('System_Log_Tab_Variables', 'children'),
+        Input('System_Log_Read_Button', 'n_clicks'),
+        Input('System_Log_Number_Of_Input', 'values'),
         ],
     [
-        State('System_Log_Tab_Table', 'columns'),
+        # State('System_Log_Tab_Table', 'columns'),
         ]
     )
-def System_Log_Tab_Table_Comumns(System_Log_Tab_Variables, System_Log_Tab_Table):
+def System_Log_Tab_Table_Comumns(System_Log_Tab_Variables, System_Log_Read_Button, System_Log_Number_Of_Input):
 
     System_Log_Tab_Variables = Generate_Variable_Dict(System_Log_Tab_Variables)
 
     return Generate_System_Log_Table_Columns(System_Log_Tab_Variables.get('System_Log_Dropdown', ["None"]))
 
 
+# Disable auto update
+@app.callback(
+    Output('System_Log_Interval_Component', 'interval'),
+    [
+        Input('System_Log_Auto_Refresh', 'values'),
+    ],
+    )
+def System_Log_Auto_Refresh_Check(System_Log_Auto_Refresh):
+    
+    if str(System_Log_Auto_Refresh) == "[u'AutoRefresh']":
+        return 1500
+    else:
+        return 3600000
+
+
+
 # Read content
 @app.callback(
     Output('System_Log_Tab_Table', 'data'),
     [
-        Input('System_Log_Tab_Variables', 'children')
+        Input('System_Log_Tab_Variables', 'children'),
+        Input('System_Log_Interval_Component', 'n_intervals'),
     ],
     )
-def System_Log_Tab_Table_Rows(System_Log_Tab_Variables):
+def System_Log_Tab_Table_Rows(System_Log_Tab_Variables, System_Log_Interval_Component):
 
-    System_Log_Tab_Variables = Generate_Variable_Dict(System_Log_Tab_Variables)    
+    System_Log_Tab_Variables = Generate_Variable_Dict(System_Log_Tab_Variables)
 
     if System_Log_Tab_Variables.get('System_Log_Dropdown', None) is None or System_Log_Tab_Variables.get('System_Log_Dropdown', "None") == "None":
         return []
@@ -1745,18 +2172,28 @@ def System_Log_Tab_Table_Rows(System_Log_Tab_Variables):
     Output('System_Tab_Variables', 'children'),
     [
         Input('System_Quit_Button', 'n_clicks'),
+        Input('System_Test_BT_Button', 'n_clicks'),
         ],
     [
         State('System_Tab_Variables', 'children'),
         ],
     )
-def System_Tab_Buttons(System_Quit_Button, System_Tab_Variables):
+def System_Tab_Buttons(System_Quit_Button, System_Test_BT_Button, System_Tab_Variables):
+
+    System_Tab_Variables = Generate_Variable_Dict(System_Tab_Variables)
 
     if int(System_Tab_Variables.get('System_Quit_Button', 0)) != int(System_Quit_Button):
         System_Tab_Variables['System_Quit_Button'] = System_Quit_Button
 
         print "System shutdown requested, shutting down"
         Server_Shutdown()
+
+    if int(System_Tab_Variables.get('System_Test_BT_Button', 0)) != int(System_Test_BT_Button):
+        System_Tab_Variables['System_Test_BT_Button'] = System_Test_BT_Button
+
+        myCmd = "mpg321 -g 50 /etc/Dobby/Audio/Ping.mp3"
+        os.system(myCmd)
+
 
     return Generate_Variable_String(System_Tab_Variables)
 

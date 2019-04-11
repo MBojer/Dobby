@@ -15,7 +15,7 @@ extern "C" {
 
 
 // ---------------------------------------- Dobby ----------------------------------------
-#define Version 102013
+#define Version 102014
 // First didget = Software type 1-Production 2-Beta 3-Alpha
 // Secound and third didget = Major version number
 // Fourth to sixth = Minor version number
@@ -520,7 +520,7 @@ unsigned long Flow_Publish_At[Flow_Max_Number_Of];
 bool DS18B20_Configured = false;
 
 #define DS18B20_Max_Number_Of 1
-byte DS18B20_Pins[DS18B20_Max_Number_Of] = {D1};
+byte DS18B20_Pins[DS18B20_Max_Number_Of] = {D3};
 
 byte DS18B20_Address[8];
 byte DS18B20_Type;
@@ -566,6 +566,13 @@ float Distance_Last_Reading[Distance_Max_Number_Of];
 unsigned long Distance_Sensor_Publish_At[Distance_Max_Number_Of];
 
 
+// ------------------------------------------------------------ Publish Uptime ------------------------------------------------------------
+bool Publish_Uptime = false;
+
+#define Publish_Uptime_Interval 5000
+unsigned long Publish_Uptime_At = Publish_Uptime_Interval;
+
+
 // ############################################################ Headers ############################################################
 // ############################################################ Headers ############################################################
 // ############################################################ Headers ############################################################
@@ -594,6 +601,7 @@ bool DC_Voltmeter(String &Topic, String &Payload);
 bool PIR(String &Topic, String &Payload);
 bool DS18B20(String &Topic, String &Payload);
 bool Distance(String &Topic, String &Payload);
+bool MQ(String &Topic, String &Payload);
 void Distance_Loop();
 
 void ICACHE_RAM_ATTR Flow_Callback_0();
@@ -688,6 +696,10 @@ void Log(String Topic, int Log_Text) {
 } // Log - Reference only
 
 void Log(String Topic, float Log_Text) {
+	Log(Topic, String(Log_Text));
+} // Log - Reference only
+
+void Log(String Topic, unsigned long Log_Text) {
 	Log(Topic, String(Log_Text));
 } // Log - Reference only
 
@@ -1526,6 +1538,9 @@ bool FS_Config_Load() {
 	// Rebuild topics to get naming right
 	Rebuild_MQTT_Topics();
 
+	// Publish boot message just after rebuild
+	Log(MQTT_Topic[Topic_Log_Info], "Booting Dobby - Wemos D1 Mini firmware version: " + String(Version));
+
 	Config_ID = root.get<String>("Config_ID");
 
 	WiFi_SSID = root.get<String>("WiFi_SSID");
@@ -1568,9 +1583,11 @@ bool FS_Config_Load() {
 				digitalWrite(Relay_Pins[i], !Relay_On_State);
 			}
 		}
-
-		FS_Config_Settings_Set(Relay_Pin_Auto_Off, Relay_Max_Number_Of, root.get<String>("Relay_Pin_Auto_Off"), MQTT_Topic[Topic_Log_Debug] + "/Relay", "Relay Pins Auto Off");
-		FS_Config_Settings_Set(Relay_Pin_Auto_Off_Delay, Relay_Max_Number_Of, root.get<String>("Relay_Pin_Auto_Off_Delay"), MQTT_Topic[Topic_Log_Debug] + "/Relay", "Relay Pins Auto Off Delay");
+		
+		if (root.get<String>("Relay_Pin_Auto_Off") != "" && root.get<String>("Relay_Pin_Auto_Off_Delay") != "") {
+			FS_Config_Settings_Set(Relay_Pin_Auto_Off, Relay_Max_Number_Of, root.get<String>("Relay_Pin_Auto_Off"), MQTT_Topic[Topic_Log_Debug] + "/Relay", "Relay Pins Auto Off");
+			FS_Config_Settings_Set(Relay_Pin_Auto_Off_Delay, Relay_Max_Number_Of, root.get<String>("Relay_Pin_Auto_Off_Delay"), MQTT_Topic[Topic_Log_Debug] + "/Relay", "Relay Pins Auto Off Delay");
+		}
 
 		MQTT_Subscribe(MQTT_Topic[Topic_Relay], true, PLUS);
 		Relay_Configured = true;
@@ -1628,7 +1645,7 @@ bool FS_Config_Load() {
 		Log(MQTT_Topic[Topic_Log_Debug] + "/MQ", "Configuring");
 
 		// Check if pin is free
-		if (Pin_Monitor(Reserve_Normal, root.get<byte>("MQ_Pin_A0")) == Pin_Free) {
+		if (Pin_Monitor(Reserve_Normal, Pin_To_Number(root.get<String>("MQ_Pin_A0"))) == Pin_Free) {
 				// Set variable
 				MQ_Pin_A0 = Pin_To_Number(root.get<String>("MQ_Pin_A0"));
 				// Set pinmode
@@ -1791,8 +1808,8 @@ bool FS_Config_Load() {
 		// Reserve pin
 		for (byte i = 0; i < DS18B20_Max_Number_Of; i++) {
 			if (DS18B20_Pins[i] != 255) {
-				if (Pin_Monitor(Reserve_OneWire, DS18B20_Pins[i]) == Pin_OneWire) {
 
+				if (Pin_Monitor(Reserve_OneWire, DS18B20_Pins[i]) == Pin_OneWire) {
 					// Set true now so it can be set to false if failure
 					DS18B20_Configured = true;
 
@@ -1896,6 +1913,17 @@ bool FS_Config_Load() {
     MQTT_Subscribe(MQTT_Topic[Topic_Distance], true, PLUS);
     Log(MQTT_Topic[Topic_Log_Info] + "/Distance", "Configuration compleate");
   }
+
+	// ############### Publish Uptime ###############
+  if (root.get<String>("Publish Uptime") != "") {
+		Publish_Uptime = root.get<bool>("Publish Uptime");
+
+		if (Publish_Uptime == true) {
+			Log(MQTT_Topic[Topic_Log_Info], "Publish Uptime enabeled");
+			// Set "Boot" to indicate counter starts from 0
+			Log(MQTT_Topic[Topic_Log_Info] + "/Uptime", "Boot");
+		}
+	}
 
 	return true;
 
@@ -2313,6 +2341,7 @@ void MQTT_KeepAlive() {
 	root_KL.set("Software", Version);
 	root_KL.set("IP", IP_To_String(WiFi.localIP()));
 	root_KL.set("RSSI", WiFi.RSSI());
+	root_KL.set("Hardware", String(ARDUINO_BOARD));
 
 	String KeepAlive_String;
 
@@ -2543,11 +2572,13 @@ byte Pin_Monitor(byte Action, byte Pin_Number) {
 	// 1 = Free
 	// 2 = Free / In Use - I2C - SCL
 	// 3 = Free / In Use - I2C - SDA
+	// 4 = Free / In Use - OneWire
 	// 255 = Error
 	// #define Pin_In_Use 0
 	// #define Pin_Free 1
 	// #define Pin_SCL 2
 	// #define Pin_SDA 3
+	// #define Pin_OneWire 4
 	// #define Pin_Error 255
 
 	// Pin_Number
@@ -2555,6 +2586,7 @@ byte Pin_Monitor(byte Action, byte Pin_Number) {
 	// 1 = Reserve - I2C SCL
 	// 2 = Reserve - I2C SDA
 	// 3 = State
+	// 4 = Reserve - OneWire
 	// #define Reserve_Normal 0
 	// #define Reserve_I2C_SCL 1
 	// #define Reserve_I2C_SDA 2
@@ -2742,6 +2774,39 @@ void MQTT_Callback(char* topic, byte* payload, unsigned int length) {
 } // MQTT_Callback()
 
 
+	
+float getVPP() {
+  float result;
+  
+  int readValue;             //value read from the sensor
+  int maxValue = 0;          // store max value here
+  int minValue = 1024;          // store min value here
+  
+   uint32_t start_time = millis();
+   while((millis()-start_time) < 1000) //sample for 1 Sec
+   {
+       readValue = analogRead(A0);
+       // see if you have a new maxValue
+       if (readValue > maxValue) 
+       {
+           /*record the maximum sensor value*/
+           maxValue = readValue;
+       }
+       if (readValue < minValue) 
+       {
+           /*record the maximum sensor value*/
+           minValue = readValue;
+       }
+   }
+   
+   // Subtract min from max
+   result = ((maxValue - minValue) * 3.0)/1024.0;
+      
+   return result;
+ }
+
+
+
 // ################################### MQTT_Commands() ###################################
 bool MQTT_Commands(String &Topic, String &Payload) {
 
@@ -2830,6 +2895,21 @@ bool MQTT_Commands(String &Topic, String &Payload) {
 
 		Log("/Test", "MARKER");
 
+		int mVperAmp = 185; // use 100 for 20A Module and 66 for 30A Module
+
+		double Voltage = 0;
+		double VRMS = 0;
+		double AmpsRMS = 0;
+
+		Voltage = getVPP();
+		VRMS = (Voltage/2.0) *0.707; 
+		AmpsRMS = (VRMS * 1000)/mVperAmp;
+		Serial.print(AmpsRMS);
+		Serial.println(" Amps RMS");
+
+
+		Log("/Test", String(AmpsRMS));
+	
 	} // Test
 
 	if (Unknown_Command == true) {
@@ -2859,6 +2939,7 @@ void MQTT_Queue_Check() {
 		else if (PIR(Topic, Payload) == true) return;
 		else if (DS18B20(Topic, Payload) == true) return;
 		else if (Distance(Topic, Payload) == true) return;
+		else if (MQ(Topic, Payload) == true) return;
 	}
 	
 } // MQTT_Queue_Check()
@@ -3162,7 +3243,7 @@ void Flow_Loop() {
 	for (byte i = 0; i < Flow_Max_Number_Of; i++) {
 		if (Flow_Publish_At[i] < millis() && Flow_Change[i] == true) {
 			
-			Log(MQTT_Topic[Topic_Switch] + "/" + String(i + 1) + "/State", String(Flow_Pulse_Counter[i]));
+			Log(MQTT_Topic[Topic_Flow] + "/" + String(i + 1) + "/State", String(Flow_Pulse_Counter[i]));
 	
 			Flow_Change[i] = false;
 			Flow_Publish_At[i] = millis() + Flow_Publish_Delay;
@@ -3974,6 +4055,23 @@ bool Distance(String &Topic, String &Payload) {
 } // Distance()
 
 
+// ############################################################ Publish_Uptime_Loop() ############################################################
+void Publish_Uptime_Loop() {
+
+  if (Publish_Uptime == false || ArduinoOTA_Active == true) {
+    return;
+  }
+
+	if (Publish_Uptime_At < millis()) {
+		// Log event
+		Log(MQTT_Topic[Topic_Log_Info] + "/Uptime", millis());
+		// Reset delay
+		Publish_Uptime_At = millis() + Publish_Uptime_Interval;
+	}
+
+} // Publish_Uptime_Loop()
+
+
 // ############################################################ setup() ############################################################
 void setup() {
 	
@@ -3988,8 +4086,6 @@ void setup() {
 			delay(500);
 		}
 	}
-
-	Log(MQTT_Topic[Topic_Log_Info], "Booting Dobby - Wemos D1 Mini firmware version: " + String(Version));
 
 
 	// ------------------------------ FS Config ------------------------------
@@ -4052,6 +4148,8 @@ void loop() {
 	Distance_Loop();
 
 	Log_Loop();
+
+	Publish_Uptime_Loop();
 
 	// Needs to be there to prevent watchdog reset
 	delay(0);
