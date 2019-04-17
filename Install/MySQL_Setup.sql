@@ -31,7 +31,7 @@ CREATE TABLE `Dobby`.`Action_Trigger` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
-CREATE TABLE `EP_Logger`.`EP_Logger` (
+CREATE TABLE `Dobby`.`EP_Logger` (
   `id` int(11) NOT NULL,
   `Name` varchar(45) NOT NULL,
   `Enabled` tinyint(1) NOT NULL,
