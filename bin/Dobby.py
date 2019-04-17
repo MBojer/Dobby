@@ -1714,49 +1714,148 @@ class EP_Logger:
                     Modbud_id_List = []
 
                     for i in range(len(EP_Logger_Info_Names)):
+
                         if EP_Logger_Info_Names[i][0] in Ignore_List:
                             continue
 
-                        if EP_Logger_Info_Values[i] is not 1:
+                        # Check what action is needed
+                        # 0 = No action
+                        # 1 = Log value
+                        # 2 = Log and publish value
+                        # 3 = Publish value
+                        if EP_Logger_Info_Values[i] is 0:
                             continue
 
                         id_Dict = {}
 
+                        # if "Status" in EP_Logger_Info_Names[i][0]:
+                        #     print "STATUS KYK"
+                        #     Modbus_Value = EP_Logger_Client.read_input_registers(0x3200, 1, unit=1)
+                        #     print Modbus_Value
+                        #     print Modbus_Value.registers[0]
+
+                        # D3-D0: 
+                        # 01H Overvolt
+                        # 00H Normal
+                        # 02H Under Volt
+                        # 03H Low Volt Disconnect
+                        # 04H Fault  
+
+                        # D7-D4: 
+                        # 00H Normal
+                        # 01H Over Temp.(Higher than the warning settings)
+                        # 02H Low Temp.(Lower than the warning settings),
+
+                        # D8: Battery inner resistance
+                        # abnormal 1,
+                        # normal 0
+                        # D15: 
+                        # 1-Wrong identification for rated voltage
+
                         id_Dict['Multiplier'] = 1
 
-                        if "Amps" in EP_Logger_Info_Names[i][0] or "Volts" in EP_Logger_Info_Names[i][0] or "Watts" in EP_Logger_Info_Names[i][0]:
-                            id_Dict['Multiplier'] = 0.01
+                        Test_List = ['Amp', 'Volt', "Watt", "Temperature"]
 
-                        id_Dict['Name'] = EP_Logger_Info_Names[i][0][:-6]
+                        for Test_Name in Test_List:
+                            if Test_Name in EP_Logger_Info_Names[i][0]:
+                                id_Dict['Multiplier'] = 0.01
+                                break
+
+                        id_Dict['Name'] = EP_Logger_Info_Names[i][0][:-7]
                         id_Dict['id'] = EP_Logger_Info_Names[i][0][-6:]
+                        id_Dict['Action'] = EP_Logger_Info_Values[i]
 
                         Modbud_id_List.append(id_Dict)
 
+                    # Request values
                     for Info in Modbud_id_List:
 
-                        Modbus_Value = EP_Logger_Client.read_input_registers(int(Info['id'], 16), 1, unit=1)
-                        Modbus_Value = str(float(Modbus_Value.registers[0] * Info['Multiplier']))
+                        # Battery Status
+                        if Info['Name'] == 'Battery Status':
+                            Modbus_Value = EP_Logger_Client.read_input_registers(int(Info['id'], 16), 1, unit=1)
+
+
+
+                            # D3-D0: 
+                            # 01H Overvolt 
+                            # 00H Normal 
+                            # 02H Under Volt
+                            # 03H Low Volt Disconnect
+                            # 04H Fault 
+
+                            # D7-D4: 
+                            # 00H Normal
+                            # 01H Over Temp.(Higher than the warning settings)
+                            # 02H Low Temp.( Lower than the warning settings), 
+
+                            # D8: 
+                            # normal 0 
+                            # Battery inerternal resistance abnormal 1, 
+
+                            # D15: 
+                            # 1-Wrong identification for rated voltage
+
+                            print "Info['Name']"
+                            print Info['Name']
+                            # for Value in Modbus_Value:
+                            #     print Value
+                            print str(Modbus_Value.registers[0])
+
+                        elif Info['Name'] == 'Charger Status':
+                            Modbus_Value = EP_Logger_Client.read_input_registers(int(Info['id'], 16), 1, unit=1)
+                            print "Info['Name']"
+                            print Info['Name']
+                            print Modbus_Value.registers
+
+                            for i in range(15):
+                                print i
+                                print Modbus_Value.registers[i]
+                        
+                        else:
+                            Modbus_Value = EP_Logger_Client.read_input_registers(int(Info['id'], 16), 1, unit=1)
+                            Modbus_Value = str(float(Modbus_Value.registers[0] * Info['Multiplier']))
+
+                        # else:
+                        #     print "other"
+                        #     return
+                        #     # Modbus_Value = str(Modbus_Value.registers[0])
+
+                            # print 'str(Modbus_Value.registers[0])'
+                            # print float(Modbus_Value)
+                            # print str(Info['id'])
+                            # print str(Info['Multiplier'])
+                            # print str(int(Info['id'], 16))
+                            # print str(Modbus_Value.registers[0])
+
 
                         # Log Value
-                        try:
-                            db_Curser.execute("INSERT INTO `" + Dobby_Config['Log_db'] + "`.`EP_Logger` (Device, Name, Value) Values('" + self.Name + "','" + Info['Name'] + "' , '" + str(Modbus_Value) + "');")
-                        except (MySQLdb.Error, MySQLdb.Warning) as e:
-                            # Table missing, create it
-                            if e[0] == 1146:
-                                Log("Info", "EP Logger", "db", "EP Logger Table missing creating it")
-                                try:
-                                    db_Curser.execute("CREATE TABLE `" + Dobby_Config['Log_db'] + "`.`EP_Logger` (`id` int(11) NOT NULL AUTO_INCREMENT, `Device` varchar(75) NOT NULL, `Name` varchar(75) NOT NULL, `Value` varchar(75) NOT NULL, `DateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`id`))ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;")
-                                    # Try logging the message again
-                                    db_Curser.execute("INSERT INTO `" + Dobby_Config['Log_db'] + "`.`EP_Logger` (Device, Name, Value) Values('" + self.Name + "','" + Info['Name'] + "' , '" + str(Modbus_Value) + "');")
+                        if Info['Action'] in [1, 2]:
+                            try:
+                                db_Curser.execute("INSERT INTO `" + Dobby_Config['Log_db'] + "`.`EP_Logger` (Device, Name, Value) Values('" + self.Name + "','" + Info['Name'] + "' , '" + str(Modbus_Value) + "');")
+                            except (MySQLdb.Error, MySQLdb.Warning) as e:
+                                # Table missing, create it
+                                if e[0] == 1146:
+                                    Log("Info", "EP Logger", "db", "EP Logger Table missing creating it")
+                                    try:
+                                        db_Curser.execute("CREATE TABLE `" + Dobby_Config['Log_db'] + "`.`EP_Logger` (`id` int(11) NOT NULL AUTO_INCREMENT, `Device` varchar(75) NOT NULL, `Name` varchar(75) NOT NULL, `Value` varchar(75) NOT NULL, `DateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`id`))ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;")
+                                        # Try logging the message again
+                                        db_Curser.execute("INSERT INTO `" + Dobby_Config['Log_db'] + "`.`EP_Logger` (Device, Name, Value) Values('" + self.Name + "','" + Info['Name'] + "' , '" + str(Modbus_Value) + "');")
 
-                                except (MySQLdb.Error, MySQLdb.Warning) as e:
-                                    # Error 1050 = Table already exists
-                                    if e[0] != 1050:
-                                        Log("Fatal", "EP Logger", Info['Name'], "Unable to create log db table, failed with error: " + str(e))
-                                        return
-                            else:
-                                Log("Critical", "EP Logger", "db", "Unable to log message. Error: " + str(e))
-                                return
+                                    except (MySQLdb.Error, MySQLdb.Warning) as e:
+                                        # Error 1050 = Table already exists
+                                        if e[0] != 1050:
+                                            Log("Fatal", "EP Logger", Info['Name'], "Unable to create log db table, failed with error: " + str(e))
+                                            return
+                                else:
+                                    Log("Critical", "EP Logger", "db", "Unable to log message. Error: " + str(e))
+                                    return
+
+                        # Publish value
+                        if Info['Action'] in [2, 3]:
+                            Log("Debug", "EP Logger", "db", "Publish")
+
+                            # Publish
+                            MQTT_Client.publish(Dobby_Config['System_Header'] + '/EP/' + str(self.Name) + '/' + str(Info['Name']), payload=str(Modbus_Value), qos=0, retain=True)
 
                         time.sleep(0.05)
 

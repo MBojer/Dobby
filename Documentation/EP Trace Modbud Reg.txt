@@ -1,3 +1,5 @@
+http://www.solar-elektro.cz/data/dokumenty/1733_modbus_protocol.pdf
+
 Charger info
 0x3000
     Charging equipment rated input voltage
@@ -63,7 +65,7 @@ Charger info
 
 
 # Real-time data (read only) input register
-0x3100
+  0x3100
     Charging equipment input voltage
     Solar charge controller--PV array voltage
     V, 100 
@@ -574,3 +576,90 @@ Coil("Force the load on/off",
     "1-Night, 0-Day"
     I, 1
     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    0x3200
+D3-D0: 
+01H Overvolt 
+00H Normal 
+02H Under Volt
+03H Low Volt Disconnect
+04H Fault 
+
+D7-D4: 
+00H Normal
+01H Over Temp.(Higher than the warning settings)
+02H Low Temp.( Lower than the warning settings), 
+
+D8: 
+normal 0 
+Battery inerternal resistance abnormal 1, 
+
+D15: 
+1-Wrong identification for rated voltage
+I, 1
+
+
+
+
+
+
+
+
+
+
+0x3201
+Charging equipment status
+D15-D14: Input volt status. 
+00 normal
+01 no power connected
+02H Higher volt input
+03H Input volt error. 
+
+D13: Charging MOSFET is short. 
+
+D12: Charging or Anti-reverse MOSFET is short. 
+
+D11: Anti-reverse MOSFET is short. 
+
+D10: Input is over current. 
+
+D9: The load is Over current. 
+
+D8: The load is short. 
+
+D7: Load MOSFET is short. 
+
+D4: PV Input is short. 
+
+D3-2: Charging status.
+00 No charging,
+01 Float,
+02 Boost,
+03 Equlization. 
+
+D1: 
+0 Normal, 
+1 Fault. 
+
+D0: 
+1 Running
+0 Standby.

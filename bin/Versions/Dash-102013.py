@@ -126,8 +126,6 @@ def Column_Name_Check(Column_Name):
 
     if Column_Name == 'DeviceConfig':
         Name_Field_String = 'Hostname'
-    if Column_Name == 'EP Logger':
-        Name_Field_String = 'Name'
     elif Column_Name == 'Users':
         Name_Field_String = 'Username'
     elif Column_Name == 'Users':
@@ -410,8 +408,6 @@ def Tabs_List():
 
     Tabs_List.append(dcc.Tab(label='Devices', value='Devices_Tab'))
 
-    Tabs_List.append(dcc.Tab(label='EP', value='EP_Tab'))
-
     Tabs_List.append(dcc.Tab(label='Live', value='Live_Tab'))
 
     Tabs_List.append(dcc.Tab(label='Log Graph', value='Log_Graph_Tab'))
@@ -436,7 +432,7 @@ def Log_Graph_Tab_Dropdown_List():
     db_Connection = Open_db(Log_db)
     db_Curser = db_Connection.cursor()
 
-    Test_List = ['APC Monitor', 'EP Logger', 'Log Trigger', 'KeepAliveMonitor']
+    Test_List = ['APC Monitor', 'Log Trigger', 'KeepAliveMonitor']
 
     for Table in Test_List:
         try:
@@ -462,7 +458,7 @@ def Log_Graph_Tab_Dropdown_List():
 # import json
 
 # MISC
-Version = 102014
+Version = 102013
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
@@ -536,7 +532,7 @@ app.config['suppress_callback_exceptions'] = True
 app.layout = html.Div([
 
 
-    dcc.Tabs(id="tabs", value='Log_Graph_Tab', children=Tabs_List()),
+    dcc.Tabs(id="tabs", value='Devices_Tab', children=Tabs_List()),
 
     html.Div(id='Main_Tabs'),
 
@@ -547,7 +543,6 @@ app.layout = html.Div([
         html.Div(id='Counters_Tab_Variables', children=""),
         html.Div(id='Config_Tab_Variables', children=""),
         html.Div(id='Devices_Tab_Variables', children=""),
-        html.Div(id='EP_Tab_Variables', children=""),
         html.Div(id='Live_Tab_Variables', children=""),
         html.Div(id='Log_Graph_Tab_Variables', children=""),
         html.Div(id='System_Log_Tab_Variables', children=""),
@@ -569,14 +564,13 @@ app.layout = html.Div([
         State('Counters_Tab_Variables', 'children'),
         State('Config_Tab_Variables', 'children'),
         State('Devices_Tab_Variables', 'children'),
-        State('EP_Tab_Variables', 'children'),
         State('Live_Tab_Variables', 'children'),
         State('Log_Graph_Tab_Variables', 'children'),
         State('System_Log_Tab_Variables', 'children'),
         State('System_Tab_Variables', 'children'),
         ]
     )
-def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Tab_Variables, Config_Tab_Variables, Devices_Tab_Variables, EP_Tab_Variables, Live_Tab_Variables, Log_Graph_Tab_Variables, System_Log_Tab_Variables, System_Tab_Variables):
+def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Tab_Variables, Config_Tab_Variables, Devices_Tab_Variables, Live_Tab_Variables, Log_Graph_Tab_Variables, System_Log_Tab_Variables, System_Tab_Variables):
     # ======================================== Alerts Tab ========================================
     # ======================================== Alerts Tab ========================================
     # ======================================== Alerts Tab ========================================
@@ -696,68 +690,6 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
             html.Button('Push Config', id='Devices_Push', n_clicks=int(Devices_Tab_Variables.get('Devices_Push', 0)), style={'margin-left': '10px', 'margin-top': '5px', 'margin-bottom': '5px'}),
             
         ], id='Devices_Tab_Variables')
-
-
-    # ======================================== EP Tab ========================================
-    # ======================================== EP Tab ========================================
-    # ======================================== EP Tab ========================================
-    elif tab == 'EP_Tab':
-
-        EP_Tab_Variables = Generate_Variable_Dict(EP_Tab_Variables)
-
-        return html.Div(
-            id='EP_Tab',
-            children=[
-
-                # Dropdown to select logs
-                dcc.Dropdown(
-                    id='EP_Dropdown_Device',
-                    options=[{'label': Debice, 'value': Debice} for Debice in SQL_To_List("SELECT DISTINCT Name FROM `Dobby`.`EP_Logger;")],
-                    value=EP_Tab_Variables.get('EP_Dropdown_Device', None),
-                    multi=True,
-                    ),
-
-                # Dropdown to select logs
-                dcc.Dropdown(
-                    id='EP_Dropdown_Entry',
-                    options=[],
-                    value=EP_Tab_Variables.get('EP_Dropdown_Entry', None),
-                    multi=True,
-                    ),
-
-                # The graph
-                dcc.Graph(
-                    id='EP_Graph',
-                    style={
-                        'height': '70vh',
-                        'width': '95vw',
-                        'padding': 5,
-                        }
-                    ),
-
-                html.Div(
-                    id='EP_Tab_Slider',
-                    style={
-                        'width': '90vw',
-                        'padding': 50,
-                        'display': 'inline-block'
-                        },
-                    children=[
-                        dcc.RangeSlider(
-                            id='EP_Slider',
-                            min=0,
-                            max=100,
-                            step=1,
-                            value=[EP_Tab_Variables.get('Slider_Value_Low', 95), EP_Tab_Variables.get('Slider_Value_High', 100)],
-                            allowCross=False,
-                            marks={},
-                        ),
-                    ],
-                ),
-            ],
-        )
-            
-
 
 
     # ======================================== Live Tab ========================================
@@ -1526,217 +1458,6 @@ def Device_Config_Tab_Config_Show(Devices_Tab_Variables, Device_Config_Save, Dev
 
 
 # ======================================== Log Graph Tab - Callbacks ========================================
-# EP_Tab_Variables
-@app.callback(
-    Output('EP_Tab_Variables', 'children'),
-    [
-        Input('EP_Dropdown_Device', 'value'),
-        Input('EP_Dropdown_Entry', 'value'),
-        Input('EP_Slider', 'value'),
-        ],
-    [
-        State('EP_Tab_Variables', 'children')
-        ]
-    )
-def EP_Tab_Variables(EP_Dropdown_Device, EP_Dropdown_Entry, EP_Slider, EP_Tab_Variables):
-
-    EP_Tab_Variables = Generate_Variable_Dict(EP_Tab_Variables)
-
-    # Dropdowns
-    # Set device value
-    EP_Tab_Variables['EP_Dropdown_Device'] = EP_Dropdown_Device
-    # IF device value is not reset all others values
-    if EP_Dropdown_Entry is None:
-        EP_Tab_Variables['EP_Dropdown_Entry'] = "None"
-    else:
-        EP_Tab_Variables['EP_Dropdown_Entry'] = EP_Dropdown_Entry
-
-    # Slider
-    if EP_Dropdown_Device is not None and EP_Dropdown_Entry is not None and EP_Dropdown_Device != [] and EP_Dropdown_Entry != []:
-
-        Slider_Name_String = ""
-        i = 0
-        # Find first entry
-        for Selection in EP_Dropdown_Entry:
-            if i != 0:
-                Slider_Name_String = Slider_Name_String + " OR "
-            Slider_Name_String = Slider_Name_String + "`Name`='" + str(Selection.replace("_", " ")) + "'"
-            i = i + 1
-
-        db_Connection = Open_db(Log_db)
-        db_Curser = db_Connection.cursor()
-
-        try:
-            db_Curser.execute("SELECT DateTime FROM `" + Log_db + "`.`EP_Logger` WHERE " + Slider_Name_String + " ORDER BY id ASC LIMIT 1;")
-            Min_Date = db_Curser.fetchone()
-
-            db_Curser.execute("SELECT DateTime FROM `" + Log_db + "`.`EP_Logger` WHERE " + Slider_Name_String + " ORDER BY id DESC LIMIT 1;")
-            Max_Date = db_Curser.fetchone()
-
-        except (MySQLdb.Error, MySQLdb.Warning) as e:
-            print(e)
-            return False
-
-        # Close db connection
-        Close_db(db_Connection, db_Curser)
-
-        if Min_Date is not None or Max_Date is not None:
-            # Save min/max
-            Min_Date = Min_Date[0]
-            Max_Date = Max_Date[0]
-
-            Time_Span = Max_Date - Min_Date
-            Time_Jumps = Time_Span / 100
-
-            # Save Low value
-            if EP_Slider[0] == 0:
-                EP_Tab_Variables['Slider_Value_Low'] = Min_Date
-            elif EP_Slider[0] == 100:
-                EP_Tab_Variables['Slider_Value_Low'] = Max_Date
-            else:
-                EP_Tab_Variables['Slider_Value_Low'] = Min_Date + Time_Jumps * EP_Slider[0]
-
-            # removes ".######" from the datetime string
-            if len(str(EP_Tab_Variables['Slider_Value_Low'])) > 19:
-                EP_Tab_Variables['Slider_Value_Low'] = str(EP_Tab_Variables['Slider_Value_Low'])[:-7]
-
-            # Save high value
-            if EP_Slider[1] == 0:
-                EP_Tab_Variables['Slider_Value_High'] = Min_Date
-            elif EP_Slider[1] == 100:
-                EP_Tab_Variables['Slider_Value_High'] = Max_Date
-            else:
-                EP_Tab_Variables['Slider_Value_High'] = Min_Date + Time_Jumps * EP_Slider[1]
-
-            # removes ".######" from the datetime string
-            if len(str(EP_Tab_Variables['Slider_Value_High'])) > 19:
-                EP_Tab_Variables['Slider_Value_High'] = str(EP_Tab_Variables['Slider_Value_High'])[:-7]
-
-    return Generate_Variable_String(EP_Tab_Variables)
-
-
-
-@app.callback(
-    Output('EP_Dropdown_Entry', 'options'),
-    [
-        Input('EP_Dropdown_Device', 'value'),
-        Input('EP_Tab_Variables', 'children'),
-        ],
-    )
-def EP_Dropdown_Entry(EP_Dropdown_Device, EP_Tab_Variables):
-
-    EP_Tab_Variables = Generate_Variable_Dict(EP_Tab_Variables)
-
-    if EP_Dropdown_Device is None or EP_Dropdown_Device == 'None':
-        return []
-
-    db_Connection = Open_db(Log_db)
-    db_Curser = db_Connection.cursor()
-
-    db_Curser.execute("SELECT DISTINCT Name FROM `" + Log_db + "`.`EP_Logger` ORDER BY Name;")
-    db_Fetch = db_Curser.fetchall()
-
-    # Close db connection
-    Close_db(db_Connection, db_Curser)
-
-    Return_List = []
-
-    for Value in db_Fetch:
-        Return_List.append({'label': Value, 'value': Value[0].replace(" ", "_")})
-
-    return Return_List
-
-
-
-# # Update Graph
-# @app.callback(
-#     Output('EP_Graph', 'figure'),
-#     [
-#         Input('EP_Tab_Variables', 'children'),
-#         ],
-#     )
-# def EP_Graph(EP_Tab_Variables):
-
-#     # Import variables from div able
-#     EP_Tab_Variables = Generate_Variable_Dict(EP_Tab_Variables)
-
-#     # Do nothing if no device have been selected in the dropdown
-#     if EP_Tab_Variables['EP_Dropdown_Device'] == 'None' or EP_Tab_Variables['EP_Dropdown_Entry'] == 'None' or EP_Tab_Variables is {}:
-#         return {'data': ''}
-
-#     # ======================================== Read Logs ========================================
-#     else:
-#         db_Connection = Open_db(Log_db)
-#         db_Curser = db_Connection.cursor()
-
-#         Data = []
-
-#         # APC Monitor
-#         if EP_Tab_Variables['EP_Dropdown_Device'] == "APC Monitor" and EP_Tab_Variables['EP_Dropdown_Rj'] != "None":
-
-#             for Name in EP_Tab_Variables['EP_Dropdown_Entry']:
-
-#                 for Row in EP_Tab_Variables['EP_Dropdown_Rj']:
-#                     Data.append(
-#                         go.Scatter(
-#                             x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`" + EP_Tab_Variables['EP_Dropdown_Device'].replace(" ", "_") + "` WHERE Name='" + str(Name) + "' AND datetime>'" + str(EP_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
-#                             y=SQL_To_List("SELECT `" + Row + "` FROM `" + Log_db + "`.`" + EP_Tab_Variables['EP_Dropdown_Device'].replace(" ", "_") + "` WHERE Name='" + str(Name) + "' AND datetime>'" + str(EP_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
-#                             name=str(Name + " - " + Row),
-#                             mode='lines+markers',
-#                         )
-#                     )
-
-#         # KeepAliveMonitor
-#         elif EP_Tab_Variables['EP_Dropdown_Device'] == "KeepAliveMonitor":
-#             print "HIT KeepAliveMonitor"
-#             return {'data': ''}
-
-#         # Log Trigger
-#         elif EP_Tab_Variables['EP_Dropdown_Device'] == "Log Trigger" and EP_Tab_Variables['EP_Dropdown_Rj'] != "None" and EP_Tab_Variables['EP_Dropdown_Rj'] != ['']:
-
-#             for Name in EP_Tab_Variables['EP_Dropdown_Entry']:
-
-#                 # Create and style traces
-#                 for Tag_Name in EP_Tab_Variables['EP_Dropdown_Rj']:
-
-#                     Plot_Name = ''
-#                     if Tag_Name == '-- No Tag --':
-#                         Tag_Search_String = ''
-#                         Plot_Name = Name
-#                     else:
-#                         Tag_Search_String = "AND json_Tag='" + str(Tag_Name) + "'"
-#                         Plot_Name = str(Name + " - " + Tag_Name)
-
-#                     Date_Search_String = " AND datetime>'" + str(EP_Tab_Variables['Slider_Value_Low']) + "' AND datetime<'" + str(EP_Tab_Variables['Slider_Value_High']) + "'"
-
-#                     Data.append(
-#                             go.Scatter(
-#                                 x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"),
-#                                 y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"),
-#                                 # x=[1, 2],
-#                                 # y=[1, 2],
-#                                 name=Plot_Name,
-#                                 mode='lines+markers',
-#                                 line=dict(
-#                                     dash='dash',
-#                                 )
-#                             )
-#                         )
-#         Close_db(db_Connection, db_Curser)
-
-#         # Edit the layout
-#         layout = dict(
-#             # title = 'Average High and Low Temperatures in New York',
-#             # xaxis=dict(title='Timestamp'),
-#             # yaxis = dict(title = 'Temperature (degrees F)'),
-#         )
-
-#         fig = dict(data=Data, layout=layout)
-
-#         return fig
-
-
-# ======================================== Log Graph Tab - Callbacks ========================================
 # Log_Graph_Tab_Variables
 @app.callback(
     Output('Log_Graph_Tab_Variables', 'children'),
@@ -1773,15 +1494,10 @@ def Log_Graph_Tab_Variables(Log_Graph_Dropdown, Log_Graph_Dropdown_Entry, Log_Gr
         Slider_Name_String = ""
         i = 0
         # Find first entry
-        Name_Column = 'Name'
-
-        if Log_Graph_Dropdown == "EP Logger":
-            Name_Column = 'Device'
-
         for Selection in Log_Graph_Dropdown_Entry:
             if i != 0:
                 Slider_Name_String = Slider_Name_String + " OR "
-            Slider_Name_String = Slider_Name_String + "`" + Name_Column + "`='" + str(Selection) + "'"
+            Slider_Name_String = Slider_Name_String + "`Name`='" + str(Selection) + "'"
             i = i + 1
 
         db_Connection = Open_db(Log_db)
@@ -1795,7 +1511,7 @@ def Log_Graph_Tab_Variables(Log_Graph_Dropdown, Log_Graph_Dropdown_Entry, Log_Gr
             Max_Date = db_Curser.fetchone()
 
         except (MySQLdb.Error, MySQLdb.Warning) as e:
-            print "SQL ERROR: " + str(e)
+            print(e)
             return False
 
         # Close db connection
@@ -1907,32 +1623,6 @@ def Log_Graph_Tab_Row_json_Dropdown(Log_Graph_Dropdown, Log_Graph_Tab_Variables)
         for Value in db_Fetch:
             if Value[0] not in ['id', 'DateTime', 'Name']:
                 Return_List.append({'label': Value[0], 'value': Value[0]})
-
-    # EP Logger
-    elif Log_Graph_Dropdown == "EP Logger":
-        # Open DB commection
-        db_Connection = Open_db("DobbyLog")
-        db_Curser = db_Connection.cursor()
-
-        # Get tags for each entry
-        for Entry in Log_Graph_Tab_Variables['Log_Graph_Dropdown_Entry']:
-
-            try:
-                db_Curser.execute("SELECT distinct Name FROM DobbyLog.EP_Logger Where Device = '" + str(Entry) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' AND datetime<'" + str(Log_Graph_Tab_Variables['Slider_Value_High']) + "' ORDER BY Name;")
-                db_Fetch = db_Curser.fetchall()
-            except:
-                return {}
-
-            for Value in db_Fetch:
-                if Value[0] == "":
-                    Return_List.append({'label': '-- No Tag --', 'value': '-- No Tag --'})
-                else:
-                    Return_List.append({'label': Value[0], 'value': Value[0]})
-
-        # Close db connection
-        Close_db(db_Connection, db_Curser)
-
-
 
     elif Log_Graph_Dropdown == "Log Trigger":
         # Open DB commection
@@ -2064,51 +1754,21 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
                     )
 
         # KeepAliveMonitor
-        elif Log_Graph_Tab_Variables['Log_Graph_Dropdown'] == "EP Logger" and Log_Graph_Tab_Variables['Log_Graph_Dropdown_Rj'] != "None":
-
-            # Add values for each device
-            for Device in Log_Graph_Tab_Variables['Log_Graph_Dropdown_Entry']:
-
-                # Add values from device
-                for Value_Name in Log_Graph_Tab_Variables['Log_Graph_Dropdown_Rj']:
-                    print 'Value_Name: ' + Value_Name
-
-                    Plot_Name = ''
-                    if Value_Name == '-- No Tag --':
-                        Tag_Search_String = ''
-                        Plot_Name = Device
-                    else:
-                        Tag_Search_String = "AND Name='" + str(Value_Name) + "'"
-                        Plot_Name = str(Device + " - " + Value_Name)
-
-                    Date_Search_String = " AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' AND datetime<'" + str(Log_Graph_Tab_Variables['Slider_Value_High']) + "'"
-
-
-                    print "TEST123"
-                    print "SELECT DateTime FROM `" + Log_db + "`.`EP_Logger` WHERE Device='" + str(Device) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"
-                    print "SELECT Value FROM `" + Log_db + "`.`EP_Logger` WHERE Device='" + str(Device) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"
-
-                    Data.append(
-                            go.Scatter(
-                                x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`EP_Logger` WHERE Device='" + str(Device) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"),
-                                y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`EP_Logger` WHERE Device='" + str(Device) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"),
-                                # x=[1, 2],
-                                # y=[1, 2],
-                                name=Plot_Name,
-                                mode='lines+markers',
-                                line=dict(
-                                    dash='dash',
-                                )
-                            )
-                        )
-
-        # KeepAliveMonitor
         elif Log_Graph_Tab_Variables['Log_Graph_Dropdown'] == "KeepAliveMonitor":
             print "HIT KeepAliveMonitor"
             return {'data': ''}
 
         # Log Trigger
         elif Log_Graph_Tab_Variables['Log_Graph_Dropdown'] == "Log Trigger" and Log_Graph_Tab_Variables['Log_Graph_Dropdown_Rj'] != "None" and Log_Graph_Tab_Variables['Log_Graph_Dropdown_Rj'] != ['']:
+
+            # RM
+            # print "HIT Log_Graph_Dropdown"
+            # return {'data': ''}
+
+            # print "Log_Graph_Tab_Variables['Log_Graph_Dropdown_Entry']"
+            # print Log_Graph_Tab_Variables['Log_Graph_Dropdown_Entry']
+            # print "Log_Graph_Tab_Variables['Log_Graph_Dropdown_Rj']"
+            # print Log_Graph_Tab_Variables['Log_Graph_Dropdown_Rj']
 
             for Name in Log_Graph_Tab_Variables['Log_Graph_Dropdown_Entry']:
 
@@ -2125,6 +1785,15 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
 
                     Date_Search_String = " AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' AND datetime<'" + str(Log_Graph_Tab_Variables['Slider_Value_High']) + "'"
 
+                    # print "PIK:" + Tag_Search_String
+                    # print "SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"
+
+                    # db_Curser.execute("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;")
+                    # temp = db_Curser.fetchall()
+
+                    # print "s"
+                    # print temp
+
                     Data.append(
                             go.Scatter(
                                 x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"),
@@ -2138,8 +1807,69 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
                                 )
                             )
                         )
+                    # print "Data"
+                    # print Data
 
-        # Close db connection
+                    # pass
+                    # print "SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"
+
+                    # fix json tags here something is up here is a -- No Tag -- is selected it will select all from the once that has tacs
+
+                    # if "Min" in Tag_Name:
+                    #     Data.append(
+                    #         go.Scatter(
+                    #             x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             name=str(Name + " - " + Tag_Name),
+                    #             mode='lines+markers',
+                    #             line=dict(
+                    #                 dash='dash',
+                    #             )
+                    #         )
+                    #     )
+                    #
+                    # elif "Max" in Tag_Name:
+                    #     Data.append(
+                    #         go.Scatter(
+                    #             x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             name=str(Name + " - " + Tag_Name),
+                    #             mode='lines+markers',
+                    #             line=dict(
+                    #                 dash='dot',
+                    #             )
+                    #         )
+                    #     )
+                    #
+                    # elif "Current" in Tag_Name:
+                    #     Data.append(
+                    #         go.Scatter(
+                    #             x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             name=str(Name + " - " + Tag_Name),
+                    #             mode='lines+markers',
+                    #         )
+                    #     )
+                    #
+                    # else:
+                    #     Data.append(
+                    #         go.Scatter(
+                    #             x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND json_Tag='" + str(Tag_Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                    #             name=str(Name + " - " + Tag_Name),
+                    #             mode='lines+markers',
+                    #         )
+                    #     )
+                # else:
+                #     # Create and style traces
+                #     Data.append(
+                #         go.Scatter(
+                #             x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                #             y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' ORDER BY id DESC;"),
+                #             name=str(Name),
+                #             mode='lines+markers',
+                #         )
+                    # )
         Close_db(db_Connection, db_Curser)
 
         # Edit the layout

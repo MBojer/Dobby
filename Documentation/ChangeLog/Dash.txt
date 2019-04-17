@@ -1,5 +1,8 @@
 ================================================== 102013 ==================================================
-Added Devices Tab
+Working on EP Tab - For interfacing with EP Ever TRacer A series charge controller
+
+================================================== 102013 ==================================================
+Working on Devices Tab
 
 ================================================== 102012 ==================================================
 Split Mail Trigger into Alert Trigger and Mail Trigger
