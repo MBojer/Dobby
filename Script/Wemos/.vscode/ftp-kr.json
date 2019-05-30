@@ -1,0 +1,17 @@
+{
+    "host": "192.168.43.145",
+    "username": "dobby",
+    "password": "heretoserve",
+    "remotePath": "/etc/Dobby/Script/Wemos",
+    "protocol": "ftp",
+    "port": 0,
+    "fileNameEncoding": "utf8",
+    "autoUpload": true,
+    "autoDelete": false,
+    "autoDownload": false,
+    "ignore": [
+        ".git",
+        "/.vscode",
+        ".pioenvs"
+    ]
+}

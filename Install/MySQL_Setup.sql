@@ -90,7 +90,6 @@ CREATE TABLE `Dobby`.`DeviceConfig` (
   `MQTT_Port` int(5) unsigned NOT NULL DEFAULT '1883',
   `MQTT_Username` varchar(25) NOT NULL,
   `MQTT_Password` varchar(25) NOT NULL,
-  `MQTT_Allow_Flash_Password` varchar(25) NOT NULL,
   `MQTT_KeepAlive_Interval` int(60) NOT NULL DEFAULT '60',
   `Relay_On_State` tinyint(1) unsigned DEFAULT NULL,
   `Relay_Pins` varchar(25) DEFAULT NULL,

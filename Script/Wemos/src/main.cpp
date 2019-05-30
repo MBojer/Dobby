@@ -517,15 +517,13 @@ unsigned long Flow_Publish_At[Flow_Max_Number_Of];
 // Based on: https://github.com/Yveaux/esp8266-Arduino/blob/master/esp8266com/esp8266/libraries/OneWire/examples/DS18x20_Temperature/DS18x20_Temperature.pde
 #include <OneWire.h>
 
-bool DS18B20_Configured = false;
+#define DS18B20_Max_Number_Of 4
+byte DS18B20_Pin = D7;
 
-#define DS18B20_Max_Number_Of 1
-byte DS18B20_Pins[DS18B20_Max_Number_Of] = {D3};
+bool DS18B20_Configured[DS18B20_Max_Number_Of] = {false, false, false, false};
 
-byte DS18B20_Address[8];
-byte DS18B20_Type;
-
-unsigned long DS18B20_Last_Read = 0; // When the sensor was last read
+byte DS18B20_Address[DS18B20_Max_Number_Of][8];
+byte DS18B20_Type[DS18B20_Max_Number_Of];
 
 Ticker DS18B20_Ticker;
 
@@ -534,7 +532,10 @@ float DS18B20_Current[DS18B20_Max_Number_Of] = {0};
 float DS18B20_Min[DS18B20_Max_Number_Of] = {0};
 float DS18B20_Max[DS18B20_Max_Number_Of] = {0};
 
-OneWire DS18B20_Sensor(DS18B20_Pins[0]);
+OneWire DS18B20_Sensor(DS18B20_Pin);
+
+byte DS18B20_Error_Counter[DS18B20_Max_Number_Of];
+#define DS18B20_Error_Max 15
 
 
 // ------------------------------------------------------------ Distance ------------------------------------------------------------
@@ -582,6 +583,7 @@ void MQTT_Subscribe(String Topic, bool Activate_Topic, byte SubTopics);
 void Rebuild_MQTT_Topics();
 
 bool Is_Valid_Number(String str);
+unsigned int HEX_Str_To_Int(String hexString);
 
 String FS_Config_Build();
 bool FS_Config_Save();
@@ -600,6 +602,7 @@ bool DHT(String &Topic, String &Payload);
 bool DC_Voltmeter(String &Topic, String &Payload);
 bool PIR(String &Topic, String &Payload);
 bool DS18B20(String &Topic, String &Payload);
+void DS18B20_Loop();
 bool Distance(String &Topic, String &Payload);
 bool MQ(String &Topic, String &Payload);
 void Distance_Loop();
@@ -617,6 +620,29 @@ void MQ_Loop();
 // ############################################################ Functions ############################################################
 // ############################################################ Functions ############################################################
 // ############################################################ Functions ############################################################
+
+
+// ############################################################ HEX_Str_To_Int() ############################################################
+unsigned int HEX_Str_To_Int(String hexString) {
+ 
+  unsigned int decValue = 0;
+  int nextInt;
+  
+  for (unsigned int i = 0; i < hexString.length(); i++) {
+    
+    nextInt = int(hexString.charAt(i));
+    if (nextInt >= 48 && nextInt <= 57) nextInt = map(nextInt, 48, 57, 0, 9);
+    if (nextInt >= 65 && nextInt <= 70) nextInt = map(nextInt, 65, 70, 10, 15);
+    if (nextInt >= 97 && nextInt <= 102) nextInt = map(nextInt, 97, 102, 10, 15);
+    nextInt = constrain(nextInt, 0, 15);
+    
+    decValue = (decValue * 16) + nextInt;
+  }
+  
+  return decValue;
+
+
+} // HEX_Str_To_Int()
 
 
 // ############################################################ Is_Valid_Number() ############################################################
@@ -743,7 +769,7 @@ void Indicator_LED_Blink_OFF () {
 }
 
 // ############################################################ Indicator_LED_Blink() ############################################################
-void Indicator_LED_Blink() {
+void Indicator_LED_Blink_Now() {
 
 	digitalWrite(D4, LOW); // think is has to be low to be ON
 	Indicator_LED_Blink_OFF_Ticker.once_ms(Indicator_LED_Blink_For, Indicator_LED_Blink_OFF);
@@ -759,8 +785,8 @@ void Indicator_LED_Blink(byte Number_Of_Blinks) {
 	Indicator_LED_Blinks_Active = true;
 	Indicator_LED_Blinks_Left = Number_Of_Blinks - 1;
 
-	Indicator_LED_Blink(); // for instant reaction then attach the ticket below
-	Indicator_LED_Blink_Ticker.attach(1, Indicator_LED_Blink);
+	Indicator_LED_Blink_Now(); // for instant reaction then attach the ticket below
+	Indicator_LED_Blink_Ticker.attach(1, Indicator_LED_Blink_Now);
 
 } // Indicator_LED_Blink()
 
@@ -792,7 +818,7 @@ void Indicator_LED(byte LED_State, bool Change_To) {
 		if (Indicator_LED_State_Active[i] == true) {
 			if (i != 0) {
 				// Start blinking at first herts to let the most "important" state come first
-				Indicator_LED_Blink_Ticker.attach(Indicator_LED_State_Hertz[LED_State], Indicator_LED_Blink);
+				Indicator_LED_Blink_Ticker.attach(Indicator_LED_State_Hertz[LED_State], Indicator_LED_Blink_Now);
 				State_Active = true;
 				// Break the loop to only trigger the first active state
 				break;
@@ -1798,78 +1824,108 @@ bool FS_Config_Load() {
 
 	
 	// ############### DS18B20 ###############
-	if (root.get<String>("DS18B20_Configured") == "1") {
+	if (root.get<String>("DS18B20_id") != "") {
 
+		// Loge event
 		Log(MQTT_Topic[Topic_Log_Info] + "/DS18B20", "Configuring");
 
-		MQTT_Subscribe(MQTT_Topic[Topic_DS18B20], true, PLUS);
-		FS_Config_Settings_Set(DS18B20_Pins, DS18B20_Max_Number_Of, Number_To_Pin(DS18B20_Pins[0]), MQTT_Topic[Topic_Log_Debug] + "/DS18B20", "DS18B20 Pins");
+		// Save id string to string for processing
+		String id_String = root.get<String>("DS18B20_id");
 
-		// Reserve pin
+		// Add "," to the end to make the for loop add up
+		id_String = id_String + ",";
+
+		// Remove "-"
+		id_String.replace("-", "");
+
 		for (byte i = 0; i < DS18B20_Max_Number_Of; i++) {
-			if (DS18B20_Pins[i] != 255) {
+			
+			// Split the string to get the first id
+			String id_Sub_String = id_String.substring(0, id_String.indexOf(","));
+			
+			// Remove id from string
+			id_String.replace(id_Sub_String + ",", "");
 
-				if (Pin_Monitor(Reserve_OneWire, DS18B20_Pins[i]) == Pin_OneWire) {
-					// Set true now so it can be set to false if failure
-					DS18B20_Configured = true;
+			// Split the substring into a byte array
+			for (byte x = 0; x < 8; x++) {
 
-					// Search for the sensor
-					if (!DS18B20_Sensor.search(DS18B20_Address)) {
-						Log(MQTT_Topic[Topic_Log_Error] + "/DS18B20/1", "Sensor not connected disabling DS18B20");
-						DS18B20_Configured = false;
-						break;
-					}
-					// Log sensor was found
-					String DS18B20_Address_String = String(DS18B20_Address[0], HEX);
-					for (i = 1; i < 8; i++) {
-						// Zero patching
-						String Add_String = String(DS18B20_Address[i], HEX);
-						if (Add_String.length() == 1) {
-							Add_String = "0" + Add_String;
-						}
-						DS18B20_Address_String = DS18B20_Address_String + ":" + Add_String;
-					}
-					Log(MQTT_Topic[Topic_Log_Debug] + "/DS18B20/1", "Found sensor on address: " + DS18B20_Address_String);
+				DS18B20_Address[i][x] = HEX_Str_To_Int(id_Sub_String.substring(0, 2));
+				
+				// Remove hex id from id sub string
+				id_Sub_String = id_Sub_String.substring(2, id_Sub_String.length());
+			}
 
-					// CRC Check
-					if (OneWire::crc8(DS18B20_Address, 7) != DS18B20_Address[7]) {
-						Log(MQTT_Topic[Topic_Log_Debug] + "/DS18B20/1", "Address CRC check failed, disabling DS18B20");
-						DS18B20_Configured = false;
-						break;
-					}
+			// Set true now so it can be set to false if failure
+			DS18B20_Configured[i] = true;
 
-					// the first ROM byte indicates which chip
-					switch (DS18B20_Address[0]) {
-						case 0x10:
-							Log(MQTT_Topic[Topic_Log_Debug] + "/DS18B20/1", "Type: DS18S20 or old DS1820");
-							DS18B20_Type = 1;
-							break;
-						case 0x28:
-							Log(MQTT_Topic[Topic_Log_Debug] + "/DS18B20/1", "Type: DS18B20");
-							DS18B20_Type = 0;
-							break;
-						case 0x22:
-							Log(MQTT_Topic[Topic_Log_Debug] + "/DS18B20/1", "Type: DS1822");
-							DS18B20_Type = 0;
-							break;
-						default:
-							Log(MQTT_Topic[Topic_Log_Error] + "/DS18B20/1", "Invalid sensor in type: " + String(DS18B20_Type) + " Disabling DS18B20");
-							DS18B20_Configured = false;
-							break;
-					}
-					DS18B20_Sensor.reset();
-					DS18B20_Sensor.select(DS18B20_Address);
-					DS18B20_Sensor.write(0x44, 1);        // start conversion, with parasite power on at the end
+			// Check if the id string in empthy
+			if (id_String == "") break;
+		}
+		
+		// Subscribe to topic
+		MQTT_Subscribe(MQTT_Topic[Topic_DS18B20], true, PLUS);
+
+		// Configure pin
+		if (Pin_Monitor(Reserve_OneWire, DS18B20_Pin) == Pin_OneWire) {
+			Log(MQTT_Topic[Topic_Log_Debug] + "/DS18B20", "DS18B20 Pin changed to: " + Number_To_Pin(DS18B20_Pin));
+		}
+	
+		for (byte i = 0; i < DS18B20_Max_Number_Of; i++) {
+
+			// Check if Sensor id is set
+			if (DS18B20_Configured[i] == false) continue;
+
+			byte DS18B20_Data[12];
+
+			// Prep for reading
+			DS18B20_Sensor.reset();
+			DS18B20_Sensor.select(DS18B20_Address[i]);    
+			DS18B20_Sensor.write(0xBE);         // Read Scratchpad
+
+			// Read sensors values
+			for (byte i = 0; i < 9; i++) {           // we need 9 bytes
+				DS18B20_Data[i] = DS18B20_Sensor.read();
+			}
+
+			// CRC Check
+			if (DS18B20_Data[8] != OneWire::crc8(DS18B20_Data, 8)) {
+				// If the CRC check failed during the first read, disable the sensor
+				DS18B20_Configured[i] = false;
+				// Log event
+				Log(MQTT_Topic[Topic_Log_Error] + "/DS18B20/" + String(i + 1), "CRC Failed on initial read, disabling the sensor");
+			}
+
+			// the first ROM byte indicates which chip
+			else {
+				if (DS18B20_Address[i][0] == 0x10) {
+					Log(MQTT_Topic[Topic_Log_Debug] + "/DS18B20/" + String(i + 1), "Type: DS18S20 or old DS1820");
+					DS18B20_Type[i] = 1;
+				}
+				else if (DS18B20_Address[i][0] == 0x28) {
+					Log(MQTT_Topic[Topic_Log_Debug] + "/DS18B20/" + String(i + 1), "Type: DS18B20");
+					DS18B20_Type[i] = 0;
+				}
+				else if (DS18B20_Address[i][0] == 0x22) {
+					Log(MQTT_Topic[Topic_Log_Debug] + "/DS18B20/" + String(i + 1), "Type: DS1822");
+					DS18B20_Type[i] = 0;
+				}
+				else {
+					Log(MQTT_Topic[Topic_Log_Error] + "/DS18B20/" + String(i + 1), "Invalid sensor in type: " + String(DS18B20_Type[i]) + " Disabling DS18B20");
+					DS18B20_Configured[i] = false;
 				}
 			}
+		
+			// Check if configuration failed
+			if (DS18B20_Configured[i] == true) {
+				Log(MQTT_Topic[Topic_Log_Info] + "/DS18B20/" + String(i + 1), "Configuration compleate");
+				// Attach the ticker
+				DS18B20_Ticker.attach_ms(DS18B20_Refresh_Rate, DS18B20_Loop);
+			}
+			else {
+				Log(MQTT_Topic[Topic_Log_Error] + "/DS18B20/" + String(i + 1), "Configuration failed");
+				DS18B20_Configured[i] = false;
+			}
 		}
-		if (DS18B20_Configured == true) {
-			Log(MQTT_Topic[Topic_Log_Info] + "/DS18B20", "Configuration compleate");
-		}
-		else {
-			Log(MQTT_Topic[Topic_Log_Error] + "/DS18B20", "Configuration failed");
-		}
-
 	} // DS18B20
 	
 
@@ -2837,7 +2893,82 @@ bool MQTT_Commands(String &Topic, String &Payload) {
 
 	else if (Topic == "Blink") {
 		Indicator_LED_Blink(Payload.toInt());
-		Unknown_Command = false;
+	}
+
+	else if (Topic == "DS18B20") {
+		if (Payload == "Scan") {
+
+			Unknown_Command = false;
+
+			String Sensor_List_String;
+
+			byte Sensor_Test_Address[8];
+
+			// Search for the sensor
+			for (byte i = 0; i < DS18B20_Max_Number_Of; i++) {
+
+				// Search for sensors
+				if(!DS18B20_Sensor.search(Sensor_Test_Address)) {
+					continue;
+				}
+
+				// Log sensor was found
+				String DS18B20_Address_String = String(Sensor_Test_Address[0], HEX);
+				for (int x = 1; x < 8; x++) {
+					// Zero patching
+					String Add_String = String(Sensor_Test_Address[x], HEX);
+					if (Add_String.length() == 1) {
+						Add_String = "0" + Add_String;
+					}
+					DS18B20_Address_String = DS18B20_Address_String + ":" + Add_String;
+				}
+				
+				// CRC Check
+				if (OneWire::crc8(Sensor_Test_Address, 7) != Sensor_Test_Address[7]) {
+					continue;
+				}
+
+				// the first ROM byte indicates which chip
+				String Sensor_Type = "";
+
+				if (Sensor_Test_Address[0] == 0x10) {
+					Sensor_Type = "DS18S20 or old DS1820";
+				}
+				else if (Sensor_Test_Address[0] == 0x28) {
+					Sensor_Type = "DS18B20";
+				}
+				else if (Sensor_Test_Address[0] == 0x22) {
+					Sensor_Type = "DS1822";
+				}
+				else {
+					Sensor_Type = "Invalid sensor type";
+				}
+
+				// If address string is 0000 no sensor was detected
+				if (DS18B20_Address_String != "0000") {
+				
+					// byte Sensor_In_List = false;
+
+					if (Sensor_List_String.indexOf(DS18B20_Address_String) == -1) {
+						// Add each sensor and type to list
+						Sensor_List_String = Sensor_List_String + "id: " + DS18B20_Address_String + " - Type: " + Sensor_Type + "\r\n";
+					}
+				}
+			}
+
+			// No Sensors found
+			if (Sensor_List_String == "") {
+				Log(MQTT_Topic[Topic_Log_Info] + "/DS18B20/Scan", "No DS18B20 sensors found");
+			}
+
+			else {
+				// Remove the \r\n from the end of the string
+				Sensor_List_String = Sensor_List_String.substring(0, Sensor_List_String.length() - 2);
+
+				Log(MQTT_Topic[Topic_Log_Info] + "/DS18B20/Scan", "Found the following sensors: \r\n" + Sensor_List_String);
+			}
+		}
+		else Unknown_Command = true;
 	}
 
 	else if (Topic == "Hostname") {
@@ -2845,7 +2976,6 @@ bool MQTT_Commands(String &Topic, String &Payload) {
 		FS_Config_Drop();
 		Log(MQTT_Topic[Topic_Log_Info] + "/System", "Hostname changed to: '" + Hostname + "' Reboot required rebooting in 2 seconds");
 		Reboot(2000);
-		Unknown_Command = true;
 	}
 
 	else if (Topic == "Version") {
@@ -3742,7 +3872,7 @@ bool DC_Voltmeter(String &Topic, String &Payload) {
 // ############################################################ DS18B20() ############################################################
 bool DS18B20(String &Topic, String &Payload) {
 
-	if (DS18B20_Configured == false || ArduinoOTA_Active == true) {
+	if (ArduinoOTA_Active == true) {
 		return false;
 	}
 
@@ -3752,17 +3882,33 @@ bool DS18B20(String &Topic, String &Payload) {
 
 		byte Selected_DS18B20 = Topic.toInt() - 1;
 
-		if (Topic.toInt() <= DS18B20_Max_Number_Of) {
+		if (Selected_DS18B20 <= DS18B20_Max_Number_Of) {
 
 			Payload = Payload.substring(0, Payload.indexOf(";"));
 
-			if (Payload == "?") {
+			Payload.toLowerCase();
+
+			if (Payload == "reset errors") {
+				// Reset error counter
+				DS18B20_Error_Counter[Selected_DS18B20] = 0;
+				// Enable sensor if its disabled
+				DS18B20_Configured[Selected_DS18B20] = true;
+				// Log event
+				Log(MQTT_Topic[Topic_Log_Info] + "/DS18B20/" + String(Selected_DS18B20 + 1), "Error counter reset");
+				return true;
+			}
+
+			// Check if sensor is configured
+			if (DS18B20_Configured[Selected_DS18B20] == false) {
+				return true;
+			}
+
+			else if (Payload == "?") {
 				Log(MQTT_Topic[Topic_DS18B20] + "/" + String(Selected_DS18B20 + 1) + "/State", String(DS18B20_Current[Selected_DS18B20]));
 				return true;
 			}
 
 			else if (Payload == "json") {
-
 				// Create json buffer
 				DynamicJsonBuffer jsonBuffer(80);
 				JsonObject& root_DS18B20 = jsonBuffer.createObject();
@@ -3785,7 +3931,6 @@ bool DS18B20(String &Topic, String &Payload) {
 
 				return true;
 			}
-
 		}
 	}
 	return false;
@@ -3795,41 +3940,51 @@ bool DS18B20(String &Topic, String &Payload) {
 // ############################################################ DS18B20_Loop() ############################################################
 void DS18B20_Loop() {
 
-	if (DS18B20_Configured == false || ArduinoOTA_Active == true) {
-		return;
-	}
-
+	// Do nothing if OTA is active
 	// Wait for the device to boot before start reading
-	if (millis() < 4000) {
-		return;
-	}
+	if (ArduinoOTA_Active == true || millis() < 4000) return;
 
-	// Check if its ok to read from the sensor
-	if (millis() - DS18B20_Last_Read >= DS18B20_Refresh_Rate) {
-	
+	for (byte i = 0; i < DS18B20_Max_Number_Of; i++) {
+		// Check if the sensor is configured
+		if (DS18B20_Configured[i] == false) continue;
+		
 		byte DS18B20_Data[12];
 
 		// Prep for reading
 		DS18B20_Sensor.reset();
-		DS18B20_Sensor.select(DS18B20_Address);    
+		DS18B20_Sensor.select(DS18B20_Address[i]);    
 		DS18B20_Sensor.write(0xBE);         // Read Scratchpad
 
 		// Read sensors values
-		for (byte i = 0; i < 9; i++) {           // we need 9 bytes
-			DS18B20_Data[i] = DS18B20_Sensor.read();
+		for (byte x = 0; x < 9; x++) {           // we need 9 bytes
+			DS18B20_Data[x] = DS18B20_Sensor.read();
 		}
 
 		// CRC Check
 		if (DS18B20_Data[8] != OneWire::crc8(DS18B20_Data, 8)) {
-			Serial.print("CRC PASS");
+			// Incrament error counter
+			DS18B20_Error_Counter[i] = DS18B20_Error_Counter[i] + 1;
+
+			// Log event
+			Log(MQTT_Topic[Topic_Log_Warning] + "/DS18B20/" + String(i + 1), "CRC Error count: " + String(DS18B20_Error_Counter[i]));
+
+			// Check if max errors have been reached
+			if (DS18B20_Error_Counter[i] >= DS18B20_Error_Max){
+				// Disable the sensor
+				DS18B20_Configured[i] = false;
+				// Log event
+				Log(MQTT_Topic[Topic_Log_Error] + "/DS18B20/" + String(i + 1), "Max CRC Error count reached, disabling the sensor");
+			}
 		}
+		// Reset the error counter if we get a good reading
+		else if (DS18B20_Error_Counter[i] != 0) DS18B20_Error_Counter[i] = 0;
 		
 		// Convert the data to actual temperature
 		// because the result is a 16 bit signed integer, it should
 		// be stored to an "int16_t" type, which is always 16 bits
 		// even when compiled on a 32 bit processor.
 		int16_t raw = (DS18B20_Data[1] << 8) | DS18B20_Data[0];
-		if (DS18B20_Type) {
+		if (int(DS18B20_Type) == 1) {
 			raw = raw << 3; // 9 bit resolution default
 			if (DS18B20_Data[7] == 0x10) {
 				// "count remain" gives full 12 bit resolution
@@ -3845,20 +4000,17 @@ void DS18B20_Loop() {
 			//// default is 12 bit resolution, 750 ms conversion time
 		}
 
-		byte Sensor_Number = 0;
-
 		// Save values
-		DS18B20_Current[Sensor_Number] = (float)raw / 16.0;
-		DS18B20_Min[Sensor_Number] = min(DS18B20_Min[Sensor_Number], DS18B20_Current[Sensor_Number]);
-		DS18B20_Max[Sensor_Number] = max(DS18B20_Max[Sensor_Number], DS18B20_Current[Sensor_Number]);
+		DS18B20_Current[i] = (float)raw / 16.0;
+		DS18B20_Min[i] = min(DS18B20_Min[i], DS18B20_Current[i]);
+		DS18B20_Max[i] = max(DS18B20_Max[i], DS18B20_Current[i]);
 
+		// Needed for the senaor to read again, there needs to be 750ms to next reset above. That is handled by the ticket running this loop
 		DS18B20_Sensor.reset();
-		DS18B20_Sensor.select(DS18B20_Address);
-		DS18B20_Sensor.write(0x44, 1);        // start conversion, with parasite power on at the end
+		DS18B20_Sensor.select(DS18B20_Address[i]);
+		DS18B20_Sensor.write(0x44, 1); // start conversion, with parasite power on at the end
 
-		// Save the last time you read the sensor
-		DS18B20_Last_Read = millis();
-	}
+	} // For loop
 
 } // DS18B20_Loop()
 
@@ -4144,7 +4296,6 @@ void loop() {
 	DHT_Loop();
 	PIR_Loop();
 	Flow_Loop();
-	DS18B20_Loop();
 	Distance_Loop();
 
 	Log_Loop();

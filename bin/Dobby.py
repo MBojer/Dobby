@@ -160,7 +160,7 @@ def Write_Log(Log_Level, Log_Source, Log_Header, Log_Text):
             if Rows_To_Delete > 250:
                 Rows_To_Delete = 250
             db_Log_Curser.execute("DELETE FROM `" + Dobby_Config['Log_db'] + "`.SystemLog ORDER BY id LIMIT " + str(Rows_To_Delete))
-            Log("Debug", "Dobby", "db", "History Length reached, deleting " + str(Rows_To_Delete) + " rows for Table: SystemLog")
+            # Log("Debug", "Dobby", "db", "History Length reached, deleting " + str(Rows_To_Delete) + " rows for Table: SystemLog")
 
     Close_db(db_Log_Connection, db_Log_Curser)
 
@@ -170,7 +170,7 @@ def Log_Level_Check(Log_Source, Log_Level):
     Log_Level = Log_Level.lower()
     Check_Level = Dobby_Config['Log_Level_System']
 
-    Known_Levels_Dict = {'KeepAliveMonitor': Dobby_Config['Log_Level_KeepAliveMonitor'], 'MQTTConfig': Dobby_Config['Log_Level_MQTTConfig'], 'MQTT Functions': Dobby_Config['Log_Level_MQTT Functions'], 'MQTT': Dobby_Config['Log_Level_MQTT'], 'Log Trigger': Dobby_Config['Log_Level_Log_Trigger'], 'Mail Trigger': Dobby_Config['Log_Level_Mail_Trigger'], 'Spammer': Dobby_Config['Log_Level_Spammer'], 'APC Monitor': Dobby_Config['Log_Level_APC_Monitor']}
+    Known_Levels_Dict = {'KeepAliveMonitor': Dobby_Config['Log_Level_KeepAliveMonitor'], 'MQTTConfig': Dobby_Config['Log_Level_MQTT_Config'], 'MQTT Functions': Dobby_Config['Log_Level_MQTT_Functions'], 'MQTT': Dobby_Config['Log_Level_MQTT'], 'Log Trigger': Dobby_Config['Log_Level_Log_Trigger'], 'Mail Trigger': Dobby_Config['Log_Level_Mail_Trigger'], 'Spammer': Dobby_Config['Log_Level_Spammer'], 'APC Monitor': Dobby_Config['Log_Level_APC_Monitor']}
 
     for Key, Variable in Known_Levels_Dict.iteritems():
         if Log_Source == Key and Variable != "":
@@ -1358,10 +1358,10 @@ def Dobby_init():
     Dobby_Config['Log_Length_KeepAliveMonitor'] = int(Get_System_Config_Value(db_Curser, "KeepAliveMonitor", "Log", "Length"))
 
     # From MQTTConfig
-    Dobby_Config['Log_Level_MQTTConfig'] = Get_System_Config_Value(db_Curser, "MQTT Config", "Log", "Level", QuitOnError=False).lower()
+    Dobby_Config['Log_Level_MQTT_Config'] = Get_System_Config_Value(db_Curser, "MQTT Config", "Log", "Level", QuitOnError=False).lower()
 
     # From MQTT Functions
-    Dobby_Config['Log_Level_MQTT Functions'] = Get_System_Config_Value(db_Curser, "MQTT Functions", "Log", "Level", QuitOnError=False).lower()
+    Dobby_Config['Log_Level_MQTT_Functions'] = Get_System_Config_Value(db_Curser, "MQTT Functions", "Log", "Level", QuitOnError=False).lower()
 
     # Mail_Trigger
     Dobby_Config['Log_Level_Mail_Trigger'] = Get_System_Config_Value(db_Curser, "Mail_Trigger", "Log", "Level", QuitOnError=False).lower()
@@ -1375,8 +1375,8 @@ def Dobby_init():
     # APC_Monitor
     Dobby_Config['Log_Level_APC_Monitor'] = Get_System_Config_Value(db_Curser, "APC_Monitor", "Log", "Level", QuitOnError=False).lower()
     
-    # Backup
-    Dobby_Config['Backup_URL_FTP'] = Get_System_Config_Value(db_Curser, "Backup", "URL", "FTP", QuitOnError=False).lower()
+    # # Backup
+    # Dobby_Config['Backup_URL_FTP'] = Get_System_Config_Value(db_Curser, "Backup", "URL", "FTP", QuitOnError=False).lower()
     
     # Append Topics to subscribe to subscribe list
     # Log

@@ -1,0 +1,2049 @@
+{
+  "ftp://192.168.43.145@dobby": {
+    "etc": {
+      "Dobby": {
+        ".git": {},
+        ".gitignore": {
+          "type": "-",
+          "size": 515,
+          "lmtime": 0,
+          "modified": false
+        },
+        ".vscode": {},
+        "Audio": {},
+        "Backup": {},
+        "Cert": {},
+        "Documentation": {},
+        "Firmware": {},
+        "Install": {},
+        "LICENSE": {
+          "type": "-",
+          "size": 35147,
+          "lmtime": 0,
+          "modified": false
+        },
+        "Script": {
+          "Wemos": {
+            ".gitignore": {
+              "type": "-",
+              "size": 136,
+              "lmtime": 1547212702000,
+              "modified": false
+            },
+            ".pioenvs": {
+              ".sconsign.dblite": {
+                "type": "-",
+                "size": 1235796,
+                "lmtime": 1556115604733,
+                "modified": false
+              },
+              ".sconsign.tmp": {
+                "type": "-",
+                "size": 546336,
+                "lmtime": 1556112728084,
+                "modified": false
+              },
+              "d1_mini": {
+                "FrameworkArduino": {
+                  "Esp-frag.cpp.o": {
+                    "type": "-",
+                    "size": 2556,
+                    "lmtime": 1556115484030,
+                    "modified": false
+                  },
+                  "Esp-version.cpp.o": {
+                    "type": "-",
+                    "size": 7328,
+                    "lmtime": 1556115484316,
+                    "modified": false
+                  },
+                  "Esp.cpp.o": {
+                    "type": "-",
+                    "size": 35752,
+                    "lmtime": 1556115484649,
+                    "modified": false
+                  },
+                  "FS.cpp.o": {
+                    "type": "-",
+                    "size": 20220,
+                    "lmtime": 1556115484886,
+                    "modified": false
+                  },
+                  "FunctionalInterrupt.cpp.o": {
+                    "type": "-",
+                    "size": 9956,
+                    "lmtime": 1556115484995,
+                    "modified": false
+                  },
+                  "HardwareSerial.cpp.o": {
+                    "type": "-",
+                    "size": 16168,
+                    "lmtime": 1556115485969,
+                    "modified": false
+                  },
+                  "IPAddress.cpp.o": {
+                    "type": "-",
+                    "size": 10588,
+                    "lmtime": 1556115486676,
+                    "modified": false
+                  },
+                  "MD5Builder.cpp.o": {
+                    "type": "-",
+                    "size": 6636,
+                    "lmtime": 1556115486937,
+                    "modified": false
+                  },
+                  "Print.cpp.o": {
+                    "type": "-",
+                    "size": 19364,
+                    "lmtime": 1556115487391,
+                    "modified": false
+                  },
+                  "Schedule.cpp.o": {
+                    "type": "-",
+                    "size": 4932,
+                    "lmtime": 1556115487004,
+                    "modified": false
+                  },
+                  "ScheduledFunctions.cpp.o": {
+                    "type": "-",
+                    "size": 28092,
+                    "lmtime": 1556115487951,
+                    "modified": false
+                  },
+                  "StackThunk.c.o": {
+                    "type": "-",
+                    "size": 6548,
+                    "lmtime": 1556115487392,
+                    "modified": false
+                  },
+                  "Stream.cpp.o": {
+                    "type": "-",
+                    "size": 13152,
+                    "lmtime": 1556115488272,
+                    "modified": false
+                  },
+                  "StreamString.cpp.o": {
+                    "type": "-",
+                    "size": 5480,
+                    "lmtime": 1556115489005,
+                    "modified": false
+                  },
+                  "Tone.cpp.o": {
+                    "type": "-",
+                    "size": 4772,
+                    "lmtime": 1556115489572,
+                    "modified": false
+                  },
+                  "Updater.cpp.o": {
+                    "type": "-",
+                    "size": 21724,
+                    "lmtime": 1556115490110,
+                    "modified": false
+                  },
+                  "WMath.cpp.o": {
+                    "type": "-",
+                    "size": 4524,
+                    "lmtime": 1556115489727,
+                    "modified": false
+                  },
+                  "WString.cpp.o": {
+                    "type": "-",
+                    "size": 49196,
+                    "lmtime": 1556115490935,
+                    "modified": false
+                  },
+                  "abi.cpp.o": {
+                    "type": "-",
+                    "size": 4208,
+                    "lmtime": 1556115490731,
+                    "modified": false
+                  },
+                  "base64.cpp.o": {
+                    "type": "-",
+                    "size": 3432,
+                    "lmtime": 1556115490899,
+                    "modified": false
+                  },
+                  "cbuf.cpp.o": {
+                    "type": "-",
+                    "size": 8924,
+                    "lmtime": 1556115490688,
+                    "modified": false
+                  },
+                  "cont.S.o": {
+                    "type": "-",
+                    "size": 1812,
+                    "lmtime": 1556115491419,
+                    "modified": false
+                  },
+                  "cont_util.c.o": {
+                    "type": "-",
+                    "size": 3524,
+                    "lmtime": 1556115491849,
+                    "modified": false
+                  },
+                  "core_esp8266_app_entry_noextra4k.cpp.o": {
+                    "type": "-",
+                    "size": 2092,
+                    "lmtime": 1556115492084,
+                    "modified": false
+                  },
+                  "core_esp8266_eboot_command.c.o": {
+                    "type": "-",
+                    "size": 3432,
+                    "lmtime": 1556115492326,
+                    "modified": false
+                  },
+                  "core_esp8266_flash_utils.c.o": {
+                    "type": "-",
+                    "size": 2068,
+                    "lmtime": 1556115492891,
+                    "modified": false
+                  },
+                  "core_esp8266_i2s.c.o": {
+                    "type": "-",
+                    "size": 21692,
+                    "lmtime": 1556115493302,
+                    "modified": false
+                  },
+                  "core_esp8266_main.cpp.o": {
+                    "type": "-",
+                    "size": 12004,
+                    "lmtime": 1556115494225,
+                    "modified": false
+                  },
+                  "core_esp8266_noniso.c.o": {
+                    "type": "-",
+                    "size": 4292,
+                    "lmtime": 1556115493777,
+                    "modified": false
+                  },
+                  "core_esp8266_phy.c.o": {
+                    "type": "-",
+                    "size": 4804,
+                    "lmtime": 1556115494211,
+                    "modified": false
+                  },
+                  "core_esp8266_postmortem.c.o": {
+                    "type": "-",
+                    "size": 12976,
+                    "lmtime": 1556115494405,
+                    "modified": false
+                  },
+                  "core_esp8266_si2c.c.o": {
+                    "type": "-",
+                    "size": 30132,
+                    "lmtime": 1556115494800,
+                    "modified": false
+                  },
+                  "core_esp8266_sigma_delta.c.o": {
+                    "type": "-",
+                    "size": 7500,
+                    "lmtime": 1556115494837,
+                    "modified": false
+                  },
+                  "core_esp8266_timer.c.o": {
+                    "type": "-",
+                    "size": 7800,
+                    "lmtime": 1556115495369,
+                    "modified": false
+                  },
+                  "core_esp8266_waveform.c.o": {
+                    "type": "-",
+                    "size": 9356,
+                    "lmtime": 1556115495958,
+                    "modified": false
+                  },
+                  "core_esp8266_wiring.c.o": {
+                    "type": "-",
+                    "size": 7236,
+                    "lmtime": 1556115496318,
+                    "modified": false
+                  },
+                  "core_esp8266_wiring_analog.c.o": {
+                    "type": "-",
+                    "size": 1828,
+                    "lmtime": 1556115496646,
+                    "modified": false
+                  },
+                  "core_esp8266_wiring_digital.c.o": {
+                    "type": "-",
+                    "size": 11172,
+                    "lmtime": 1556115496827,
+                    "modified": false
+                  },
+                  "core_esp8266_wiring_pulse.c.o": {
+                    "type": "-",
+                    "size": 3136,
+                    "lmtime": 1556115497122,
+                    "modified": false
+                  },
+                  "core_esp8266_wiring_pwm.c.o": {
+                    "type": "-",
+                    "size": 3908,
+                    "lmtime": 1556115497193,
+                    "modified": false
+                  },
+                  "core_esp8266_wiring_shift.c.o": {
+                    "type": "-",
+                    "size": 2564,
+                    "lmtime": 1556115497509,
+                    "modified": false
+                  },
+                  "debug.cpp.o": {
+                    "type": "-",
+                    "size": 2468,
+                    "lmtime": 1556115498169,
+                    "modified": false
+                  },
+                  "gdb_hooks.c.o": {
+                    "type": "-",
+                    "size": 1552,
+                    "lmtime": 1556115498122,
+                    "modified": false
+                  },
+                  "heap.c.o": {
+                    "type": "-",
+                    "size": 7252,
+                    "lmtime": 1556115498697,
+                    "modified": false
+                  },
+                  "libb64": {
+                    "cdecode.c.o": {
+                      "type": "-",
+                      "size": 4680,
+                      "lmtime": 1556115498962,
+                      "modified": false
+                    },
+                    "cencode.c.o": {
+                      "type": "-",
+                      "size": 4668,
+                      "lmtime": 1556115499238,
+                      "modified": false
+                    }
+                  },
+                  "libc_replacements.c.o": {
+                    "type": "-",
+                    "size": 6576,
+                    "lmtime": 1556115499608,
+                    "modified": false
+                  },
+                  "sntp-lwip2.c.o": {
+                    "type": "-",
+                    "size": 13316,
+                    "lmtime": 1556115499853,
+                    "modified": false
+                  },
+                  "spiffs": {
+                    "spiffs_cache.c.o": {
+                      "type": "-",
+                      "size": 8736,
+                      "lmtime": 1556115500068,
+                      "modified": false
+                    },
+                    "spiffs_check.c.o": {
+                      "type": "-",
+                      "size": 23688,
+                      "lmtime": 1556115500829,
+                      "modified": false
+                    },
+                    "spiffs_gc.c.o": {
+                      "type": "-",
+                      "size": 14852,
+                      "lmtime": 1556115500821,
+                      "modified": false
+                    },
+                    "spiffs_hydrogen.c.o": {
+                      "type": "-",
+                      "size": 43636,
+                      "lmtime": 1556115501348,
+                      "modified": false
+                    },
+                    "spiffs_nucleus.c.o": {
+                      "type": "-",
+                      "size": 58464,
+                      "lmtime": 1556115502156,
+                      "modified": false
+                    }
+                  },
+                  "spiffs_api.cpp.o": {
+                    "type": "-",
+                    "size": 77272,
+                    "lmtime": 1556115502346,
+                    "modified": false
+                  },
+                  "spiffs_hal.cpp.o": {
+                    "type": "-",
+                    "size": 5012,
+                    "lmtime": 1556115502255,
+                    "modified": false
+                  },
+                  "sqrt32.c.o": {
+                    "type": "-",
+                    "size": 1356,
+                    "lmtime": 1556115502002,
+                    "modified": false
+                  },
+                  "time.c.o": {
+                    "type": "-",
+                    "size": 4824,
+                    "lmtime": 1556115502201,
+                    "modified": false
+                  },
+                  "uart.c.o": {
+                    "type": "-",
+                    "size": 27304,
+                    "lmtime": 1556115502796,
+                    "modified": false
+                  },
+                  "umm_malloc": {
+                    "umm_malloc.c.o": {
+                      "type": "-",
+                      "size": 16236,
+                      "lmtime": 1556115502856,
+                      "modified": false
+                    }
+                  }
+                },
+                "firmware.bin": {
+                  "type": "-",
+                  "size": 414000,
+                  "lmtime": 1556115506917,
+                  "modified": false
+                },
+                "firmware.elf": {
+                  "type": "-",
+                  "size": 1428783,
+                  "lmtime": 1556115506467,
+                  "modified": false
+                },
+                "ld": {
+                  "local.eagle.app.v6.common.ld": {
+                    "type": "-",
+                    "size": 7965,
+                    "lmtime": 1556115465131,
+                    "modified": false
+                  }
+                },
+                "lib03b": {
+                  "esp8266FTPServer": {
+                    "ESP8266FtpServer.cpp.o": {
+                      "type": "-",
+                      "size": 48704,
+                      "lmtime": 1556115476086,
+                      "modified": false
+                    }
+                  },
+                  "libesp8266FTPServer.a": {
+                    "type": "-",
+                    "size": 49746,
+                    "lmtime": 1556115477164,
+                    "modified": false
+                  }
+                },
+                "lib118": {
+                  "ESP8266WiFi": {
+                    "BearSSLHelpers.cpp.o": {
+                      "type": "-",
+                      "size": 52216,
+                      "lmtime": 1556115467978,
+                      "modified": false
+                    },
+                    "CertStoreBearSSL.cpp.o": {
+                      "type": "-",
+                      "size": 7860,
+                      "lmtime": 1556115467793,
+                      "modified": false
+                    },
+                    "ESP8266WiFi.cpp.o": {
+                      "type": "-",
+                      "size": 5568,
+                      "lmtime": 1556115468277,
+                      "modified": false
+                    },
+                    "ESP8266WiFiAP.cpp.o": {
+                      "type": "-",
+                      "size": 11592,
+                      "lmtime": 1556115470548,
+                      "modified": false
+                    },
+                    "ESP8266WiFiGeneric.cpp.o": {
+                      "type": "-",
+                      "size": 79160,
+                      "lmtime": 1556115471792,
+                      "modified": false
+                    },
+                    "ESP8266WiFiMulti.cpp.o": {
+                      "type": "-",
+                      "size": 11192,
+                      "lmtime": 1556115471359,
+                      "modified": false
+                    },
+                    "ESP8266WiFiSTA-WPS.cpp.o": {
+                      "type": "-",
+                      "size": 3356,
+                      "lmtime": 1556115471717,
+                      "modified": false
+                    },
+                    "ESP8266WiFiSTA.cpp.o": {
+                      "type": "-",
+                      "size": 27244,
+                      "lmtime": 1556115471836,
+                      "modified": false
+                    },
+                    "ESP8266WiFiScan.cpp.o": {
+                      "type": "-",
+                      "size": 15068,
+                      "lmtime": 1556115472304,
+                      "modified": false
+                    },
+                    "WiFiClient.cpp.o": {
+                      "type": "-",
+                      "size": 79704,
+                      "lmtime": 1556115472666,
+                      "modified": false
+                    },
+                    "WiFiClientSecureAxTLS.cpp.o": {
+                      "type": "-",
+                      "size": 96960,
+                      "lmtime": 1556115474714,
+                      "modified": false
+                    },
+                    "WiFiClientSecureBearSSL.cpp.o": {
+                      "type": "-",
+                      "size": 185388,
+                      "lmtime": 1556115475675,
+                      "modified": false
+                    },
+                    "WiFiServer.cpp.o": {
+                      "type": "-",
+                      "size": 18296,
+                      "lmtime": 1556115474927,
+                      "modified": false
+                    },
+                    "WiFiServerSecureAxTLS.cpp.o": {
+                      "type": "-",
+                      "size": 7332,
+                      "lmtime": 1556115474923,
+                      "modified": false
+                    },
+                    "WiFiServerSecureBearSSL.cpp.o": {
+                      "type": "-",
+                      "size": 31972,
+                      "lmtime": 1556115475457,
+                      "modified": false
+                    },
+                    "WiFiUdp.cpp.o": {
+                      "type": "-",
+                      "size": 25348,
+                      "lmtime": 1556115475615,
+                      "modified": false
+                    }
+                  },
+                  "libESP8266WiFi.a": {
+                    "type": "-",
+                    "size": 704034,
+                    "lmtime": 1556115476852,
+                    "modified": false
+                  }
+                },
+                "lib2ad": {
+                  "libArduinoJson.a": {
+                    "type": "-",
+                    "size": 8,
+                    "lmtime": 1556115481048,
+                    "modified": false
+                  }
+                },
+                "lib529": {
+                  "OneWire": {
+                    "OneWire.cpp.o": {
+                      "type": "-",
+                      "size": 12400,
+                      "lmtime": 1556115480298,
+                      "modified": false
+                    }
+                  },
+                  "libOneWire.a": {
+                    "type": "-",
+                    "size": 13056,
+                    "lmtime": 1556115481485,
+                    "modified": false
+                  }
+                },
+                "lib6fd": {
+                  "SimpleDHT": {
+                    "SimpleDHT.cpp.o": {
+                      "type": "-",
+                      "size": 14068,
+                      "lmtime": 1556115466884,
+                      "modified": false
+                    }
+                  },
+                  "libSimpleDHT.a": {
+                    "type": "-",
+                    "size": 14974,
+                    "lmtime": 1556115467808,
+                    "modified": false
+                  }
+                },
+                "lib783": {
+                  "MB_Queue": {
+                    "MB_Queue.cpp.o": {
+                      "type": "-",
+                      "size": 12196,
+                      "lmtime": 1556115480550,
+                      "modified": false
+                    },
+                    "MB_Queue_Delay.cpp.o": {
+                      "type": "-",
+                      "size": 9532,
+                      "lmtime": 1556115482465,
+                      "modified": false
+                    }
+                  },
+                  "libMB_Queue.a": {
+                    "type": "-",
+                    "size": 22698,
+                    "lmtime": 1556115483315,
+                    "modified": false
+                  }
+                },
+                "lib7e2": {
+                  "RunningAverage": {
+                    "RunningAverage.cpp.o": {
+                      "type": "-",
+                      "size": 9888,
+                      "lmtime": 1556115466488,
+                      "modified": false
+                    }
+                  },
+                  "libRunningAverage.a": {
+                    "type": "-",
+                    "size": 10650,
+                    "lmtime": 1556115467527,
+                    "modified": false
+                  }
+                },
+                "libFrameworkArduino.a": {
+                  "type": "-",
+                  "size": 790178,
+                  "lmtime": 1556115503365,
+                  "modified": false
+                },
+                "libFrameworkArduinoVariant.a": {
+                  "type": "-",
+                  "size": 8,
+                  "lmtime": 1556115481277,
+                  "modified": false
+                },
+                "liba71": {
+                  "libpubsubclient.a": {
+                    "type": "-",
+                    "size": 42140,
+                    "lmtime": 1556115468306,
+                    "modified": false
+                  },
+                  "pubsubclient": {
+                    "PubSubClient.cpp.o": {
+                      "type": "-",
+                      "size": 38580,
+                      "lmtime": 1556115467435,
+                      "modified": false
+                    }
+                  }
+                },
+                "libc5c": {
+                  "ESP8266mDNS": {
+                    "ESP8266mDNS.cpp.o": {
+                      "type": "-",
+                      "size": 2596,
+                      "lmtime": 1556115475968,
+                      "modified": false
+                    },
+                    "ESP8266mDNS_Legacy.cpp.o": {
+                      "type": "-",
+                      "size": 62676,
+                      "lmtime": 1556115479374,
+                      "modified": false
+                    },
+                    "LEAmDNS.cpp.o": {
+                      "type": "-",
+                      "size": 91676,
+                      "lmtime": 1556115479592,
+                      "modified": false
+                    },
+                    "LEAmDNS_Control.cpp.o": {
+                      "type": "-",
+                      "size": 61176,
+                      "lmtime": 1556115479361,
+                      "modified": false
+                    },
+                    "LEAmDNS_Helpers.cpp.o": {
+                      "type": "-",
+                      "size": 33828,
+                      "lmtime": 1556115479512,
+                      "modified": false
+                    },
+                    "LEAmDNS_Structs.cpp.o": {
+                      "type": "-",
+                      "size": 101964,
+                      "lmtime": 1556115480083,
+                      "modified": false
+                    },
+                    "LEAmDNS_Transfer.cpp.o": {
+                      "type": "-",
+                      "size": 62692,
+                      "lmtime": 1556115480539,
+                      "modified": false
+                    }
+                  },
+                  "libESP8266mDNS.a": {
+                    "type": "-",
+                    "size": 454726,
+                    "lmtime": 1556115481710,
+                    "modified": false
+                  }
+                },
+                "libd3d": {
+                  "ArduinoOTA": {
+                    "ArduinoOTA.cpp.o": {
+                      "type": "-",
+                      "size": 43280,
+                      "lmtime": 1556115483255,
+                      "modified": false
+                    }
+                  },
+                  "libArduinoOTA.a": {
+                    "type": "-",
+                    "size": 45470,
+                    "lmtime": 1556115484015,
+                    "modified": false
+                  }
+                },
+                "libd93": {
+                  "SPI": {
+                    "SPI.cpp.o": {
+                      "type": "-",
+                      "size": 22808,
+                      "lmtime": 1556115466489,
+                      "modified": false
+                    }
+                  },
+                  "libSPI.a": {
+                    "type": "-",
+                    "size": 23796,
+                    "lmtime": 1556115467373,
+                    "modified": false
+                  }
+                },
+                "libda8": {
+                  "Ticker": {
+                    "Ticker.cpp.o": {
+                      "type": "-",
+                      "size": 3764,
+                      "lmtime": 1556115482471,
+                      "modified": false
+                    }
+                  },
+                  "libTicker.a": {
+                    "type": "-",
+                    "size": 4094,
+                    "lmtime": 1556115483044,
+                    "modified": false
+                  }
+                },
+                "src": {
+                  "main.cpp.o": {
+                    "type": "-",
+                    "size": 459720,
+                    "lmtime": 1556115470626,
+                    "modified": false
+                  }
+                }
+              },
+              "do-not-modify-files-here.url": {
+                "type": "-",
+                "size": 106,
+                "lmtime": 1556115279976,
+                "modified": false
+              },
+              "structure.hash": {
+                "type": "-",
+                "size": 40,
+                "lmtime": 1556115279019,
+                "modified": false
+              }
+            },
+            ".piolibdeps": {
+              "DHTlib_ID1336": {
+                "dht.cpp": {
+                  "type": "-",
+                  "size": 6977,
+                  "lmtime": 1539162108000,
+                  "modified": false
+                },
+                "examples": {
+                  "dht11_test": {},
+                  "dht12_test": {},
+                  "dht21_test": {},
+                  "dht22_test": {
+                    "dht22_test.ino": {
+                      "type": "-",
+                      "size": 2646,
+                      "lmtime": 1535898379000,
+                      "modified": false
+                    }
+                  },
+                  "dht22_test_noIRQ": {},
+                  "dht33_test": {},
+                  "dht44_test": {},
+                  "dht_test1": {
+                    "dht_test1.ino": {
+                      "type": "-",
+                      "size": 2894,
+                      "lmtime": 1535898379000,
+                      "modified": false
+                    }
+                  },
+                  "dht_tuning": {
+                    "dht_tuning.ino": {
+                      "type": "-",
+                      "size": 1920,
+                      "lmtime": 1535898379000,
+                      "modified": false
+                    }
+                  }
+                },
+                "library.json": {
+                  "type": "-",
+                  "size": 540,
+                  "lmtime": 1539162109000,
+                  "modified": false
+                }
+              }
+            },
+            ".travis.yml": {
+              "type": "-",
+              "size": 1553,
+              "lmtime": 0,
+              "modified": false
+            },
+            ".vscode": {},
+            "BugList.txt": {
+              "type": "-",
+              "size": 264,
+              "lmtime": 0,
+              "modified": false
+            },
+            "Clompiling .pioenvs": {
+              "d1_mini": {
+                "libda8": {
+                  "Ticker": {
+                    "Ticker.cpp.oib": {
+                      "esp8266FTPServer": {}
+                    }
+                  }
+                }
+              }
+            },
+            "Versions": {},
+            "include": {
+              "readme.txt": {
+                "type": "-",
+                "size": 1425,
+                "lmtime": 1547212702000,
+                "modified": false
+              }
+            },
+            "lib": {
+              "ArduinoJson": {
+                ".clang-format": {
+                  "type": "-",
+                  "size": 136,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                ".gitattributes": {
+                  "type": "-",
+                  "size": 16,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                ".github": {},
+                ".gitignore": {
+                  "type": "-",
+                  "size": 168,
+                  "lmtime": 1548032186000,
+                  "modified": false
+                },
+                ".mbedignore": {
+                  "type": "-",
+                  "size": 56,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                ".travis.yml": {
+                  "type": "-",
+                  "size": 3855,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                "ArduinoJson.h": {
+                  "type": "-",
+                  "size": 117,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                "CHANGELOG.md": {
+                  "type": "-",
+                  "size": 15421,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                "CMakeLists.txt": {
+                  "type": "-",
+                  "size": 358,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                "CONTRIBUTING.md": {
+                  "type": "-",
+                  "size": 318,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                "LICENSE.md": {
+                  "type": "-",
+                  "size": 1116,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                "README.md": {
+                  "type": "-",
+                  "size": 6923,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                "SUPPORT.md": {
+                  "type": "-",
+                  "size": 871,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                "appveyor.yml": {
+                  "type": "-",
+                  "size": 780,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                "banner.svg": {
+                  "type": "-",
+                  "size": 32515,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                "examples": {
+                  "JsonConfigFile": {},
+                  "JsonGeneratorExample": {},
+                  "JsonHttpClient": {},
+                  "JsonParserExample": {},
+                  "JsonServer": {},
+                  "JsonUdpBeacon": {},
+                  "ProgmemExample": {},
+                  "StringExample": {}
+                },
+                "fuzzing": {
+                  "Makefile": {
+                    "type": "-",
+                    "size": 476,
+                    "lmtime": 0,
+                    "modified": false
+                  },
+                  "fuzzer.cpp": {
+                    "type": "-",
+                    "size": 632,
+                    "lmtime": 0,
+                    "modified": false
+                  },
+                  "my_corpus": {},
+                  "seed_corpus": {}
+                },
+                "keywords.txt": {
+                  "type": "-",
+                  "size": 322,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                "library.json": {
+                  "type": "-",
+                  "size": 596,
+                  "lmtime": 1548032186000,
+                  "modified": false
+                },
+                "library.properties": {
+                  "type": "-",
+                  "size": 634,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                "scripts": {
+                  "build-arduino-package.sh": {
+                    "type": "-",
+                    "size": 365,
+                    "lmtime": 0,
+                    "modified": false
+                  },
+                  "build-single-header.sh": {
+                    "type": "-",
+                    "size": 1201,
+                    "lmtime": 0,
+                    "modified": false
+                  },
+                  "create-build-envs.sh": {
+                    "type": "-",
+                    "size": 503,
+                    "lmtime": 0,
+                    "modified": false
+                  },
+                  "oss-fuzz": {
+                    ".gitignore": {
+                      "type": "-",
+                      "size": 19,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "Vagrantfile": {
+                      "type": "-",
+                      "size": 1230,
+                      "lmtime": 0,
+                      "modified": false
+                    }
+                  },
+                  "publish-particle-library.sh": {
+                    "type": "-",
+                    "size": 483,
+                    "lmtime": 0,
+                    "modified": false
+                  },
+                  "travis": {}
+                },
+                "src": {
+                  "ArduinoJson": {
+                    "Configuration.hpp": {
+                      "type": "-",
+                      "size": 4044,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "Data": {
+                      "Encoding.hpp": {
+                        "type": "-",
+                        "size": 779,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "JsonBufferAllocated.hpp": {
+                        "type": "-",
+                        "size": 435,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "JsonFloat.hpp": {
+                        "type": "-",
+                        "size": 295,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "JsonInteger.hpp": {
+                        "type": "-",
+                        "size": 469,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "JsonVariantAs.hpp": {
+                        "type": "-",
+                        "size": 760,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "JsonVariantContent.hpp": {
+                        "type": "-",
+                        "size": 723,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "JsonVariantDefault.hpp": {
+                        "type": "-",
+                        "size": 435,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "JsonVariantType.hpp": {
+                        "type": "-",
+                        "size": 972,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "List.hpp": {
+                        "type": "-",
+                        "size": 2488,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "ListConstIterator.hpp": {
+                        "type": "-",
+                        "size": 1025,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "ListIterator.hpp": {
+                        "type": "-",
+                        "size": 1163,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "ListNode.hpp": {
+                        "type": "-",
+                        "size": 476,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "NonCopyable.hpp": {
+                        "type": "-",
+                        "size": 418,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "ReferenceType.hpp": {
+                        "type": "-",
+                        "size": 561,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "ValueSaver.hpp": {
+                        "type": "-",
+                        "size": 1469,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      }
+                    },
+                    "Deserialization": {
+                      "Comments.hpp": {
+                        "type": "-",
+                        "size": 1401,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "JsonParser.hpp": {
+                        "type": "-",
+                        "size": 3243,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "JsonParserImpl.hpp": {
+                        "type": "-",
+                        "size": 4876,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "StringWriter.hpp": {
+                        "type": "-",
+                        "size": 724,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      }
+                    },
+                    "DynamicJsonBuffer.hpp": {
+                      "type": "-",
+                      "size": 4301,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonArray.hpp": {
+                      "type": "-",
+                      "size": 7105,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonArrayImpl.hpp": {
+                      "type": "-",
+                      "size": 596,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonArraySubscript.hpp": {
+                      "type": "-",
+                      "size": 3281,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonBuffer.hpp": {
+                      "type": "-",
+                      "size": 2420,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonBufferBase.hpp": {
+                      "type": "-",
+                      "size": 4631,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonBufferImpl.hpp": {
+                      "type": "-",
+                      "size": 498,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonObject.hpp": {
+                      "type": "-",
+                      "size": 11925,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonObjectImpl.hpp": {
+                      "type": "-",
+                      "size": 711,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonObjectSubscript.hpp": {
+                      "type": "-",
+                      "size": 2927,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonPair.hpp": {
+                      "type": "-",
+                      "size": 270,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonVariant.hpp": {
+                      "type": "-",
+                      "size": 11658,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonVariantBase.hpp": {
+                      "type": "-",
+                      "size": 718,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonVariantCasts.hpp": {
+                      "type": "-",
+                      "size": 1480,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonVariantComparisons.hpp": {
+                      "type": "-",
+                      "size": 4682,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonVariantImpl.hpp": {
+                      "type": "-",
+                      "size": 3555,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonVariantOr.hpp": {
+                      "type": "-",
+                      "size": 1572,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "JsonVariantSubscripts.hpp": {
+                      "type": "-",
+                      "size": 2972,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "Polyfills": {
+                      "attributes.hpp": {
+                        "type": "-",
+                        "size": 755,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "ctype.hpp": {
+                        "type": "-",
+                        "size": 297,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "isFloat.hpp": {
+                        "type": "-",
+                        "size": 698,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "isInteger.hpp": {
+                        "type": "-",
+                        "size": 389,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "math.hpp": {
+                        "type": "-",
+                        "size": 311,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "parseFloat.hpp": {
+                        "type": "-",
+                        "size": 2059,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "parseInteger.hpp": {
+                        "type": "-",
+                        "size": 704,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      }
+                    },
+                    "RawJson.hpp": {
+                      "type": "-",
+                      "size": 1176,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "Serialization": {
+                      "DummyPrint.hpp": {
+                        "type": "-",
+                        "size": 377,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "DynamicStringBuilder.hpp": {
+                        "type": "-",
+                        "size": 754,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "FloatParts.hpp": {
+                        "type": "-",
+                        "size": 2331,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "IndentedPrint.hpp": {
+                        "type": "-",
+                        "size": 1529,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "JsonPrintable.hpp": {
+                        "type": "-",
+                        "size": 3094,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "JsonSerializer.hpp": {
+                        "type": "-",
+                        "size": 734,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "JsonSerializerImpl.hpp": {
+                        "type": "-",
+                        "size": 2652,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "JsonWriter.hpp": {
+                        "type": "-",
+                        "size": 3374,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "Prettyfier.hpp": {
+                        "type": "-",
+                        "size": 2527,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "StaticStringBuilder.hpp": {
+                        "type": "-",
+                        "size": 663,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "StreamPrintAdapter.hpp": {
+                        "type": "-",
+                        "size": 670,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      }
+                    },
+                    "StaticJsonBuffer.hpp": {
+                      "type": "-",
+                      "size": 2866,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    },
+                    "StringTraits": {
+                      "ArduinoStream.hpp": {
+                        "type": "-",
+                        "size": 1242,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "CharPointer.hpp": {
+                        "type": "-",
+                        "size": 1657,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "FlashString.hpp": {
+                        "type": "-",
+                        "size": 1527,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "StdStream.hpp": {
+                        "type": "-",
+                        "size": 1259,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "StdString.hpp": {
+                        "type": "-",
+                        "size": 2044,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "StringTraits.hpp": {
+                        "type": "-",
+                        "size": 918,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      }
+                    },
+                    "TypeTraits": {
+                      "EnableIf.hpp": {
+                        "type": "-",
+                        "size": 372,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "FloatTraits.hpp": {
+                        "type": "-",
+                        "size": 4697,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "IsArray.hpp": {
+                        "type": "-",
+                        "size": 496,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "IsBaseOf.hpp": {
+                        "type": "-",
+                        "size": 620,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "IsChar.hpp": {
+                        "type": "-",
+                        "size": 534,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "IsConst.hpp": {
+                        "type": "-",
+                        "size": 406,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "IsFloatingPoint.hpp": {
+                        "type": "-",
+                        "size": 392,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "IsIntegral.hpp": {
+                        "type": "-",
+                        "size": 687,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "IsSame.hpp": {
+                        "type": "-",
+                        "size": 412,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "IsSignedIntegral.hpp": {
+                        "type": "-",
+                        "size": 691,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "IsUnsignedIntegral.hpp": {
+                        "type": "-",
+                        "size": 705,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "IsVariant.hpp": {
+                        "type": "-",
+                        "size": 294,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "RemoveConst.hpp": {
+                        "type": "-",
+                        "size": 379,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      },
+                      "RemoveReference.hpp": {
+                        "type": "-",
+                        "size": 387,
+                        "lmtime": 1548032186000,
+                        "modified": false
+                      }
+                    },
+                    "version.hpp": {
+                      "type": "-",
+                      "size": 261,
+                      "lmtime": 1548032186000,
+                      "modified": false
+                    }
+                  },
+                  "ArduinoJson.h": {
+                    "type": "-",
+                    "size": 300,
+                    "lmtime": 1548032186000,
+                    "modified": false
+                  },
+                  "ArduinoJson.hpp": {
+                    "type": "-",
+                    "size": 608,
+                    "lmtime": 1548032186000,
+                    "modified": false
+                  }
+                },
+                "test": {
+                  "CMakeLists.txt": {
+                    "type": "-",
+                    "size": 1504,
+                    "lmtime": 0,
+                    "modified": false
+                  },
+                  "DynamicJsonBuffer": {},
+                  "IntegrationTests": {},
+                  "JsonArray": {},
+                  "JsonBuffer": {},
+                  "JsonObject": {},
+                  "JsonVariant": {},
+                  "JsonWriter": {},
+                  "Misc": {},
+                  "Polyfills": {},
+                  "StaticJsonBuffer": {}
+                },
+                "third-party": {
+                  "catch": {}
+                }
+              },
+              "DHTesp": {
+                "DHTesp.cpp": {
+                  "type": "-",
+                  "size": 13240,
+                  "lmtime": 1551656366000,
+                  "modified": false
+                },
+                "DHTesp.h": {
+                  "type": "-",
+                  "size": 6574,
+                  "lmtime": 1551656366000,
+                  "modified": false
+                },
+                "examples": {
+                  "DHT_ESP32": {
+                    "DHT_ESP32.ino": {
+                      "type": "-",
+                      "size": 5265,
+                      "lmtime": 1551656366000,
+                      "modified": false
+                    }
+                  },
+                  "DHT_ESP8266": {
+                    "DHT_ESP8266.ino": {
+                      "type": "-",
+                      "size": 1139,
+                      "lmtime": 1551656366000,
+                      "modified": false
+                    }
+                  },
+                  "DHT_Multi_ESP32": {
+                    "DHT_Multi_ESP32.ino": {
+                      "type": "-",
+                      "size": 3815,
+                      "lmtime": 1551656366000,
+                      "modified": false
+                    }
+                  }
+                },
+                "library.json": {
+                  "type": "-",
+                  "size": 539,
+                  "lmtime": 1551656366000,
+                  "modified": false
+                }
+              },
+              "MB_Queue": {
+                "MB_Queue.cpp": {
+                  "type": "-",
+                  "size": 3971,
+                  "lmtime": 1548004824000,
+                  "modified": false
+                },
+                "MB_Queue.h": {
+                  "type": "-",
+                  "size": 1172,
+                  "lmtime": 1548004824000,
+                  "modified": false
+                },
+                "MB_Queue_Delay.cpp": {
+                  "type": "-",
+                  "size": 4373,
+                  "lmtime": 1548004824000,
+                  "modified": false
+                },
+                "MB_Queue_Delay.h": {
+                  "type": "-",
+                  "size": 1194,
+                  "lmtime": 1548004824000,
+                  "modified": false
+                }
+              },
+              "OneWire": {
+                "OneWire.cpp": {
+                  "type": "-",
+                  "size": 17609,
+                  "lmtime": 1556181357942,
+                  "modified": false
+                },
+                "OneWire.h": {
+                  "type": "-",
+                  "size": 9626,
+                  "lmtime": 1556181357946,
+                  "modified": false
+                },
+                "examples": {
+                  "DS18x20_Temperature": {
+                    "DS18x20_Temperature.pde": {
+                      "type": "-",
+                      "size": 3029,
+                      "lmtime": 1556181357964,
+                      "modified": false
+                    }
+                  },
+                  "DS2408_Switch": {
+                    "DS2408_Switch.pde": {
+                      "type": "-",
+                      "size": 1905,
+                      "lmtime": 1556181357976,
+                      "modified": false
+                    }
+                  },
+                  "DS250x_PROM": {
+                    "DS250x_PROM.pde": {
+                      "type": "-",
+                      "size": 4098,
+                      "lmtime": 1556181357987,
+                      "modified": false
+                    }
+                  }
+                },
+                "keywords.txt": {
+                  "type": "-",
+                  "size": 819,
+                  "lmtime": 1556181357992,
+                  "modified": false
+                }
+              },
+              "RunningAverage": {
+                "RunningAverage.cpp": {
+                  "type": "-",
+                  "size": 4643,
+                  "lmtime": 1551730228000,
+                  "modified": false
+                },
+                "RunningAverage.h": {
+                  "type": "-",
+                  "size": 1676,
+                  "lmtime": 1551730228000,
+                  "modified": false
+                },
+                "examples": {
+                  "fillValue": {
+                    "fillValue.ino": {
+                      "type": "-",
+                      "size": 657,
+                      "lmtime": 1551730228000,
+                      "modified": false
+                    }
+                  },
+                  "ra_FastAverageTest": {
+                    "ra_FastAverageTest.ino": {
+                      "type": "-",
+                      "size": 1124,
+                      "lmtime": 1551730228000,
+                      "modified": false
+                    }
+                  },
+                  "ra_MinMaxBufferTest": {
+                    "ra_MinMaxBufferTest.ino": {
+                      "type": "-",
+                      "size": 983,
+                      "lmtime": 1551730228000,
+                      "modified": false
+                    }
+                  },
+                  "ra_MinMaxTest": {
+                    "ra_MinMaxTest.ino": {
+                      "type": "-",
+                      "size": 880,
+                      "lmtime": 1551730228000,
+                      "modified": false
+                    }
+                  },
+                  "ra_hour": {
+                    "ra_hour.ino": {
+                      "type": "-",
+                      "size": 877,
+                      "lmtime": 1551730228000,
+                      "modified": false
+                    }
+                  },
+                  "ra_test": {
+                    "ra_test.ino": {
+                      "type": "-",
+                      "size": 735,
+                      "lmtime": 1551730228000,
+                      "modified": false
+                    }
+                  }
+                },
+                "keywords.txt": {
+                  "type": "-",
+                  "size": 923,
+                  "lmtime": 0,
+                  "modified": false
+                },
+                "library.json": {
+                  "type": "-",
+                  "size": 554,
+                  "lmtime": 1551730228000,
+                  "modified": false
+                },
+                "library.properties": {
+                  "type": "-",
+                  "size": 384,
+                  "lmtime": 0,
+                  "modified": false
+                }
+              },
+              "SimpleDHT": {
+                ".gitignore": {
+                  "type": "-",
+                  "size": 278,
+                  "lmtime": 1548549689000,
+                  "modified": false
+                },
+                "SimpleDHT.cpp": {
+                  "type": "-",
+                  "size": 10665,
+                  "lmtime": 1548549689000,
+                  "modified": false
+                },
+                "SimpleDHT.h": {
+                  "type": "-",
+                  "size": 6400,
+                  "lmtime": 1548549689000,
+                  "modified": false
+                },
+                "examples": {
+                  "DHT11Default": {
+                    "DHT11Default.ino": {
+                      "type": "-",
+                      "size": 828,
+                      "lmtime": 1548549689000,
+                      "modified": false
+                    }
+                  },
+                  "DHT11ErrCount": {
+                    "DHT11ErrCount.ino": {
+                      "type": "-",
+                      "size": 1069,
+                      "lmtime": 1548549689000,
+                      "modified": false
+                    }
+                  },
+                  "DHT11WithRawBits": {
+                    "DHT11WithRawBits.ino": {
+                      "type": "-",
+                      "size": 1080,
+                      "lmtime": 1548549689000,
+                      "modified": false
+                    }
+                  },
+                  "DHT22Default": {
+                    "DHT22Default.ino": {
+                      "type": "-",
+                      "size": 999,
+                      "lmtime": 1548549689000,
+                      "modified": false
+                    }
+                  },
+                  "DHT22ErrCount": {
+                    "DHT22ErrCount.ino": {
+                      "type": "-",
+                      "size": 1078,
+                      "lmtime": 1548549689000,
+                      "modified": false
+                    }
+                  },
+                  "DHT22Integer": {
+                    "DHT22Integer.ino": {
+                      "type": "-",
+                      "size": 831,
+                      "lmtime": 1548549689000,
+                      "modified": false
+                    }
+                  },
+                  "DHT22WithRawBits": {
+                    "DHT22WithRawBits.ino": {
+                      "type": "-",
+                      "size": 1251,
+                      "lmtime": 1548549689000,
+                      "modified": false
+                    }
+                  },
+                  "TwoSensorsDefault": {
+                    "TwoSensorsDefault.ino": {
+                      "type": "-",
+                      "size": 1933,
+                      "lmtime": 1548549689000,
+                      "modified": false
+                    }
+                  }
+                },
+                "library.properties": {
+                  "type": "-",
+                  "size": 394,
+                  "lmtime": 1548549689000,
+                  "modified": false
+                }
+              },
+              "Ticker": {
+                "Ticker.cpp": {
+                  "type": "-",
+                  "size": 3063,
+                  "lmtime": 1556030555707,
+                  "modified": false
+                },
+                "Ticker.h": {
+                  "type": "-",
+                  "size": 3434,
+                  "lmtime": 1556030555709,
+                  "modified": false
+                },
+                "examples": {
+                  "TickerBasic": {
+                    "TickerBasic.ino": {
+                      "type": "-",
+                      "size": 1112,
+                      "lmtime": 1556030342048,
+                      "modified": false
+                    }
+                  },
+                  "TickerFunctional": {
+                    "TickerFunctional.ino": {
+                      "type": "-",
+                      "size": 1227,
+                      "lmtime": 1556030342096,
+                      "modified": false
+                    }
+                  },
+                  "TickerParameter": {
+                    "TickerParameter.ino": {
+                      "type": "-",
+                      "size": 769,
+                      "lmtime": 1556030342154,
+                      "modified": false
+                    }
+                  },
+                  "Ticker": {
+                    "Ticker.ino": {
+                      "type": "-",
+                      "size": 1276,
+                      "lmtime": 1556030555712,
+                      "modified": false
+                    }
+                  }
+                },
+                "keywords.txt": {
+                  "type": "-",
+                  "size": 170,
+                  "lmtime": 1556030555715,
+                  "modified": false
+                },
+                "library.properties": {
+                  "type": "-",
+                  "size": 242,
+                  "lmtime": 1556030342219,
+                  "modified": false
+                },
+                "LICENSE": {
+                  "type": "-",
+                  "size": 1090,
+                  "lmtime": 1556030555703,
+                  "modified": false
+                },
+                "README.md": {
+                  "type": "-",
+                  "size": 5612,
+                  "lmtime": 1556030555705,
+                  "modified": false
+                },
+                "library.json": {
+                  "type": "-",
+                  "size": 369,
+                  "lmtime": 1556030555717,
+                  "modified": false
+                }
+              },
+              "Ticker.zip": {
+                "type": "-",
+                "size": 11545,
+                "lmtime": 1556030328185,
+                "modified": false
+              },
+              "Unconfirmed 895756.crdownload": {
+                "type": "-",
+                "size": 11545,
+                "lmtime": 1556030317939,
+                "modified": false
+              },
+              "esp8266FTPServer": {
+                "ESP8266FtpServer.cpp": {
+                  "type": "-",
+                  "size": 26570,
+                  "lmtime": 1548370846000,
+                  "modified": false
+                },
+                "ESP8266FtpServer.h": {
+                  "type": "-",
+                  "size": 4124,
+                  "lmtime": 1548370846000,
+                  "modified": false
+                },
+                "examples": {
+                  "FTPServerSample": {
+                    "FTPServerSample.ino": {
+                      "type": "-",
+                      "size": 1330,
+                      "lmtime": 1548370846000,
+                      "modified": false
+                    }
+                  }
+                },
+                "library.json": {
+                  "type": "-",
+                  "size": 443,
+                  "lmtime": 1548370846000,
+                  "modified": false
+                }
+              },
+              "pubsubclient": {
+                ".gitignore": {
+                  "type": "-",
+                  "size": 11,
+                  "lmtime": 1548026358000,
+                  "modified": false
+                },
+                "examples": {
+                  "mqtt_auth": {},
+                  "mqtt_basic": {},
+                  "mqtt_esp8266": {},
+                  "mqtt_large_message": {},
+                  "mqtt_publish_in_callback": {},
+                  "mqtt_reconnect_nonblocking": {},
+                  "mqtt_stream": {}
+                },
+                "library.json": {
+                  "type": "-",
+                  "size": 788,
+                  "lmtime": 1548026359000,
+                  "modified": false
+                },
+                "src": {
+                  "PubSubClient.cpp": {
+                    "type": "-",
+                    "size": 20628,
+                    "lmtime": 1548027077000,
+                    "modified": false
+                  },
+                  "PubSubClient.h": {
+                    "type": "-",
+                    "size": 7501,
+                    "lmtime": 1548240819000,
+                    "modified": false
+                  }
+                },
+                "tests": {
+                  ".gitignore": {
+                    "type": "-",
+                    "size": 29,
+                    "lmtime": 1548026359000,
+                    "modified": false
+                  },
+                  "src": {
+                    "lib": {}
+                  },
+                  "testcases": {}
+                }
+              }
+            },
+            "platformio.ini": {
+              "type": "-",
+              "size": 731,
+              "lmtime": 1556187393094,
+              "modified": false
+            },
+            "src": {
+              "main.cpp": {
+                "type": "-",
+                "size": 142234,
+                "lmtime": 1558958554386,
+                "modified": false
+              }
+            }
+          }
+        },
+        "Test": {},
+        "Tools": {},
+        "bin": {},
+        "src": {
+          "main.cpp": {
+            "type": "-",
+            "size": 137386,
+            "lmtime": 1556014580573,
+            "modified": false
+          }
+        }
+      }
+    }
+  },
+  "$version": 1
+}

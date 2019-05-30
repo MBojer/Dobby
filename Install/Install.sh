@@ -36,7 +36,7 @@ sudo apt-get install -y git mosquitto mosquitto-clients supervisor python-pip pi
 yes | sudo pip install --upgrade pip
 
 # Install Dependencies
-yes | sudo pip install flask logging paho-mqtt psutil mysql-python gitpython schedule six
+yes | sudo pip install flask logging paho-mqtt psutil mysql-python gitpython schedule six pymodbus
 
 # Install Dash
 yes | sudo pip install dash==0.36.0 dash-html-components==0.13.5 dash-core-components==0.43.0 dash-auth==1.2.0 dash-table==3.1.11

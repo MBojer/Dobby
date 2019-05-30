@@ -1217,10 +1217,13 @@ def Config_Tab_Variables(Config_Dropdown, Config_Dropdown_Line, Config_Read, Con
                     Setting_String = ''
                     Value_String = ''
 
+
                     for value in Config_Table:
                         Setting_String = Setting_String + "`" + str(value['Setting'][0]) + "`, "
                         if "[u'" in str(value['Value']):
                             Value_String = Value_String + "'" + str(value['Value'][0]) + "', "
+                        elif value['Value'] == '':
+                            Value_String = Value_String + "'', "
                         elif value['Value'] is None:
                             Value_String = Value_String + "NULL, "
                         elif value['Value'][0] is None:
@@ -2471,7 +2474,7 @@ def System_Tab_Buttons(System_Quit_Button, System_Test_BT_Button, System_Tab_Var
 # FIX - Move css to local storage
 app.css.append_css({"external_url": "https://codepen.io/chriddyp/pen/bWLwgP.css"})
 # Removed undo/redo
-app.css.append_css({'external_url': 'http://rawgit.com/lwileczek/Dash/master/undo_redo5.css'})
+app.css.append_css({'external_url': 'https://rawgit.com/lwileczek/Dash/master/undo_redo5.css'})
 
 print "Dash Core Components: " + str(dcc.__version__)
 print "Dash HTML Components: " + str(html.__version__)

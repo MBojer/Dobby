@@ -1,4 +1,5 @@
 -------------------- 102014 --------------------
+Added support for multiple DS18B20 sensors. NOTE: The sensors has to be connected to D7 with a 4K7 resistor
 
 -------------------- 102013 --------------------
 Added DS18B20
