@@ -1019,6 +1019,7 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
 
         return html.Div([
             html.Button('Test BT Speaker', id='System_Test_BT_Button', n_clicks=0, style={'margin-left': '5px', 'margin-top': '5px'}),
+            html.Button('Restart Services', id='System_Restart_Services', n_clicks=0, style={'margin-left': '5px', 'margin-top': '5px'}),
             html.Button('Quit', id='System_Quit_Button', n_clicks=0, style={'margin-left': '5px', 'margin-top': '5px'}),
         ], id='System_Tab')
 
@@ -2446,12 +2447,13 @@ def System_Log_Tab_Table_Rows(System_Log_Tab_Variables, System_Log_Interval_Comp
     [
         Input('System_Quit_Button', 'n_clicks'),
         Input('System_Test_BT_Button', 'n_clicks'),
+        Input('System_Restart_Services', 'n_clicks'),
         ],
     [
         State('System_Tab_Variables', 'children'),
         ],
     )
-def System_Tab_Buttons(System_Quit_Button, System_Test_BT_Button, System_Tab_Variables):
+def System_Tab_Buttons(System_Quit_Button, System_Test_BT_Button, System_Restart_Services, System_Tab_Variables):
 
     System_Tab_Variables = Generate_Variable_Dict(System_Tab_Variables)
 
@@ -2461,7 +2463,18 @@ def System_Tab_Buttons(System_Quit_Button, System_Test_BT_Button, System_Tab_Var
         print "System shutdown requested, shutting down"
         Server_Shutdown()
 
-    if int(System_Tab_Variables.get('System_Test_BT_Button', 0)) != int(System_Test_BT_Button):
+    elif int(System_Tab_Variables.get('System_Restart_Services', 0)) != int(System_Restart_Services):
+        System_Tab_Variables['System_Restart_Services'] = System_Restart_Services
+
+        # Dash needs to be shotdown before restarting the service for it work proberly
+        Server_Shutdown()
+
+        print "System service restart requested, restarting services"
+
+        print "MARKER 456"
+        
+
+    elif int(System_Tab_Variables.get('System_Test_BT_Button', 0)) != int(System_Test_BT_Button):
         System_Tab_Variables['System_Test_BT_Button'] = System_Test_BT_Button
 
         myCmd = "mpg321 -g 50 /etc/Dobby/Audio/Ping.mp3"
