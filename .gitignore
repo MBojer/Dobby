@@ -13,9 +13,7 @@
 .ftpconfig
 
 /Script/platformio.ini
-Script/Wemos/platformio.ini
 .gitignore
-Script/Wemos/platformio.ini
 /Cert
 /Test
 /Backup

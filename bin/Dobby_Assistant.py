@@ -123,6 +123,13 @@ def Battery_Voltage():
     return tell(speech)
 
 
+@Dobby_Assitant.action('Battery SOC')
+def Battery_SOC():
+    Battery_SOC = Get_SQL_Value(Get_Assistant_Config_Values("Battery SOC"))
+    speech = "The batteries state of charge is: " + Battery_SOC + "%"
+    return tell(speech)
+
+
 @Dobby_Assitant.action('MQ7 Engine Room')
 def MQ7_Engine_Room():
     Reading = Get_SQL_Value(Get_Assistant_Config_Values("MQ7 Engine Room"))

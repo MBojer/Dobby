@@ -718,3 +718,162 @@ SELECT Value FROM DobbyLog.EP_Logger where Device="Main Charge Controller" and N
 127.0.0.1 - - [15/Oct/2019 11:36:22] "POST / HTTP/1.1" 200 -
 SELECT Value FROM DobbyLog.EP_Logger where Device="Main Charge Controller" and Name="PV Watt" order by id desc limit 1;
 SELECT Value FROM DobbyLog.EP_Logger where Device="Main Charge Controller" and Name="Battery Volt" order by id desc limit 1;
+ * Serving Flask app "Dobby_Assistant" (lazy loading)
+ * Environment: production
+   WARNING: Do not use the development server in a production environment.
+   Use a production WSGI server instead.
+ * Debug mode: on
+ * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 215-886-129
+2019-10-17 02:45:51:flask_assistant:DEBUG: {
+  "originalDetectIntentRequest": {
+    "payload": {
+      "availableSurfaces": [
+        {
+          "capabilities": [
+            {
+              "name": "actions.capability.SCREEN_OUTPUT"
+            }, 
+            {
+              "name": "actions.capability.WEB_BROWSER"
+            }, 
+            {
+              "name": "actions.capability.AUDIO_OUTPUT"
+            }
+          ]
+        }
+      ], 
+      "conversation": {
+        "conversationId": "ABwppHGrfruQOedHUvrrjh1nI93IamIoSzxFrR0KMXoavq7sKJmw7tN-i3cxHeyEFCuE-KwWlF0518g", 
+        "conversationToken": "[]", 
+        "type": "ACTIVE"
+      }, 
+      "inputs": [
+        {
+          "arguments": [
+            {
+              "name": "text", 
+              "rawText": "battery soc", 
+              "textValue": "battery soc"
+            }
+          ], 
+          "intent": "actions.intent.TEXT", 
+          "rawInputs": [
+            {
+              "inputType": "VOICE", 
+              "query": "battery soc"
+            }
+          ]
+        }
+      ], 
+      "isInSandbox": true, 
+      "surface": {
+        "capabilities": [
+          {
+            "name": "actions.capability.AUDIO_OUTPUT"
+          }, 
+          {
+            "name": "actions.capability.MEDIA_RESPONSE_AUDIO"
+          }, 
+          {
+            "name": "actions.capability.WEB_BROWSER"
+          }, 
+          {
+            "name": "actions.capability.SCREEN_OUTPUT"
+          }, 
+          {
+            "name": "actions.capability.ACCOUNT_LINKING"
+          }
+        ]
+      }, 
+      "user": {
+        "lastSeen": "2019-10-17T01:18:15Z", 
+        "locale": "en-GB", 
+        "userVerificationStatus": "VERIFIED"
+      }
+    }, 
+    "source": "google", 
+    "version": "2"
+  }, 
+  "queryResult": {
+    "allRequiredParamsPresent": true, 
+    "fulfillmentMessages": [
+      {
+        "text": {
+          "text": [
+            ""
+          ]
+        }
+      }
+    ], 
+    "intent": {
+      "displayName": "Battery SOC", 
+      "name": "projects/dobby-49c2a/agent/intents/6f80beb9-702d-4a7a-9051-288ce009cca0"
+    }, 
+    "intentDetectionConfidence": 1.0, 
+    "languageCode": "en", 
+    "outputContexts": [
+      {
+        "name": "projects/dobby-49c2a/agent/sessions/ABwppHGrfruQOedHUvrrjh1nI93IamIoSzxFrR0KMXoavq7sKJmw7tN-i3cxHeyEFCuE-KwWlF0518g/contexts/actions_capability_audio_output"
+      }, 
+      {
+        "name": "projects/dobby-49c2a/agent/sessions/ABwppHGrfruQOedHUvrrjh1nI93IamIoSzxFrR0KMXoavq7sKJmw7tN-i3cxHeyEFCuE-KwWlF0518g/contexts/actions_capability_media_response_audio"
+      }, 
+      {
+        "name": "projects/dobby-49c2a/agent/sessions/ABwppHGrfruQOedHUvrrjh1nI93IamIoSzxFrR0KMXoavq7sKJmw7tN-i3cxHeyEFCuE-KwWlF0518g/contexts/actions_capability_web_browser"
+      }, 
+      {
+        "name": "projects/dobby-49c2a/agent/sessions/ABwppHGrfruQOedHUvrrjh1nI93IamIoSzxFrR0KMXoavq7sKJmw7tN-i3cxHeyEFCuE-KwWlF0518g/contexts/actions_capability_screen_output"
+      }, 
+      {
+        "name": "projects/dobby-49c2a/agent/sessions/ABwppHGrfruQOedHUvrrjh1nI93IamIoSzxFrR0KMXoavq7sKJmw7tN-i3cxHeyEFCuE-KwWlF0518g/contexts/actions_capability_account_linking"
+      }, 
+      {
+        "name": "projects/dobby-49c2a/agent/sessions/ABwppHGrfruQOedHUvrrjh1nI93IamIoSzxFrR0KMXoavq7sKJmw7tN-i3cxHeyEFCuE-KwWlF0518g/contexts/google_assistant_input_type_voice"
+      }
+    ], 
+    "parameters": {}, 
+    "queryText": "battery soc"
+  }, 
+  "responseId": "0f492b95-fafd-4308-8051-f096d1131547-7e4f1f27", 
+  "session": "projects/dobby-49c2a/agent/sessions/ABwppHGrfruQOedHUvrrjh1nI93IamIoSzxFrR0KMXoavq7sKJmw7tN-i3cxHeyEFCuE-KwWlF0518g"
+}
+2019-10-17 02:45:51:flask_assistant:INFO: Request: {
+  "Incoming Contexts": [], 
+  "Intent": "Battery SOC", 
+  "Missing Params": [], 
+  "Received Params": {}, 
+  "Source": "google"
+}
+2019-10-17 02:45:51:flask_assistant:INFO: Matched action function: Battery_SOC
+2019-10-17 02:45:51:flask_assistant:INFO: Result: {
+  "Intent": "Battery SOC", 
+  "Matched Action": "Battery_SOC", 
+  "Outgoing Contexts": [], 
+  "Response Speech": "The batteries state of charge is: 37.0%"
+}
+2019-10-17 02:45:51:flask_assistant:DEBUG: {
+  "followupEventInput": null, 
+  "fulfillmentMessages": [
+    {
+      "text": {
+        "text": [
+          "The batteries state of charge is: 37.0%"
+        ]
+      }
+    }
+  ], 
+  "fulfillmentText": "The batteries state of charge is: 37.0%", 
+  "outputContexts": [], 
+  "payload": {
+    "google": {
+      "expect_user_response": false, 
+      "is_ssml": true, 
+      "permissions_request": null
+    }
+  }, 
+  "source": "webhook"
+}
+127.0.0.1 - - [17/Oct/2019 02:45:51] "POST / HTTP/1.1" 200 -

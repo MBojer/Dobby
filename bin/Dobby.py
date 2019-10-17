@@ -2235,7 +2235,7 @@ class EP_Logger:
 
     # How often does esch EP_Logger read write to the db (sec)
     db_Refresh_Rate = 5
-    Loop_Delay = 0.500
+    Loop_Delay = 13.37 # 420 :-)
 
     def __init__(self):
         # Log event
@@ -2288,6 +2288,8 @@ class EP_Logger:
         def __init__(self, id):
 
             self.id = int(id)
+            # Dict to store read value and check agains publish values, to prevent republishing of same value
+            self.Value_Dict = {}
 
             db_Connection = Open_db("Dobby")
             db_Curser = db_Connection.cursor()
@@ -2333,6 +2335,8 @@ class EP_Logger:
             Address = int(str(Address), 16)
 
             Modbus_Value = self.EP_Logger_Client.read_input_registers(Address, Count, unit=1)
+
+            self.Value_Dict
 
             # Got a valid value
             if "<class 'pymodbus.register_read_message.ReadInputRegistersResponse'>" == str(type(Modbus_Value)):
@@ -2407,7 +2411,6 @@ class EP_Logger:
 
                     # Request values
                     for Info in Modbud_id_List:
-
 
                         # Read input value
                         ## 0x3200 and 0x3201 needs to read two units
@@ -2608,14 +2611,20 @@ class EP_Logger:
                                 json_State['Input volt error'] = True
 
                             Modbus_Value = json.dumps(json_State)
-                            
+
+
                         else:
                             Modbus_Value = str(float(Modbus_Value.registers[0] * Info['Multiplier']))
 
-                        # Publish
-                        MQTT_Client.publish(Dobby_Config['System_Header'] + '/EP/' + str(self.Name) + '/' + str(Info['Name']), payload=str(Modbus_Value), qos=0, retain=True)
-                        # Log event
-                        Log("Debug", "EP Logger", "db", "Publish")
+
+                        # Publish only if value changed
+                        if self.Value_Dict.get(Info['Name'], None) != Modbus_Value:
+                            # Save value to value dict
+                            self.Value_Dict[Info['Name']] = Modbus_Value
+                            # Publish
+                            MQTT_Client.publish(Dobby_Config['System_Header'] + '/EP/' + str(self.Name) + '/' + str(Info['Name']), payload=str(Modbus_Value), qos=0, retain=True)
+                            # Log event
+                            Log("Debug", "EP Logger", "db", "Publish")
 
                         time.sleep(0.05)
 
