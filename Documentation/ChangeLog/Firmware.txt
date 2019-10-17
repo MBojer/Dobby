@@ -1,5 +1,6 @@
 -------------------- 102014 --------------------
 Added support for multiple DS18B20 sensors. NOTE: The sensors has to be connected to D7 with a 4K7 resistor
+Fix DHT stability issue solved by setting refresh rate to 2.5s
 
 -------------------- 102013 --------------------
 Added DS18B20

@@ -147,23 +147,18 @@ CREATE TABLE `Dobby`.`DeviceConfig` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE `Dobby`.`Mail_Trigger` (
+
+CREATE TABLE `gBridge_Trigger` (
   `id` int(11) NOT NULL,
   `Name` varchar(45) NOT NULL,
-  `Type` varchar(45) NOT NULL,
   `Enabled` tinyint(1) NOT NULL,
-  `Alert_State` tinyint(1) NOT NULL DEFAULT '0',
-  `MQTT_Target` varchar(45) NOT NULL,
-  `MQTT_Payload_Clear` decimal(6,2) NOT NULL,
-  `MQTT_Payload_Trigger` decimal(6,2) NOT NULL,
-  `Alert_Target` varchar(45) NOT NULL,
-  `Alert_Subject` varchar(45) NOT NULL,
-  `Alert_Payload_Clear` varchar(45) NOT NULL,
-  `Alert_Payload_Trigger` varchar(45) NOT NULL,
-  `Triggered_DateTime` timestamp NULL DEFAULT NULL,
+  `MQTT Source` varchar(45) NOT NULL,
+  `MQTT Target` varchar(45) NOT NULL,
+  `Triggered DateTime` timestamp NULL DEFAULT NULL,
   `Last_Modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 CREATE TABLE `Dobby`.`Log_Trigger` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -187,6 +182,23 @@ CREATE TABLE `Dobby`.`MQTT_Functions` (
   `Type` varchar(25) NOT NULL,
   `Command` varchar(200) NOT NULL,
   `DelayAfter` decimal(10,4) NOT NULL,
+  `Last_Modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE `Dobby`.`Push_Trigger` (
+  `id` int(11) NOT NULL,
+  `Name` varchar(45) NOT NULL,
+  `Enabled` tinyint(1) NOT NULL,
+  `Alert State` tinyint(1) NOT NULL DEFAULT '0',
+  `MQTT Target` varchar(45) NOT NULL,
+  `MQTT Payload Clear` decimal(6,2) NOT NULL,
+  `MQTT Payload Trigger` decimal(6,2) NOT NULL,
+  `Alert Target` varchar(45) NOT NULL,
+  `Alert Subject` varchar(45) NOT NULL,
+  `Alert Payload Clear` varchar(45) NOT NULL,
+  `Alert Payload Trigger` varchar(45) NOT NULL,
+  `Triggered DateTime` timestamp NULL DEFAULT NULL,
   `Last_Modified` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

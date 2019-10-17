@@ -1,0 +1,213 @@
+
+# 2019-10-15 23:42:13.504515
++help
+
+# 2019-10-15 23:42:30.496042
++client.co
+
+# 2019-10-15 23:42:33.321374
++client.connect
+
+# 2019-10-15 23:43:45.895759
++client.set_port /dev/ttyXRUSB0
+
+# 2019-10-15 23:43:59.471987
++client.set_port ttyXRUSB0
+
+# 2019-10-15 23:44:42.962764
++client.set_port 
+
+# 2019-10-15 23:45:50.872556
++client.get_baudrate
+
+# 2019-10-15 23:46:40.677766
++client.set_baudrate 115200
+
+# 2019-10-15 23:46:49.206919
++client.set_baudrate=115200
+
+# 2019-10-15 23:48:06.163838
++client.set_baudrate '115200'
+
+# 2019-10-15 23:48:18.622224
++client.set_baudrate (115200)
+
+# 2019-10-15 23:48:26.837770
++client.set_baudrate 115200,
+
+# 2019-10-15 23:48:31.242333
++client.set_baudrate=115200
+
+# 2019-10-15 23:53:25.374241
++help
+
+# 2019-10-15 23:53:42.129939
++client.state
+
+# 2019-10-15 23:53:49.217856
++client.co
+
+# 2019-10-15 23:53:53.296355
++client.connect
+
+# 2019-10-16 00:02:12.406949
++quit
+
+# 2019-10-16 19:31:00.910667
++client.connect
+
+# 2019-10-16 19:31:04.473044
++help
+
+# 2019-10-16 19:31:54.992212
++client.read_input_registers count 1 unit 1 address 0x3200
+
+# 2019-10-16 19:32:19.683995
++client.read_input_registers count=2 unit=1 address=0x3200
+
+# 2019-10-16 19:32:37.811589
++client.read_input_registers count=2 unit=1 address=C7
+
+# 2019-10-16 19:34:21.417806
++client.connect
+
+# 2019-10-16 19:34:27.907229
++client.read_input_registers count=2 unit=1 address=3200
+
+# 2019-10-16 19:34:37.786811
++client.read_input_registers count=2 unit=1 address=0
+
+# 2019-10-16 19:37:51.200652
++client.read_input_registers count=2 unit=1 address=12800
+
+# 2019-10-16 19:39:06.473794
++result.decode
+
+# 2019-10-16 19:40:31.873118
++result.decode 1
+
+# 2019-10-16 19:40:37.628790
++result.decode byte_order
+
+# 2019-10-16 19:40:56.781483
++result.raw
+
+# 2019-10-16 19:41:22.798804
++client.read_input_registers count=2 unit=1 address=12800
+
+# 2019-10-16 19:41:34.186383
++result.raw
+
+# 2019-10-16 19:43:13.623997
++client.read_input_registers count=2 unit=1 address=3200
+
+# 2019-10-16 19:43:16.474373
++client.read_input_registers count=2 unit=1 address=12800
+
+# 2019-10-16 19:44:30.954749
++client.read_input_registers count=2 unit=1 address=12570
+
+# 2019-10-16 19:45:18.858762
++result.decode for
+
+# 2019-10-16 19:45:36.875060
++result.decode formatters=uint16
+
+# 2019-10-16 19:59:13.639822
++client.read_input_registers count=2 unit=1 address=12800
+
+# 2019-10-16 19:59:15.826538
++result.decode formatters=uint16
+
+# 2019-10-16 19:59:28.687199
++result.decode formatters=uint16 byte_order=little
+
+# 2019-10-16 19:59:32.319325
++result.decode formatters=uint16 byte_order=big
+
+# 2019-10-16 19:59:57.090218
++client.read_input_registers count=3 unit=1 address=12800
+
+# 2019-10-16 20:00:03.205813
++client.read_input_registers count=16 unit=1 address=12800
+
+# 2019-10-16 20:00:14.736573
++client.read_input_registers count=5 unit=1 address=12800
+
+# 2019-10-16 20:00:19.529792
++client.read_input_registers count=3 unit=1 address=12800
+
+# 2019-10-16 20:01:09.426542
++client.read_input_registers count=3 unit=1 address=12801
+
+# 2019-10-16 20:01:13.471284
++client.read_input_registers count=2 unit=1 address=12801
+
+# 2019-10-16 20:01:18.781590
++client.read_input_registers count=2 unit=1 address=12800
+
+# 2019-10-16 20:02:36.826003
++client.read_input_registers count=2 unit=1 address=36865
+
+# 2019-10-16 20:02:40.595768
++client.read_input_registers count=1 unit=1 address=36865
+
+# 2019-10-16 20:03:05.454845
++client.read_input_registers count=2 unit=1 address=1001000000000001
+
+# 2019-10-16 20:04:15.594578
++client.read_input_registers count=2 unit=1 address=36865
+
+# 2019-10-16 20:04:21.945785
++client.read_input_registers count=0 unit=1 address=36865
+
+# 2019-10-16 20:04:51.108151
++client.return_bus_message_count
+
+# 2019-10-16 20:05:21.332126
++client.return_bus_message_count data=0x3200
+
+# 2019-10-16 20:05:35.406459
++client.return_bus_message_count data="0x3200"
+
+# 2019-10-16 20:05:49.071316
++client.return_bus_message_count data=3200
+
+# 2019-10-16 20:05:52.754229
++client.return_bus_message_count data=3200 
+
+# 2019-10-16 20:05:59.339702
++client.return_bus_message_count data=3200 unit=1
+
+# 2019-10-16 20:06:17.934722
++client.return_bus_message_count data=3200 unit=12800
+
+# 2019-10-16 20:06:28.690117
++client.return_bus_message_count unit=12800 da
+
+# 2019-10-16 20:06:34.951062
++client.return_bus_message_count unit=12800 data=12800
+
+# 2019-10-16 20:06:40.504570
++client.return_bus_message_count unit=1 data=12800
+
+# 2019-10-16 20:08:36.441362
++client.read_input_registers count=0 unit=1 address=12800
+
+# 2019-10-16 20:08:47.286705
++client.read_input_registers count=2 unit=1 address=12800
+
+# 2019-10-16 20:08:58.772950
++result.raw
+
+# 2019-10-16 20:09:00.809273
++client.read_input_registers count=2 unit=1 address=12801
+
+# 2019-10-16 20:09:12.769522
++client.read_input_registers count=1 unit=1 address=12801
+
+# 2019-10-16 20:09:23.140844
++client.read_input_registers count=2 unit=1 address=12801
+
+# 2019-10-16 20:09:26.734755
++client.read_input_registers count=3 unit=1 address=12801

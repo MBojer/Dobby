@@ -5,8 +5,6 @@
 
 # Email
 import smtplib
-from email.MIMEMultipart import MIMEMultipart
-from email.MIMEText import MIMEText
 
 # MQTT
 import paho.mqtt.client as MQTT
@@ -38,24 +36,28 @@ import threading
 # EP Logger
 from pymodbus.client.sync import ModbusSerialClient as ModbusClient
 
+# For Push Notifications
+import requests
+
+# Used to calc uptime
+Start_Time = datetime.datetime.now()
+
+# System variables
+Version = 102008
+# First didget = Software type 1-Production 2-Beta 3-Alpha
+# Secound and third didget = Major version number
+# Fourth to sixth = Minor version number
+
 # MySQL
 MQTT_Topic_Dict = {}
 
 # Used to store config from db
 Dobby_Config = {}
 
-
-# System variables
-Version = 102002
-# First didget = Software type 1-Production 2-Beta 3-Alpha
-# Secound and third didget = Major version number
-# Fourth to sixth = Minor version number
-
-Start_Time = datetime.datetime.now()
-
 # MQTT
 MQTT_Client = MQTT.Client(client_id="Dobby", clean_session=True)
 
+MQTT_Client_gBridge = ""
 
 # ---------------------------------------- MISC ----------------------------------------
 def Open_db(db=""):
@@ -149,7 +151,11 @@ def Write_Log(Log_Level, Log_Source, Log_Header, Log_Text):
         else:
             # FIX add some error handling here
             print "DB WTF ERROR 4:" + str(e)
-            
+            print "Log_Level: " + str(Log_Level)
+            print "Log_Source: " + str(Log_Source)
+            print "Log_Header: " + str(Log_Header)
+            print "Log_Text: " + str(Log_Text)
+
     finally:
         db_Log_Curser.execute("SELECT count(*) FROM SystemLog")
         Rows_Number_Of = db_Log_Curser.fetchone()
@@ -215,8 +221,8 @@ def Check_db_Length(db_Log_Curser, Log_Table):
 
 # ---------------------------------------- Counters ----------------------------------------
 class Counters:
-    # How often does esch spammer read write to the db (sec)
-    Loop_Delay = 2.500
+    # Refresh rate
+    Loop_Delay = 10.000
 
     def __init__(self):
         # Check if table exists
@@ -226,7 +232,7 @@ class Counters:
         try:
             db_Curser.execute("SELECT id FROM Dobby.Counters LIMIT 1;")
         # Log event
-        except (MySQLdb.Error, MySQLdb.Warning) as e:
+        except (MySQLdb.Error, MySQLdb.Warning):
             Log("Info", "Counters", "Value Calculator", "No entries in 'Counters' table not starting")
             # Close db connection
             Close_db(db_Connection, db_Curser)
@@ -252,14 +258,19 @@ class Counters:
             db_Curser = db_Connection.cursor()
 
             # Get needed date needed to refresh values
-            db_Curser.execute("SELECT Name, `Log Trigger Name`, `json Tag`, `Ticks`, `Math` FROM Dobby.Counters")
+            db_Curser.execute("SELECT Name, `Log Trigger id`, `json Tag`, `Ticks`, `Math` FROM Dobby.Counters")
             Checkers_data = db_Curser.fetchall()
 
             # Calc values for each counter
             for Counter_Info in Checkers_data:
                 # Get last reset id
-                db_Curser.execute('SELECT id FROM DobbyLog.Log_Trigger where Name="' + Counter_Info[1] + '" and Value="Reset" order by id desc Limit 1;')
-                Last_Reset_ID = db_Curser.fetchall()
+
+                try:
+                    db_Curser.execute('SELECT id FROM DobbyLog.Log_Trigger_' + str(Counter_Info[1]) + ' where Value="Reset" order by id desc Limit 1;')
+                    Last_Reset_ID = db_Curser.fetchall()
+                except (MySQLdb.Error, MySQLdb.Warning) as e:
+                    Log("Debug", "Counters", "db error", str(e[0]) + ": " + str(e[1]))
+                    continue
 
                 if (Last_Reset_ID == ()):
                     Last_Reset_ID = 0
@@ -267,7 +278,7 @@ class Counters:
                     Last_Reset_ID = Last_Reset_ID[0][0]
 
                 # Get values since last reset
-                db_Curser.execute('SELECT Value FROM DobbyLog.Log_Trigger where Name="' + Counter_Info[1] + '" and id > "' + str(Last_Reset_ID) + '" order by id desc;')
+                db_Curser.execute('SELECT Value FROM DobbyLog.Log_Trigger_' + str(Counter_Info[1]) + ' where id > "' + str(Last_Reset_ID) + '" order by id desc;')
                 db_Data = db_Curser.fetchall()
 
                 Counter_State = 0
@@ -365,28 +376,30 @@ def Device_Config(Payload):
 
     # Check if UDP config have been requested
     UDP_Request = False
-    
+
     try:
         if Payload[2]:
-            UDP_Request = True
             if Payload[2] == "FTP":
                 Request_Type = "FTP"
             elif Payload[2] == "UDP":
                 Request_Type = "UDP"
+                UDP_Request = True
             else:
                 Log("Warning", "MQTT Config", "Request", "Unknown request type:" + Request_Type)
                 return
-    except ValueError and IndexError:
+    except ValueError or IndexError:
         pass
 
     db_FSCJ_Connection = Open_db("Dobby")
     db_FSCJ_Curser = db_FSCJ_Connection.cursor()
 
-    Log("Debug", "MQTT Config", "Request", Payload[0])
+    Log("Info", "MQTT Config", "Request", Payload[0])
 
+    # Get device's "config id" from db
     try:
         db_FSCJ_Curser.execute("SELECT Config_ID FROM Dobby.DeviceConfig WHERE Hostname='" + Payload[0] + "';")
         Config_ID_Value = db_FSCJ_Curser.fetchone()
+
     except (MySQLdb.Error, MySQLdb.Warning) as e:
         if e[0] == 1146:
             Log("Warning", "MQTT Config", "Missing", Payload[0])
@@ -512,377 +525,144 @@ def Is_json(myjson):
     return True
 
 
-# ---------------------------------------- Log_Trigger ----------------------------------------
-def Log_Trigger_Init():
-    # Log("Info", "Log Trigger", "Fix CODE", 'Initialization compleate')
-
-    db_Connection = Open_db("Dobby")
-    db_Curser = db_Connection.cursor()
-
-    db_Curser.execute("SELECT id, Name, Tags, Max_Entries, Topic FROM Dobby.Log_Trigger WHERE Enabled='1'")
-    Log_Trigger_db = db_Curser.fetchall()
-
-    for i in range(len(Log_Trigger_db)):
-        # id =            0
-        # Name =          1
-        # Tags =          2
-        # Max_Entries =   3
-        # Topic =         4
-
-        # Log Event
-        Log("Debug", "Log Trigger", Log_Trigger_db[i][1], "Subscribing to: '" + Log_Trigger_db[i][4] + "'")
-        # Add topic to topic tict
-        MQTT_Add_Sub_Topic(str(Log_Trigger_db[i][4]), 'Log Trigger', {'id': Log_Trigger_db[i][0], 'Name': Log_Trigger_db[i][1], 'Tags': Log_Trigger_db[i][2], 'Max_Entries': Log_Trigger_db[i][3]})
-        # Subscribe
-        MQTT_Client.subscribe(str(Log_Trigger_db[i][4]))
-        # Register callbacks
-        MQTT_Client.message_callback_add(str(Log_Trigger_db[i][4]), MQTT_On_Message_Callback)
-
-    Close_db(db_Connection, db_Curser)
 
 
-def Log_Trigger(Trigger_Info, Payload, Retained):
-
-    if Retained is 0:
-        # json value
-        if Is_json(Payload) is True:
-            # Create json
-            root = json.loads(Payload)
-            # Split headers into seperate topics
-            for json_Log_Source, json_Log_Value in root.items():
-                Log_Trigger_Log_Value(Trigger_Info, json_Log_Value, json_Tag=json_Log_Source)
-                # None json value
-        else:
-            Log_Trigger_Log_Value(Trigger_Info, Payload)
 
 
-def Log_Trigger_Log_Value(Trigger_Info, Value, json_Tag=''):
-
-    Log("Debug", "Log Trigger", "Logging", "Value: " + str(Value) + " json_Tag: " + str(json_Tag))
-
-    db_Connection = Open_db()
-    db_Curser = db_Connection.cursor()
-
-    # Make sure Log_Value is string
-    Value = str(Value)
-    # Remove the ";" at the end if there
-    if Value[-1:] == ";":
-        Value = Value[:-1]
-
-    # Change Last_Trigger
-    db_Curser.execute("UPDATE `Dobby`.`Log_Trigger` SET `Last_Trigger`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(Trigger_Info['id']) + "';")
-
-    # Log Value
-    try:
-        db_Curser.execute("INSERT INTO `" + Dobby_Config['Log_db'] + "`.`Log_Trigger` (Name, json_Tag, Tags, Value) Values('" + Trigger_Info['Name'] + "','" + str(json_Tag) + "' , '" + str(Trigger_Info['Tags']) + "', '" + Value + "');")
-    except (MySQLdb.Error, MySQLdb.Warning) as e:
-        # Table missing, create it
-        if e[0] == 1146:
-            Log("Info", "Log Trigger", "db", "Log Trigger Table missing creating it")
-            try:
-                db_Curser.execute("CREATE TABLE `" + Dobby_Config['Log_db'] + "`.`Log_Trigger` (`id` int(11) NOT NULL AUTO_INCREMENT, `Name` varchar(75) NOT NULL, `json_Tag` varchar(75) NOT NULL, `Tags` varchar(75) DEFAULT NULL, `Value` varchar(75) NOT NULL, `DateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`id`))ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;")
-                # Try logging the message again
-                db_Curser.execute("INSERT INTO `" + Dobby_Config['Log_db'] + "`.`Log_Trigger` (Name, json_Tag, Tags, Value) Values('" + Trigger_Info['Name'] + "','" + str(json_Tag) + "' , '" + str(Trigger_Info['Tags']) + "', '" + Value + "');")
-
-            except (MySQLdb.Error, MySQLdb.Warning) as e:
-                # Error 1050 = Table already exists
-                if e[0] != 1050:
-                    Log("Fatal", "Log Trigger", Trigger_Info['Name'], "Unable to create log db table, failed with error: " + str(e))
-                    return
-        else:
-            Log("Critical", "Log Trigger", "db", "Unable to log message. Error: " + str(e))
-            return
-
-    # Delete rows > max
-    db_Curser.execute("SELECT count(*) FROM `" + Dobby_Config['Log_db'] + "`.`Log_Trigger` WHERE Name='" + Trigger_Info['Name'] + "' AND json_Tag='" + str(json_Tag) + "';")
-    Rows_Number_Of = db_Curser.fetchall()
-
-    if Rows_Number_Of[0][0] > int(Trigger_Info['Max_Entries']):
-        Rows_To_Delete = Rows_Number_Of[0][0] - int(Trigger_Info['Max_Entries'])
-        print ("DELETE FROM `" + Dobby_Config['Log_db'] + "`.`Log_Trigger` WHERE Name='" + Trigger_Info['Name'] + "' AND json_Tag='" + str(json_Tag) + "' ORDER BY 'DateTime' LIMIT " + str(Rows_To_Delete) + ";")
-        db_Curser.execute("DELETE FROM `" + Dobby_Config['Log_db'] + "`.`Log_Trigger` WHERE Name='" + Trigger_Info['Name'] + "' AND json_Tag='" + str(json_Tag) + "' ORDER BY 'DateTime' LIMIT " + str(Rows_To_Delete) + ";")
-        Log("Debug", "Dobby", Trigger_Info['Name'], "History Length reached, deleting " + str(Rows_To_Delete))
-
-    Log("Debug", "Log Trigger", Trigger_Info['Name'], "Valure capured: " + Value)
-
-    Close_db(db_Connection, db_Curser)
-
-
-# ---------------------------------------- Mail Trigger ----------------------------------------
-class Mail_Trigger():
+# ---------------------------------------- Log Trigger ----------------------------------------
+class Log_Trigger():
+    
     # How often the db is cheched for changes
-    Refresh_Rate = 1.5
-
-    Active_Triggers = {}
+    Refresh_Rate = 5
 
     def __init__(self):
         # Log event
-        Log("Info", "Mail Trigger", "Checker", "Initializing")
+        Log("Info", "Log Trigger", "System", "Initializing")
 
-        # Start checker thread
-        File_Change_Checker_Thread = threading.Thread(target=self.Checker, kwargs={})
-        File_Change_Checker_Thread.daemon = True
-        File_Change_Checker_Thread.start()
-
-    def Checker(self):
-        # Start eternal loop
-        while True:
-            # Open db connection get id, Last Modified
-            db_Connection = Open_db("Dobby")
-            db_Curser = db_Connection.cursor()
-
-            # Get id and Last Modified to check if Mail Triggers needs to be started
-            db_Curser.execute("SELECT id, Last_Modified FROM Dobby.`Mail_Trigger` WHERE Enabled=1;")
-            Mail_Info = db_Curser.fetchall()
-
-            for i in range(len(Mail_Info)):
-                # Mail_Info[i][0] - id
-                # Mail_Info[i][1] - Last Modified
-
-                # Check if the trigger is in the Active_Triggers dict
-                if Mail_Info[i][0] in self.Active_Triggers:
-                    
-                    # Check if last modified changed
-                    if self.Active_Triggers[Mail_Info[i][0]] != Mail_Info[i][1]:
-                        self.Active_Triggers[Mail_Info[i][0]] = Mail_Info[i][1]
-                        self.Restart_Trigger(Mail_Info[i][0])
-                        
-                # If not add then to the list and start the trigger
-                else:
-                    self.Active_Triggers[Mail_Info[i][0]] = Mail_Info[i][1]
-                    # Start the trigger
-                    self.Start_Trigger(Mail_Info[i][0])
-
-            # Close db connection
-            Close_db(db_Connection, db_Curser)
-
-            # Sleep till next check
-            time.sleep(self.Refresh_Rate)
-    
-
-    def Start_Trigger(self, id):
-
-        Trigger_Info = self.Get_Trigger_Info(id)
-        # Open db connection
         db_Connection = Open_db("Dobby")
         db_Curser = db_Connection.cursor()
 
-        db_Curser.execute("SELECT Name, `MQTT Target` FROM Dobby.`Mail_Trigger` WHERE id="+ str(id) + ";")
-        Trigger_Info = db_Curser.fetchone()
-        # Trigger_Info[0] - Name
-        # Trigger_Info[1] - Target
+        db_Curser.execute("SELECT id, Name, Tags, Max_Entries, Topic FROM Dobby.Log_Trigger WHERE Enabled='1'")
+        Log_Trigger_db = db_Curser.fetchall()
 
-        # Close db connection
+        for i in range(len(Log_Trigger_db)):
+            # id =            0
+            # Name =          1
+            # Tags =          2
+            # Max_Entries =   3
+            # Topic =         4
+
+            # Log Event
+            Log("Debug", "Log Trigger", Log_Trigger_db[i][1], "Subscribing to: '" + Log_Trigger_db[i][4] + "'")
+            # Add topic to topic tict
+            MQTT_Add_Sub_Topic(str(Log_Trigger_db[i][4]), 'Log Trigger', {'id': Log_Trigger_db[i][0], 'Name': Log_Trigger_db[i][1], 'Tags': Log_Trigger_db[i][2], 'Max_Entries': Log_Trigger_db[i][3]})
+            # Subscribe
+            MQTT_Client.subscribe(str(Log_Trigger_db[i][4]))
+            # Register callbacks
+            MQTT_Client.message_callback_add(str(Log_Trigger_db[i][4]), MQTT_On_Message_Callback)
+
         Close_db(db_Connection, db_Curser)
 
-        # Log Event
-        Log("Debug", "Mail Trigger", str(Trigger_Info[0]), "Starting")
-        Log("Debug", "Mail Trigger", str(Trigger_Info[0]), "Subscribing to: '" + str(Trigger_Info[1]) + "'")
-        # Add topic to topic tict
-        MQTT_Add_Sub_Topic(str(Trigger_Info[1]), 'Mail Trigger', id)
-        # Subscribe
-        MQTT_Client.subscribe(str(Trigger_Info[1]))
-        # Register callbacks
-        MQTT_Client.message_callback_add(str(Trigger_Info[1]), MQTT_On_Message_Callback)
-
-
-    def Stop_Trigger(self, id):
-
-        Trigger_Info = self.Get_Trigger_Info(id)
-
-         # Log Event
-        Log("Debug", "Mail Trigger", str(Trigger_Info[0]), "Stopping")
-        Log("Debug", "Mail Trigger", str(Trigger_Info[0]), "Unsubscribing from: '" + str(Trigger_Info[1]) + "'")
-
-        MQTT_Del_Sub_Topic(Trigger_Info[1], 'Mail Trigger', id)
-
-
-    def Restart_Trigger(self, id):
-        self.Start_Trigger(id)
-        self.Stop_Trigger(id)
-
-
-    def Get_Trigger_Info(self, id):
-        # Open db connection
-        db_Connection = Open_db("Dobby")
-        db_Curser = db_Connection.cursor()
-
-        db_Curser.execute("SELECT Name, `MQTT Target` FROM Dobby.`Mail_Trigger` WHERE id="+ str(id) + ";")
-        Trigger_Info = db_Curser.fetchone()
-        # Trigger_Info[0] - Name
-        # Trigger_Info[1] - Target
-
-        # Close db connection
-        Close_db(db_Connection, db_Curser)
-
-        # Return info
-        return Trigger_Info
-
     @classmethod
-    def Build_Trigger_Message(self, Body, Trigger_Info, Payload):
+    def On_Message(cls, Trigger_Info, Payload, Retained):
 
-        # Name = Trigger_Info[0]
-        # Alert_State = Trigger_Info[1]
-        MQTT_Payload_Clear = Trigger_Info[2]
-        MQTT_Payload_Trigger = Trigger_Info[3]
-        Alert_Target_Email = Trigger_Info[4]
-        Alert_Subject = Trigger_Info[5]
-        Alert_Clear_Text = Trigger_Info[6]
-        Alert_Trigger_Text = Trigger_Info[7]
-
-        if Body == 0:
-            Body = Alert_Clear_Text
-        if Body == 1:
-            Body = Alert_Trigger_Text
-
-        Trigger_Message = MIMEMultipart()
-        Trigger_Message['From'] = Dobby_Config['Mail_Trigger_SMTP_Sender']
-        Trigger_Message['To'] = Alert_Target_Email
-        Trigger_Message['Subject'] = Alert_Subject
-
-        Body = str(Body)
-
-        if "{Payload}" in Body:
-            Body = Body.replace("{Payload}", str(Payload))
-
-        if "{Clear}" in Body:
-            Body = Body.replace("{Clear}", str(MQTT_Payload_Clear))
-
-        if "{Trigger}" in Body:
-            Body = Body.replace("{Trigger}", str(MQTT_Payload_Trigger))
-
-        Trigger_Message.attach(MIMEText(Body, 'plain'))
-
-        return Trigger_Message
-
-    @classmethod
-    def Send_Email(cls, To, Message):
-        # Remove any spaces
-        To = To.replace(" ", "")
-
-        Target_List = []
-
-        # Multiple targets
-        if "," in To:
-            Target_List = To.split(",")
-
-        # Single target
-        else:
-            Target_List.append(To)
-
-        # Connect to mail server
-        Mail_Server = smtplib.SMTP(Dobby_Config['Mail_Trigger_SMTP_Server'], Dobby_Config['Mail_Trigger_SMTP_Port'])
-        Mail_Server.starttls()
-        Mail_Server.login(Dobby_Config['Mail_Trigger_SMTP_Username'], Dobby_Config['Mail_Trigger_SMTP_Password'])
-
-        # Send Email
-        for To_Email in Target_List:
-            print "MAIL TEST"
-            print Mail_Server.sendmail(Dobby_Config['Mail_Trigger_SMTP_Sender'], To_Email, str(Message))
-
-        # Disconnect from mail server
-        Mail_Server.quit()
+        # Log only none retained messages
+        if Retained is 0:
+            # json value
+            if Is_json(Payload) is True:
+                # Create json
+                root = json.loads(Payload)
+                # Split headers into seperate topics
+                for json_Log_Source, json_Log_Value in root.items():
+                    Log_Trigger.Write_Value_To_db(Trigger_Info, json_Log_Value, json_Tag=json_Log_Source)
+                    # None json value
+            else:
+                Log_Trigger.Write_Value_To_db(Trigger_Info, Payload)
 
 
     @classmethod
-    def On_Message(cls, id, Payload):
+    def Write_Value_To_db(cls, Trigger_Info, Value, json_Tag=''):
 
-        db_Connection = Open_db("Dobby")
+        Log("Debug", "Log Trigger", "Logging", "Value: " + str(Value) + " json_Tag: " + str(json_Tag))
+
+        db_Connection = Open_db()
         db_Curser = db_Connection.cursor()
 
         db_Curser.execute("set autocommit = 1")
 
-        db_Curser.execute("SELECT Name, `Alert State`, `MQTT Payload Clear`, `MQTT Payload Trigger`, `Alert Target Email`, `Alert Subject`, `Alert Clear Text`, `Alert Trigger Text` FROM Dobby.Mail_Trigger WHERE id=" + str(id) + ";")
-        Trigger_Info = db_Curser.fetchone()
-           
+        # Make sure Log_Value is string
+        Value = str(Value)
+        # Remove the ";" at the end if there
+        if Value[-1:] == ";":
+            Value = Value[:-1]
 
-        Name = Trigger_Info[0]
-        Alert_State = Trigger_Info[1]
-        MQTT_Payload_Clear = Trigger_Info[2]
-        MQTT_Payload_Trigger = Trigger_Info[3]
-        Alert_Target_Email = Trigger_Info[4]
-        # Alert_Subject = Trigger_Info[5]
-        # Alert_Clear_Text = Trigger_Info[6]
-        # Alert_Trigger_Text = Trigger_Info[7]
+        SQL_Table_Name = Dobby_Config['Log_db'] + "`.`Log_Trigger_"  + str(Trigger_Info['id'])
+        SQL_String = "INSERT INTO `" + SQL_Table_Name + "` (json_Tag, Value) Values('" + str(json_Tag) + "' , '" + Value + "');"
+        
+        # Log Value
+        try:
+            db_Curser.execute(SQL_String)
+        except (MySQLdb.Error, MySQLdb.Warning) as e:
+            # Table missing, create it
+            if e[0] == 1146:
+                Log("Info", "Log Trigger", "db table missing", "Creating: " + SQL_Table_Name)
+                try:
+                    # To create table
+                    db_Curser.execute("CREATE TABLE `" + SQL_Table_Name + "` (`id` int(11) NOT NULL AUTO_INCREMENT, `json_Tag` varchar(75) NOT NULL, `Value` varchar(75) NOT NULL, `DateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`id`))ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;")
+                    # Try logging the message again
+                    db_Curser.execute(SQL_String)
 
-        # Find out what to do
-        Action = 2
-        # 0 = Clear
-        # 1 = Trigger
-        # 2 = In-between
-
-        Trigger_Change = False
-
-        if float(MQTT_Payload_Clear) == float(MQTT_Payload_Trigger):
-            Log("Error", "Mail Trigger", str(Name), 'Clear and Trigger payload is the same value')
-            Close_db(db_Connection, db_Curser)
-            return
-
-        # High / Low Check
-        # Value moving from Low to High
-        elif (float(MQTT_Payload_Clear) <= float(MQTT_Payload_Trigger)) is True:
-            # Clear check
-            if float(MQTT_Payload_Clear) >= float(Payload):
-                Action = 0
-
-            # Trigger check
-            elif float(MQTT_Payload_Trigger) <= float(Payload):
-                Action = 1
-
-        # Value moving from High to Low
-        else:
-            # Clear check
-            if float(MQTT_Payload_Clear) <= float(Payload):
-                Action = 0
-
-            # Trigger check
-            elif float(MQTT_Payload_Trigger) >= float(Payload):
-                Action = 1
-
-        # Take action if needed
-        # Clear
-        if Action == 0:
-            # Check agains current alert state
-            if Action == Alert_State:
-                Log("Debug", "Mail Trigger", str(Name), 'Already cleared ignoring new clear value: ' + str(Payload))
+                except (MySQLdb.Error, MySQLdb.Warning) as e:
+                    # Error 1050 = Table already exists
+                    if e[0] != 1050:
+                        Log("Fatal", "Log Trigger", Trigger_Info['Name'], "Unable to create log db table, failed with error: " + str(e))
+                        return
             else:
-                Trigger_Change = True
+                Log("Critical", "Log Trigger", "db", "Unable to log message. Error: " + str(e))
+                return
 
-                # Send Email
-                Mail_Trigger.Send_Email(Alert_Target_Email, Mail_Trigger.Build_Trigger_Message(0, Trigger_Info, Payload))
-                Log("Info", "Mail Trigger", str(Name), 'Cleared at: ' + str(Payload) + " Target: " + str(MQTT_Payload_Clear))
+        # Delete rows > max
+        db_Curser.execute("SELECT count(*) FROM `" + SQL_Table_Name + "`;")
+        Rows_Number_Of = db_Curser.fetchone()
 
-        # Trigger
-        elif Action == 1:
-            # Check agains current alert state
-            if Action == Alert_State:
-                Log("Debug", "Mail Trigger", str(Name), 'Already triggered ignoring new trigger value: ' + str(Payload))
-            else:
-                Trigger_Change = True
+        if Rows_Number_Of[0] > int(Trigger_Info['Max_Entries']):
+            Rows_To_Delete = Rows_Number_Of[0] - int(Trigger_Info['Max_Entries'])
+            
+            db_Curser.execute("DELETE FROM `" + SQL_Table_Name + "` ORDER BY 'id' LIMIT " + str(Rows_To_Delete) + ";")
+            
+            Log("Debug", "Dobby", Trigger_Info['Name'], "History Length reached, deleting " + str(Rows_To_Delete))
 
-                # Send Email
-                Mail_Trigger.Send_Email(Alert_Target_Email, Mail_Trigger.Build_Trigger_Message(1, Trigger_Info, Payload))
-                Log("Info", "Mail Trigger", str(Name), 'Triggered at: ' + str(Payload) + " Target: " + str(MQTT_Payload_Trigger))
+        # Change Last_Trigger
+        db_Curser.execute("UPDATE `Dobby`.`Log_Trigger` SET `Last_Trigger`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(Trigger_Info['id']) + "';")
 
-        # In-between value
-        elif Action == 2:
-            Log("Debug", "Mail Trigger", str(Name), 'In-between value received: ' + str(Payload))
-
-        if Trigger_Change is True:
-            # Change Alert_State
-            db_Curser.execute("UPDATE `Dobby`.`Mail_Trigger` SET `Alert State`='" + str(Action) + "' WHERE `id`='" + str(id) + "';")
-            # Update Triggered_DateTime
-            db_Curser.execute("UPDATE `Dobby`.`Mail_Trigger` SET `Triggered DateTime`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(id) + "';")
+        # Log event
+        Log("Debug", "Log Trigger", Trigger_Info['Name'], "Valure capured: " + Value)
 
         Close_db(db_Connection, db_Curser)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ---------------------------------------- Action Trigger ----------------------------------------
 class Action_Trigger():
     # How often the db is cheched for changes
-    Refresh_Rate = 1.5
+    Refresh_Rate = 5
 
     Active_Triggers = {}
+    Trigger_Timeouts = {}
+    MQTT_Target_Checks = {}
 
     def __init__(self):
         # Log event
@@ -954,6 +734,11 @@ class Action_Trigger():
         # Register callbacks
         MQTT_Client.message_callback_add(str(Trigger_Info[1]), MQTT_On_Message_Callback)
 
+        # Create Timeout Trigger
+        self.Trigger_Timeouts[id] = Timeout_Trigger()
+
+        print "CREATE target trigger here if timeout_set is set"
+
 
     def Stop_Trigger(self, id):
 
@@ -988,14 +773,14 @@ class Action_Trigger():
         return Trigger_Info
 
     @classmethod
-    def On_Message(cls, id, Payload):
+    def On_Message(cls, id, Topic, Payload):
 
         db_Connection = Open_db("Dobby")
         db_Curser = db_Connection.cursor()
 
         db_Curser.execute("set autocommit = 1")
 
-        db_Curser.execute("SELECT Name, `Alert State`, `MQTT Payload Clear`, `MQTT Payload Trigger`, `Alert Target`, `Alert Payload Clear`, `Alert Payload Trigger`, Timeout FROM Dobby.Action_Trigger WHERE id=" + str(id) + ";")
+        db_Curser.execute("SELECT Name, `Alert State`, `MQTT Payload Clear`, `MQTT Payload Trigger`, `Alert Target`, `Alert Payload Clear`, `Alert Payload Trigger`, Timeout, `Timeout Alert Target` FROM Dobby.Action_Trigger WHERE id=" + str(id) + ";")
         Trigger_Info = db_Curser.fetchone()
 
         Name = Trigger_Info[0]
@@ -1005,7 +790,9 @@ class Action_Trigger():
         Alert_Target = Trigger_Info[4]
         Alert_Payload_Clear = Trigger_Info[5]
         Alert_Payload_Trigger = Trigger_Info[6]
-        Alert_Timeout = Trigger_Info[7]
+        Timeout_Sec =  Trigger_Info[7]
+        Timeout_Alert_Target =  Trigger_Info[8]
+
 
         # Find out what to do
         Action = 2
@@ -1046,9 +833,9 @@ class Action_Trigger():
             # Check agains current alert state
             if Action == Alert_State:
                 Log("Debug", "Action Trigger", str(Name), 'Already cleared ignoring new clear value: ' + str(Payload))
+ 
             else:
                 Trigger_Change = True
-
                 # Publish Message
                 MQTT_Client.publish(Alert_Target, payload=str(Alert_Payload_Clear) + ";", qos=0, retain=False)
                 Log("Info", "Action Trigger", str(Name), 'Cleared at: ' + str(Payload) + " Target: " + str(MQTT_Payload_Clear))
@@ -1060,7 +847,6 @@ class Action_Trigger():
                 Log("Debug", "Action Trigger", str(Name), 'Already triggered ignoring new trigger value: ' + str(Payload))
             else:
                 Trigger_Change = True
-
                 # Publish Message
                 MQTT_Client.publish(Alert_Target, payload=str(Alert_Payload_Trigger) + ";", qos=0, retain=False)
                 Log("Info", "Action Trigger", str(Name), 'Triggered at: ' + str(Payload) + " Target: " + str(MQTT_Payload_Trigger))
@@ -1077,20 +863,511 @@ class Action_Trigger():
 
         # Close the db connection
         Close_db(db_Connection, db_Curser)
+
         
-        # Check for timeout
-        # if (datetime.datetime.now() - Action_Info[i][2]).total_seconds() > Action_Info[i][1]:
+        # if Timeout_Sec is not None:
+        #     # Start trigger timeout
+        #     Action_Trigger.Trigger_Timeouts[id].Reset(Timeout_Sec, Timeout_Alert_Target)
+            
+            # If timeout is set the Target will be checked for state as well
+            # the check is done at 2/3 of timepout to assure reply from target can time out
+            # Action_Trigger.MQTT_Target_Checks[id].Reset(Timeout_Sec, Topic)
+            
+            #     MQTT_Target_Check(Topic, Action)
+            
+            # print 'Timeout_Sec' 
+            # print Timeout_Sec
 
-        #     print "123"
 
-            # # Subtract current time with last entry
-            # Time_Diff = datetime.datetime.now() - Action_Info[i][2]
-            # # Convert time differance to sec
-            # Time_Diff = Time_Diff.total_seconds()
 
-            # # Compare the differance in sec to timeout
-            # if int(Time_Diff) > Action_Info[i][1]:
-            #     print "HIT TIMEOUT"
+
+# ---------------------------------------- Timeout Trigger ----------------------------------------
+def Send_Alert(id, Value=None, Subject=None, Text=None):
+
+    # Get Alert into
+    ## Open db connection
+    db_Connection = Open_db("Dobby")
+    db_Curser = db_Connection.cursor()
+
+    db_Curser.execute("SELECT Name, `Mail Target`, `MQTT Target`, `Push Target` FROM Dobby.`Alert_Targets` WHERE id=" + str(id) + ";")
+    Alert_Info = db_Curser.fetchone()
+
+    ## Only get subject text if none is set
+    if Subject is None:
+        db_Curser.execute("SELECT Subject FROM Dobby.`Alert_Targets` WHERE id=" + str(id) + ";")
+        Subject = db_Curser.fetchone()
+        Subject = Subject[0]
+    if Text is None:
+        db_Curser.execute("SELECT Text FROM Dobby.`Alert_Targets` WHERE id=" + str(id) + ";")
+        Text = db_Curser.fetchone()
+        Text = Text[0]
+
+    ## Close db connection
+    Close_db(db_Connection, db_Curser)
+
+    Alert_Name = Alert_Info[0]
+    Mail_Target = Alert_Info[1]
+    MQTT_Target = Alert_Info[2]
+    Push_Target = Alert_Info[3]
+
+    print "Mail_Target"
+    print Mail_Target
+    print type(Mail_Target)
+    print "MQTT_Target"
+    print MQTT_Target
+    print type(MQTT_Target)
+    print "Push_Target"
+    print Push_Target
+    print type(Push_Target)
+
+    # Add value to Text if value is set
+    if Value is not None and Value != "":
+        Text = Text.replace('*value*', str(Value))
+
+
+    # Mail Alerts
+    if Mail_Target is not None and Mail_Target != "":
+        Send_Mail(Mail_Target, Subject, Text)
+
+
+    # MQTT Messages
+    if MQTT_Target is not None and MQTT_Target != "":
+        # Remove any spaces
+        MQTT_Target = MQTT_Target.replace(" ", "")
+
+        Target_List = []
+
+        # Multiple targets
+        if "," in MQTT_Target:
+            Target_List = MQTT_Target.split(",")
+
+        # Single target
+        else:
+            Target_List.append(MQTT_Target)
+
+        # Publish MQTT Message 
+        for Target_Topic in Target_List:
+            # Publish message
+            MQTT_Client.publish(Target_Topic, payload=Text, qos=0, retain=False)
+            # Log event
+            Log("Debug", "System", "MQTT", 'Publish - Topic: ' + str(Target_Topic) + " Payload: " + str(Text))
+            
+
+    if Push_Target is not None and Push_Target != "":
+        print "Push_Target"
+        print Push_Target
+        Send_Push(Push_Target, Subject, Text)
+
+
+# ---------------------------------------- Timeout Trigger ----------------------------------------
+class Timeout_Trigger():
+
+    Check_Delay = 0.500
+    
+    def __init__(self):
+        # Log event
+        Log("Debug", "System", "Timeout Trigger", "Initializing")
+
+        # Create vars
+        self.Timeout_At = datetime.datetime.now()
+        self.Alert_Target_id = ""
+        self.Delete_Me = False
+        self.Triggered = True
+
+        # Start timeout
+        Timer_Thread = threading.Thread(target=self.Run)
+        Timer_Thread.daemon = True
+        Timer_Thread.start()
+
+    def Reset(self, Timeout, Alert_Target_id):
+        # Log event
+        Log("Debug", "System", "Timeout Trigger", "Reset alert id: " + str(Alert_Target_id))
+        
+        # Save vars
+        self.Alert_Target_id = Alert_Target_id
+        ## Add timeout to current time to get Timeout_At
+        self.Timeout_At = datetime.datetime.now() + datetime.timedelta(seconds=Timeout)
+        ## Alert id
+        self.Alert_Target_id = Alert_Target_id
+
+        # Reset triggered
+        self.Triggered = False
+        
+
+    def Delete(self):
+        Log("Debug", "System", "Timeout Trigger", "Deleted alert id: " + str(self.Alert_Target_id))
+        # Mark thread for deletions
+        self.Delete_Me = True
+
+
+    def Trigger_Timeout(self):
+        if self.Triggered == True:
+            return
+        
+        # Set var to prevent retrigger
+        self.Triggered = True
+
+        # Log event
+        Log("Debug", "System", "Timeout Trigger", "Triggered alert id:" + str(self.Alert_Target_id))
+        
+        # Get alert information from db        
+        ## Open db connection
+        db_Connection = Open_db("Dobby")
+        db_Curser = db_Connection.cursor()
+        # Set autocommit so no delay on saving changes
+        db_Curser.execute("set autocommit = 1")
+
+        ## Get id and Last Modified to check if gBridge Triggers needs to be started
+        db_Curser.execute("SELECT `Mail Target`, `MQTT Target`, `Push Target`, Subject, Body FROM Dobby.`Alert_Targets` WHERE id=" + str(self.Alert_Target_id) + ";")
+        Alert_Info = db_Curser.fetchone()
+
+        # Change Last_Trigger
+        db_Curser.execute("UPDATE `Dobby`.`Alert_Targets` SET `Last_Trigger`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(id) + "';")
+
+        ## Close db connection
+        Close_db(db_Connection, db_Curser)
+
+        # Send Alerts
+        ## 0 = Mail Target
+        ## 1 = MQTT Target
+        ## 2 = Push Target
+        ## 3 = Subject
+        ## 4 = Body
+        print "fix timout trigger"
+        # Send_Alert(Alert_Info[3], Alert_Info[4], None, Alert_Info[0], Alert_Info[1], Alert_Info[2])
+
+
+    def Run(self):
+        # Just sleep untill id is set
+        while self.Alert_Target_id == "" and self.Delete_Me == False:
+            # Sleep untill next check
+            time.sleep(self.Check_Delay)
+
+        # When id is set start the timeout
+        while self.Delete_Me == False:
+ 
+            # Check if current time vs timeout at time
+            if self.Timeout_At < datetime.datetime.now():
+                self.Trigger_Timeout()
+
+            # Sleep untill next check
+            time.sleep(self.Check_Delay)
+
+
+# ---------------------------------------- gBridge Trigger ----------------------------------------
+# From local to gBridge
+def gBridge_Trigger_Local(id, Topic, Payload):
+
+    # Ignore "/set" messages to avoid message loops
+    if "/set" in Topic:
+        return
+
+    MQTT_Client_gBridge.Publish_Reply(id, Topic, Payload)
+
+
+
+# Form gBridge to local
+class gBridge_Trigger():
+    # How often the db is cheched for changes
+    Refresh_Rate = 5
+
+    Active_Triggers = {}
+
+    # Create a MQTT client to connect to gBridge
+    MQTT_Client = MQTT.Client(client_id="Dobby", clean_session=True)
+
+    MQTT_Client_Connected = False
+
+    MQTT_Broker = ""
+    MQTT_Base_Topic = ""
+
+    def Publish_Reply(self, id, Topic, Payload):
+        
+        Payload.replace(";", "")
+
+        # Temperature
+        if Topic.endswith("/Humidity"):
+            # Round Payload to nearest 0.5 to make google understand
+            Payload = round(float(Payload)*2)/2
+            self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/tempset-humidity/set", payload=str(Payload), qos=0, retain=False)
+        
+        # Humidity
+        elif Topic.endswith("/Temperature"):
+            # Round Payload to nearest 0.5 to make google understand
+            Payload = round(float(Payload)*2)/2
+            self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/tempset-ambient/set", payload=str(Payload), qos=0, retain=False)
+        
+        # DS18B20
+        elif "/DS18B20/" in Topic:
+            # Round Payload to nearest 0.5 to make google understand
+            Payload = round(float(Payload)*2)/2
+            self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/tempset-ambient/set", payload=str(Payload), qos=0, retain=False)
+        
+        else:
+            if str(Payload) == "0":
+                # On Off
+                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/onoff/set", payload="0", qos=0, retain=False)
+                # Brightness
+                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/brightness/set", payload="0", qos=0, retain=False)
+            else:
+                # On Off
+                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/onoff/set", payload="1", qos=0, retain=False)
+                # Brightness
+                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/brightness/set", payload=str(Payload), qos=0, retain=False)
+
+    
+
+    def __init__(self):
+        # Log event
+        Log("Info", "gBridge Trigger", "Checker", "Initializing")
+
+        # Open db connection get id, Last Modified
+        db_Connection = Open_db("Dobby")
+        db_Curser = db_Connection.cursor()
+
+        MQTT_User = Get_System_Config_Value(db_Curser, "gBridge_Trigger", "MQTT", "Username", False)
+        MQTT_Pass = Get_System_Config_Value(db_Curser, "gBridge_Trigger", "MQTT", "Password", False)
+        self.MQTT_Broker = Get_System_Config_Value(db_Curser, "gBridge_Trigger", "MQTT", "Broker", False)
+        MQTT_Port = Get_System_Config_Value(db_Curser, "gBridge_Trigger", "MQTT", "Port", False)
+        self.MQTT_Base_Topic = Get_System_Config_Value(db_Curser, "gBridge_Trigger", "MQTT", "Base Topic", False)
+
+        # Close db connection
+        Close_db(db_Connection, db_Curser)
+
+        # Setup the MQTT client for gBridge
+        # User / Pass
+        self.MQTT_Client.username_pw_set(MQTT_User, MQTT_Pass)
+        
+        # Enable SSL
+        self.MQTT_Client.tls_set_context(context=None)
+
+        # FIX - ADD MQTT Logging
+        # self.MQTT_Client.on_log = MQTT_On_Log
+
+        # Callbacks
+        self.MQTT_Client.on_connect = self.MQTT_On_Connect
+        self.MQTT_Client.on_disconnect = self.MQTT_On_Disconnect
+
+        # Connect to broker
+        self.MQTT_Client.connect(self.MQTT_Broker, port=MQTT_Port, keepalive=60, bind_address="")
+
+        # Spawn thread for MQTT Client Loop
+        MQTTC_Thread = threading.Thread(target=self.MQTT_Client_Loop)
+        MQTTC_Thread.daemon = True
+        MQTTC_Thread.start()
+
+        # Start checker thread
+        File_Change_Checker_Thread = threading.Thread(target=self.Checker, kwargs={})
+        File_Change_Checker_Thread.daemon = True
+        File_Change_Checker_Thread.start()
+
+
+    def MQTT_Subscribe_To(self, MQTT_Client, Topic):
+        Log("Debug", "gBridge Trigger", "MQTT", "Subscribing to topic: " + Topic)
+        self.MQTT_Client.subscribe(Topic)
+
+
+    def MQTT_On_Disconnect(self, MQTT_Client, userdata, rc):
+        self.MQTT_Client.Connected = False
+        Log("Warning", "gBridge", "MQTT", "Disconnected from broker : " + str(self.MQTT_Broker) + " with result code " + str(rc))
+
+
+    def MQTT_On_Connect(self, MQTT_Client, userdata, flags, rc):
+
+        self.MQTT_Client.Connected = True
+        Log("Info", "gBridge Trigger", "MQTT", "Connected to broker " + str(self.MQTT_Broker) + " with result code " + str(rc))
+
+        # # Restart trigger to resubscribe and register callbacks
+        # for id in dict(self.Active_Triggers).keys():
+        #     self.Restart_Trigger(id)
+    
+    # ---------------------------------------- # On message callbacks - Spawns threads ----------------------------------------
+    def MQTT_On_Message_Callback(self, mosq, obj, msg):
+ 
+        Message_Thread = threading.Thread(target=self.MQTT_On_Message, kwargs={"Topic": msg.topic, "Payload": msg.payload, "Retained": msg.retain})
+        Message_Thread.daemon = True
+        Message_Thread.start()
+        return
+
+    # ---------------------------------------- MQTT On Message ----------------------------------------
+    def MQTT_On_Message(self, Topic, Payload, Retained):
+
+        # Ignore "/set" messages to avoid message loops
+        if "/set" in Topic:
+            return
+
+        # Open db connection
+        db_Connection = Open_db("Dobby")
+        db_Curser = db_Connection.cursor()
+        db_Curser.execute("set autocommit = 1")
+
+        gBridge_id = Topic.replace(self.MQTT_Base_Topic, "")
+        gBridge_id = gBridge_id.split("/")
+        gBridge_id = gBridge_id[0]
+
+        # Get trigger id
+        db_Curser.execute('SELECT id FROM Dobby.`gBridge_Trigger` WHERE `gBridge id`="' + str(gBridge_id) + '";')
+        id = db_Curser.fetchone()
+        id = id[0]
+
+        # Change Last_Trigger
+        db_Curser.execute("UPDATE `Dobby`.`gBridge_Trigger` SET `Triggered DateTime`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(id) + "';")
+
+        # Close db connection
+        Close_db(db_Connection, db_Curser)
+
+        # Check what kind of message it is
+        if "/onoff" in Topic:
+            # If its a Dimmer, is 1 set value to 75% to get some light
+            if "/Dimmer/" in self.Active_Triggers[id]["MQTT Target"]:
+                if Payload == "1":
+                    Payload = 75
+        
+        # Nothing to do here yet
+        elif "/brightness" in Topic:
+            pass
+
+        elif "/tempset-mode" in Topic:
+            print "tempset-mode"
+        elif "/tempset-setpoint" in Topic:
+            print "tempset-setpoint"
+        elif "/tempset-ambient" in Topic:
+            print "tempset-ambient"
+        elif "/tempset-humidity" in Topic:
+            print "tempset-humidity"
+
+        else:
+            print "UNKNOWN Command type"
+
+        # Publish Message
+        MQTT_Client.publish(self.Active_Triggers[id]["MQTT Target"], payload=str(Payload) + ";", qos=0, retain=False)
+        
+
+    def MQTT_Client_Loop(self):
+        # Start MQTT Loop
+        self.MQTT_Client.loop_forever()
+
+
+    def Checker(self):
+        # Start eternal loop
+        while True:
+            # Open db connection get id, Last Modified
+            db_Connection = Open_db("Dobby")
+            db_Curser = db_Connection.cursor()
+
+            # Get id and Last Modified to check if gBridge Triggers needs to be started
+            db_Curser.execute("SELECT id, Last_Modified FROM Dobby.`gBridge_Trigger` WHERE Enabled=1;")
+
+            gBridge_Info = db_Curser.fetchall()
+            
+            # Close db connection
+            Close_db(db_Connection, db_Curser)
+
+            for i in range(len(gBridge_Info)):
+                id = gBridge_Info[i][0]
+                Last_Modified = gBridge_Info[i][1]
+
+                # Check if the trigger is in the Active_Triggers dict
+                if id in self.Active_Triggers:
+                    
+                    # Check if last modified changed
+                    if self.Active_Triggers[id]["Last_Modified"] != Last_Modified:
+                        # Deleting the trigger now and then i will get readded in next run, little delay between sub and unsub
+                        self.Delete_Trigger(id)
+                        
+                # If not then add to the list and start the trigger
+                else:
+                    # Save trigger info
+                    self.Add_Trigger(id)
+                    # Start the trigger
+                    self.Start_Trigger(id)
+
+            # Sleep till next check
+            time.sleep(self.Refresh_Rate)
+    
+
+    def Add_Trigger(self, id):
+
+        # Open db connection
+        db_Connection = Open_db("Dobby")
+        db_Curser = db_Connection.cursor()
+
+        # Get Name, gBridge id, MQTT Target, Last_Modified
+        db_Curser.execute("SELECT Name, `gBridge id`, `MQTT Target`, Last_Modified FROM Dobby.`gBridge_Trigger` WHERE id=" + str(id) + ";")
+        gBridge_Info = db_Curser.fetchone()
+        
+        # Close db connection
+        Close_db(db_Connection, db_Curser)
+
+        self.Active_Triggers[id] = {"Name": gBridge_Info[0], "gBridge id": gBridge_Info[1], "MQTT Target": gBridge_Info[2], "Last_Modified": gBridge_Info[3]}
+
+
+    def Delete_Trigger(self, id):
+        # Stop the trigger before deliting
+        self.Stop_Trigger(id)
+
+        # Remove triggre from Active_Triggers
+        try:
+            del self.Active_Triggers[id]
+        except KeyError:
+            pass
+
+
+    def Start_Trigger(self, id):
+
+        # Build source topic from base and gbridge id
+        Source_Topic = self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/#"
+        
+        # Log Event
+        Log("Debug", "gBridge Trigger", str(self.Active_Triggers[id]["Name"]), "Starting")
+        Log("Debug", "gBridge Trigger", str(self.Active_Triggers[id]["Name"]), "Subscribing to: '" + str(Source_Topic) + "'")
+        # Subscribe
+        self.MQTT_Client.subscribe(str(Source_Topic))
+        # Register callbacks
+        self.MQTT_Client.message_callback_add(str(Source_Topic), self.MQTT_On_Message_Callback)
+
+        # Subscribe - local
+        Sub_Topic = str(self.Active_Triggers[id]["MQTT Target"])
+        # Temp and humidity
+        if "Temperature" in self.Active_Triggers[id]["MQTT Target"]:
+            # Do nothing to target topic
+            pass
+        elif "Humidity" in self.Active_Triggers[id]["MQTT Target"]:
+            # Do nothing to target topic
+            pass
+
+        # Dont add state if alread there
+        elif Sub_Topic.endswith("/State"):
+            pass
+
+        # Anything else
+        # Remember to add "/State" to get the devices state and not create a message loop
+        else:
+            Sub_Topic = Sub_Topic + "/State"
+
+        # Add topic to topic tict
+        MQTT_Add_Sub_Topic(Sub_Topic, 'gBridge Trigger', id)
+        # Subscribe
+        MQTT_Client.subscribe(Sub_Topic)
+        # Register callbacks
+        MQTT_Client.message_callback_add(Sub_Topic, MQTT_On_Message_Callback)
+
+
+    def Stop_Trigger(self, id):
+        # Build source topic from base and gbridge id
+        Source_Topic = self.MQTT_Base_Topic + self.Active_Triggers[id][1] + "/#"
+
+         # Log Event
+        Log("Debug", "gBridge Trigger", str(id), "Stopping")
+        Log("Debug", "gBridge Trigger", str(id), "Unsubscribing from: '" + str(Source_Topic) + "'")
+
+        # Unsubscribe and remove callback
+        self.MQTT_Client.unsubscribe(Source_Topic)
+        self.MQTT_Client.message_callback_remove(Source_Topic)
+
+        # Unsubscribe and remove callback - local
+        MQTT_Del_Sub_Topic(str(self.Active_Triggers[id]["MQTT Target"]), 'Mail Trigger', id)
+
 
 
 # ---------------------------------------- KeepAlive Monitor ----------------------------------------
@@ -1190,7 +1467,8 @@ def MQTT_Functions(Payload):
 
         elif "Audio" in Command[0]:
             # FIX - Add setting in db
-            call(["sudo", "-S", "mpg123", "-a", "btSpeaker", "-g", "50", "/etc/Dobby/Audio/" + Command[1]])
+            #call(["sudo", "-S", "mpg123", "-a", "btSpeaker", "-g", "50", "/etc/Dobby/Audio/" + Command[1]])
+            pass
 
         if Command[2] != 0:
             # Delay_For = Command[2]
@@ -1243,13 +1521,16 @@ def MQTT_On_Message(Topic, Payload, Retained):
                         KeepAlive_Monitor(Topic, Payload)
 
                     elif Function[0] == "Log Trigger":
-                        Log_Trigger(Function[1], Payload, Retained)
+                        Log_Trigger.On_Message(Function[1], Payload, Retained)
+
+                    elif Function[0] == "Alert Trigger":
+                        Alert_Trigger.On_Message(Function[1], Payload)
 
                     elif Function[0] == "Action Trigger":
-                        Action_Trigger.On_Message(Function[1], Payload)
+                        Action_Trigger.On_Message(Function[1], Topic, Payload)
 
-                    elif Function[0] == "Mail Trigger":
-                        Mail_Trigger.On_Message(Function[1], Payload)
+                    elif Function[0] == "gBridge Trigger":
+                        gBridge_Trigger_Local(Function[1], Topic, Payload)
 
                     elif Function[0] == "Functions":
                         MQTT_Functions(Payload)
@@ -1338,7 +1619,7 @@ def Dobby_init():
     Dobby_Config['MQTT_Publish_Delay'] = float(Get_System_Config_Value(db_Curser, "Dobby", "MQTT", "PublishDelay"))
     Dobby_Config['MQTT_KeepAlive_Interval'] = int(Get_System_Config_Value(db_Curser, "Dobby", "MQTTKeepAlive", "Interval"))
 
-    # Mail_Trigger - Email
+    # Email
     Dobby_Config['Mail_Trigger_SMTP_Server'] = Get_System_Config_Value(db_Curser, "Mail_Trigger", "SMTP", "Server")
     Dobby_Config['Mail_Trigger_SMTP_Port'] = Get_System_Config_Value(db_Curser, "Mail_Trigger", "SMTP", "Port")
     Dobby_Config['Mail_Trigger_SMTP_Sender'] = Get_System_Config_Value(db_Curser, "Mail_Trigger", "SMTP", "Sender")
@@ -1411,11 +1692,380 @@ def MQTT_init():
     MQTT_Client.publish(Dobby_Config['System_Header'] + "/Log/Dobby/Info/System", payload="Booting Dobby - Version: " + str(Version), qos=0, retain=False)
 
 
+
+# ---------------------------------------- MQTT Target Check ----------------------------------------
+class MQTT_Target_Check():
+
+    Check_Delay = 0.500
+    
+    def __init__(self):
+        # Log event
+        Log("Debug", "System", "MQTT Target Check", "Initializing")
+
+        # Create vars
+        self.Check_At = datetime.datetime.now()
+        self.MQTT_Target = ""
+        self.Delete_Me = False
+        self.Triggered = True
+
+        # Start timeout
+        Timer_Thread = threading.Thread(target=self.Run)
+        Timer_Thread.daemon = True
+        Timer_Thread.start()
+
+    def Reset(self, MQTT_Target, Expected_Value, Force_Change=True):
+        # Log event
+        Log("Debug", "System", "MQTT Target Check", "Reset alert id: " + str(MQTT_Target))
+        
+        # Save vars
+        self.MQTT_Target = MQTT_Target
+        ## Add timeout to current time to get Timeout_At
+        self.Timeout_At = datetime.datetime.now() + datetime.timedelta(seconds=self.Timeout)
+        ## Alert id
+        self.MQTT_Target = MQTT_Target
+
+        # Reset triggered
+        self.Triggered = False
+        
+
+    def Delete(self):
+        Log("Debug", "System", "MQTT Target Check", "Deleted alert id: " + str(self.MQTT_Target))
+        # Mark thread for deletions
+        self.Delete_Me = True
+
+
+    def Trigger_Timeout(self):
+        if self.Triggered == True:
+            return
+        
+        # Set var to prevent retrigger
+        self.Triggered = True
+
+        # Log event
+        Log("Debug", "System", "MQTT Target Check", "Triggered alert id:" + str(self.Alert_Target_id))
+        
+        # Get alert information from db        
+        ## Open db connection
+        db_Connection = Open_db("Dobby")
+        db_Curser = db_Connection.cursor()
+        # Set autocommit so no delay on saving changes
+        db_Curser.execute("set autocommit = 1")
+
+        ## Get id and Last Modified to check if gBridge Triggers needs to be started
+        db_Curser.execute("SELECT `Mail Target`, `MQTT Target`, `Push Target`, Subject, Body FROM Dobby.`Alert_Targets` WHERE id=" + str(self.Alert_Target_id) + ";")
+        Alert_Info = db_Curser.fetchone()
+
+        # Change Last_Trigger
+        db_Curser.execute("UPDATE `Dobby`.`Alert_Targets` SET `Last_Trigger`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(id) + "';")
+
+        ## Close db connection
+        Close_db(db_Connection, db_Curser)
+
+        # Send Alerts
+        ## 0 = Mail Target
+        ## 1 = MQTT Target
+        ## 2 = Push Target
+        ## 3 = Subject
+        ## 4 = Body
+        print "fix mqtt target check"
+        # Send_Alert(Alert_Info[3], Alert_Info[4], None, Alert_Info[0], Alert_Info[1], Alert_Info[2])
+
+
+    def Run(self):
+        # Just sleep untill id is set
+        while self.Alert_Target_id == "" and self.Delete_Me == False:
+            # Sleep untill next check
+            time.sleep(self.Check_Delay)
+
+        # When id is set start the timeout
+        while self.Delete_Me == False:
+ 
+            # Check if current time vs timeout at time
+            if self.Timeout_At < datetime.datetime.now():
+                self.Trigger_Timeout()
+
+            # Sleep untill next check
+            time.sleep(self.Check_Delay)
+
+
+    
+
+# ---------------------------------------- Send Mail ----------------------------------------
+def Send_Mail(To, Subject, Text):
+    # Remove any spaces
+    To = To.replace(" ", "")
+
+    Target_List = []
+
+    # Multiple targets
+    if "," in To:
+        Target_List = To.split(",")
+
+    # Single target
+    else:
+        Target_List.append(To)
+
+    Mail_Body = "\r\n".join([
+        "From: " + str(Dobby_Config['Mail_Trigger_SMTP_Sender']),
+        "To: " + To,
+        "Subject: " + str(Subject),
+        "",
+        str(Text)
+    ])
+
+
+    # Connect to mail server
+    Mail_Server = smtplib.SMTP(Dobby_Config['Mail_Trigger_SMTP_Server'], Dobby_Config['Mail_Trigger_SMTP_Port'])
+    Mail_Server.ehlo()
+    Mail_Server.starttls()
+    Mail_Server.login(Dobby_Config['Mail_Trigger_SMTP_Username'], Dobby_Config['Mail_Trigger_SMTP_Password'])
+
+    # Send Email
+    for To_Email in Target_List:
+        Mail_Server.sendmail(Dobby_Config['Mail_Trigger_SMTP_Sender'], To_Email, str(Mail_Body))
+        Log("Debug", "System", "Mail", 'Send mail to: ' + str(To_Email))
+
+    # Disconnect from mail server
+    Mail_Server.quit()
+
+
+# ---------------------------------------- Send Push ----------------------------------------
+def Send_Push(Target, Subject, Message):
+    # Remove any spaces
+    Target = Target.replace(" ", "")
+
+    Target_List = []
+
+    # Multiple targets
+    if "," in Target:
+        Target_List = Target.split(",")
+
+    # Single target
+    else:
+        Target_List.append(Target)
+
+    # Generate the URL needed for the request
+    URL_End = "&title=" + str(Subject) + "&message=" + str(Message) + "&type=Alert"
+    URL_End = URL_End.replace(" ", "%20")
+
+    # Send Push Notification 
+    for Target_Push in Target_List:
+        print "PIK"
+        print "https://wirepusher.com/send?id=" + str(Target_Push) + URL_End
+        
+        r = requests.get("https://wirepusher.com/send?id=" + str(Target_Push) + URL_End)
+        r.status_code
+        
+        Log("Debug", "System", "Push", 'Status: ' + str(r.status_code))
+
+
+# ---------------------------------------- Alert Trigger ----------------------------------------
+class Alert_Trigger():
+    # How often the db is cheched for changes
+    Refresh_Rate = 5
+
+    Active_Triggers = {}
+
+    def __init__(self):
+        # Log event
+        Log("Info", "Alert Trigger", "Checker", "Initializing")
+
+        # Start checker thread
+        File_Change_Checker_Thread = threading.Thread(target=self.Checker, kwargs={})
+        File_Change_Checker_Thread.daemon = True
+        File_Change_Checker_Thread.start()
+
+    def Checker(self):
+        # Start eternal loop
+        while True:
+            # Open db connection get id, Last Modified
+            db_Connection = Open_db("Dobby")
+            db_Curser = db_Connection.cursor()
+
+            # Get id and Last Modified to check if Alert Triggers needs to be started
+            db_Curser.execute("SELECT id, Last_Modified FROM Dobby.`Alert_Trigger` WHERE Enabled=1;")
+            Alert_Info = db_Curser.fetchall()
+
+            for i in range(len(Alert_Info)):
+                # Alert_Info[i][0] - id
+                # Alert_Info[i][1] - Last Modified
+
+                # Check if the trigger is in the Active_Triggers dict
+                if Alert_Info[i][0] in self.Active_Triggers:
+                    
+                    # Check if last modified changed
+                    if self.Active_Triggers[Alert_Info[i][0]] != Alert_Info[i][1]:
+                        self.Active_Triggers[Alert_Info[i][0]] = Alert_Info[i][1]
+                        self.Restart_Trigger(Alert_Info[i][0])
+                        
+                # If not add then to the list and start the trigger
+                else:
+                    self.Active_Triggers[Alert_Info[i][0]] = Alert_Info[i][1]
+                    # Start the trigger
+                    self.Start_Trigger(Alert_Info[i][0])
+
+            # Close db connection
+            Close_db(db_Connection, db_Curser)
+
+            # Sleep till next check
+            time.sleep(self.Refresh_Rate)
+    
+
+    def Start_Trigger(self, id):
+
+        Trigger_Info = self.Get_Trigger_Info(id)
+        # Open db connection
+        db_Connection = Open_db("Dobby")
+        db_Curser = db_Connection.cursor()
+
+        db_Curser.execute("SELECT Name, `MQTT Target` FROM Dobby.`Alert_Trigger` WHERE id="+ str(id) + ";")
+        Trigger_Info = db_Curser.fetchone()
+        # Trigger_Info[0] - Name
+        # Trigger_Info[1] - Target
+
+        # Close db connection
+        Close_db(db_Connection, db_Curser)
+
+        # Log Event
+        Log("Debug", "Alert Trigger", str(Trigger_Info[0]), "Starting")
+        Log("Debug", "Alert Trigger", str(Trigger_Info[0]), "Subscribing to: '" + str(Trigger_Info[1]) + "'")
+        # Add topic to topic tict
+        MQTT_Add_Sub_Topic(str(Trigger_Info[1]), 'Alert Trigger', id)
+        # Subscribe
+        MQTT_Client.subscribe(str(Trigger_Info[1]))
+        # Register callbacks
+        MQTT_Client.message_callback_add(str(Trigger_Info[1]), MQTT_On_Message_Callback)
+
+
+    def Stop_Trigger(self, id):
+
+        Trigger_Info = self.Get_Trigger_Info(id)
+
+         # Log Event
+        Log("Debug", "Alert Trigger", str(Trigger_Info[0]), "Stopping")
+        Log("Debug", "Alert Trigger", str(Trigger_Info[0]), "Unsubscribing from: '" + str(Trigger_Info[1]) + "'")
+
+        MQTT_Del_Sub_Topic(Trigger_Info[1], 'Alert Trigger', id)
+
+
+    def Restart_Trigger(self, id):
+        self.Start_Trigger(id)
+        self.Stop_Trigger(id)
+
+
+    def Get_Trigger_Info(self, id):
+        # Open db connection
+        db_Connection = Open_db("Dobby")
+        db_Curser = db_Connection.cursor()
+
+        db_Curser.execute("SELECT Name, `MQTT Target` FROM Dobby.`Alert_Trigger` WHERE id="+ str(id) + ";")
+        Trigger_Info = db_Curser.fetchone()
+        # Trigger_Info[0] - Name
+        # Trigger_Info[1] - Target
+
+        # Close db connection
+        Close_db(db_Connection, db_Curser)
+
+        # Return info
+        return Trigger_Info
+
+
+    @classmethod
+    def On_Message(cls, id, Payload):
+
+        db_Connection = Open_db("Dobby")
+        db_Curser = db_Connection.cursor()
+
+        db_Curser.execute("set autocommit = 1")
+
+        db_Curser.execute("SELECT Name, `Alert State`, `MQTT Payload Clear`, `MQTT Payload Trigger`, `Alert Target id`, `Alert Subject`, `Alert Payload Clear`, `Alert Payload Trigger` FROM Dobby.Alert_Trigger WHERE id=" + str(id) + ";")
+        Trigger_Info = db_Curser.fetchone()
+           
+        Name = Trigger_Info[0]
+        Alert_State = Trigger_Info[1]
+        MQTT_Payload_Clear = Trigger_Info[2]
+        MQTT_Payload_Trigger = Trigger_Info[3]
+        Alert_Target_id = Trigger_Info[4]
+        Alert_Subject = Trigger_Info[5]
+        Alert_Payload_Clear = Trigger_Info[6]
+        Alert_Payload_Trigger = Trigger_Info[7]
+
+        # Find out what to do
+        Action = 2
+        # 0 = Clear
+        # 1 = Trigger
+        # 2 = In-between
+
+        Trigger_Change = False
+
+        if float(MQTT_Payload_Clear) == float(MQTT_Payload_Trigger):
+            Log("Error", "Alert Trigger", str(Name), 'Clear and Trigger payload is the same value')
+            Close_db(db_Connection, db_Curser)
+            return
+
+        # High / Low Check
+        # Value moving from Low to High
+        elif (float(MQTT_Payload_Clear) <= float(MQTT_Payload_Trigger)) is True:
+            # Clear check
+            if float(MQTT_Payload_Clear) >= float(Payload):
+                Action = 0
+
+            # Trigger check
+            elif float(MQTT_Payload_Trigger) <= float(Payload):
+                Action = 1
+
+        # Value moving from High to Low
+        else:
+            # Clear check
+            if float(MQTT_Payload_Clear) <= float(Payload):
+                Action = 0
+
+            # Trigger check
+            elif float(MQTT_Payload_Trigger) >= float(Payload):
+                Action = 1
+
+        # Take action if needed
+        # Clear
+        if Action == 0:
+            # Check agains current alert state
+            if Action == Alert_State:
+                Log("Debug", "Alert Trigger", str(Name), 'Already cleared ignoring new clear value: ' + str(Payload))
+            else:
+                Trigger_Change = True
+
+                # Send Alert Notification
+                Send_Alert(Alert_Target_id, Payload, Alert_Subject, Alert_Payload_Clear)
+                Log("Info", "Alert Trigger", str(Name), 'Cleared at: ' + str(Payload) + " Target: " + str(MQTT_Payload_Clear))
+
+        # Trigger
+        elif Action == 1:
+            # Check agains current alert state
+            if Action == Alert_State:
+                Log("Debug", "Alert Trigger", str(Name), 'Already triggered ignoring new trigger value: ' + str(Payload))
+            else:
+                Trigger_Change = True
+
+                # Send Alert Notification 
+                Send_Alert(Alert_Target_id, Payload, Alert_Subject, Alert_Payload_Trigger)
+                Log("Info", "Alert Trigger", str(Name), 'Triggered at: ' + str(Payload) + " Target: " + str(MQTT_Payload_Trigger))
+
+        # In-between value
+        elif Action == 2:
+            Log("Debug", "Alert Trigger", str(Name), 'In-between value received: ' + str(Payload))
+
+        if Trigger_Change is True:
+            # Change Alert_State
+            db_Curser.execute("UPDATE `Dobby`.`Alert_Trigger` SET `Alert State`='" + str(Action) + "' WHERE `id`='" + str(id) + "';")
+            # Update Triggered_DateTime
+            db_Curser.execute("UPDATE `Dobby`.`Alert_Trigger` SET `Triggered DateTime`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(id) + "';")
+
+        Close_db(db_Connection, db_Curser)
+
 # ---------------------------------------- Spammer ----------------------------------------
 class Spammer:
 
     # How often does esch spammer read write to the db (sec)
-    db_Refresh_Rate = 1.5
+    db_Refresh_Rate = 5
     Loop_Delay = 0.500
 
     def __init__(self):
@@ -1584,7 +2234,7 @@ def Device_Logger(Topic, Payload, Retained):
 class EP_Logger:
 
     # How often does esch EP_Logger read write to the db (sec)
-    db_Refresh_Rate = 1.5
+    db_Refresh_Rate = 5
     Loop_Delay = 0.500
 
     def __init__(self):
@@ -1655,6 +2305,8 @@ class EP_Logger:
             self.Last_Ping = EP_Logger_Info[5]
             self.Last_Modified = EP_Logger_Info[6]
 
+            self.EP_Logger_Client = ModbusClient(method = 'rtu', port = self.Serial_Port, baudrate = 115200)
+            
             # Can't log event before now if you want to use name
             Log("Debug", "EP Logger", self.Name, 'Initializing')
             
@@ -1674,13 +2326,27 @@ class EP_Logger:
             EP_Logger_Thread.daemon = True
             EP_Logger_Thread.start()
 
+
+        # ========================= Agent - Read Input =========================
+        def Read_Input(self, Address, Count=1):
+
+            Address = int(str(Address), 16)
+
+            Modbus_Value = self.EP_Logger_Client.read_input_registers(Address, Count, unit=1)
+
+            # Got a valid value
+            if "<class 'pymodbus.register_read_message.ReadInputRegistersResponse'>" == str(type(Modbus_Value)):
+                return Modbus_Value
+            # Something went wrong
+            else:
+                return "ERROR: " + str(Modbus_Value)
+
+
         # ========================= Agent - Run =========================
         def Run(self):
 
             Log("Info", "EP Logger", self.Name, "Running")
-
-            EP_Logger_Client = ModbusClient(method = 'rtu', port = self.Serial_Port, baudrate = 115200)
-            EP_Logger_Client.connect()
+            self.EP_Logger_Client.connect()
 
             # Start eternal loop
             while True:
@@ -1708,6 +2374,8 @@ class EP_Logger:
                     # Update next / last ping
                     db_Curser.execute("UPDATE `Dobby`.`EP_Logger` SET `Next Ping`='" + str(self.Next_Ping) + "', `Last Ping`='" + str(datetime.datetime.now()) + "' WHERE id = '" + str(self.id) + "';")
                     
+                    Close_db(db_Connection, db_Curser)
+
                     Ignore_List = ['id', 'Name', 'Enabled', 'Serial Port', 'Log Rate', 'Next Ping', 'Last Ping', 'Last_Modified']
 
                     # List containg lists with tree values name, modbus id, multiplier
@@ -1718,39 +2386,10 @@ class EP_Logger:
                         if EP_Logger_Info_Names[i][0] in Ignore_List:
                             continue
 
-                        # Check what action is needed
-                        # 0 = No action
-                        # 1 = Log value
-                        # 2 = Log and publish value
-                        # 3 = Publish value
                         if EP_Logger_Info_Values[i] is 0:
                             continue
 
                         id_Dict = {}
-
-                        # if "Status" in EP_Logger_Info_Names[i][0]:
-                        #     print "STATUS KYK"
-                        #     Modbus_Value = EP_Logger_Client.read_input_registers(0x3200, 1, unit=1)
-                        #     print Modbus_Value
-                        #     print Modbus_Value.registers[0]
-
-                        # D3-D0: 
-                        # 01H Overvolt
-                        # 00H Normal
-                        # 02H Under Volt
-                        # 03H Low Volt Disconnect
-                        # 04H Fault  
-
-                        # D7-D4: 
-                        # 00H Normal
-                        # 01H Over Temp.(Higher than the warning settings)
-                        # 02H Low Temp.(Lower than the warning settings),
-
-                        # D8: Battery inner resistance
-                        # abnormal 1,
-                        # normal 0
-                        # D15: 
-                        # 1-Wrong identification for rated voltage
 
                         id_Dict['Multiplier'] = 1
 
@@ -1763,22 +2402,33 @@ class EP_Logger:
 
                         id_Dict['Name'] = EP_Logger_Info_Names[i][0][:-7]
                         id_Dict['id'] = EP_Logger_Info_Names[i][0][-6:]
-                        id_Dict['Action'] = EP_Logger_Info_Values[i]
 
                         Modbud_id_List.append(id_Dict)
 
                     # Request values
                     for Info in Modbud_id_List:
 
+
+                        # Read input value
+                        ## 0x3200 and 0x3201 needs to read two units
+                        if Info['Name'] in {'Battery Status', 'Charger Status'}:
+                            Modbus_Value = self.Read_Input(Info['id'], 2)
+                        else:
+                            Modbus_Value = self.Read_Input(Info['id'])
+
+                        # Check for errors
+                        if type(Modbus_Value) is str:
+                            # FIX - ADD PROPER ERROR MESSAGE
+                            print "Modbus error: " + Modbus_Value
+                            print Info['Name']
+                            continue
+
                         # Battery Status
                         if Info['Name'] == 'Battery Status':
-                            Modbus_Value = EP_Logger_Client.read_input_registers(int(Info['id'], 16), 1, unit=1)
-
-
 
                             # D3-D0: 
-                            # 01H Overvolt 
                             # 00H Normal 
+                            # 01H Overvolt 
                             # 02H Under Volt
                             # 03H Low Volt Disconnect
                             # 04H Fault 
@@ -1794,73 +2444,181 @@ class EP_Logger:
 
                             # D15: 
                             # 1-Wrong identification for rated voltage
+                            
+                            # https://www.oipapio.com/question-5355673
+                            # No clue how this works but it seems to do so will take it 
 
-                            print "Info['Name']"
-                            print Info['Name']
-                            # for Value in Modbus_Value:
-                            #     print Value
-                            print str(Modbus_Value.registers[0])
+                            # Define each mask as a tuple with all the bit at 1 and distance from the right:
+                            D3_D0_mask = (0b1111, 0)
+                            D7_D4_mask = (0b1111, 4)
+                            D8_mask = (0b1, 8)
+                            D15_mask = (0b1, 15)
+
+                            # Creating the json dict with all values as false
+                            json_State = {}
+                            json_State["Fault"] = False
+                            json_State["Low Volt Disconnect"] = False
+                            json_State["Under Volt"] = False
+                            json_State["Overvolt"] = False
+                            json_State["Normal Voltage"] = False
+                            json_State["Low Temp"] = False
+                            json_State["Over Temp"] = False
+                            json_State["Normal Temp"] = False
+                            json_State["Battery internal resistance abnormal"] = False
+                            json_State["Wrong identification for rated voltage"] = False
+
+                            # compare each mask to the value, after shifting to the right position:
+                            # Update values to true if so
+                            if D3_D0_mask[0]&(Modbus_Value.registers[0]>>D3_D0_mask[1]) == 4:
+                                json_State["Fault"] = True
+                            if D3_D0_mask[0]&(Modbus_Value.registers[0]>>D3_D0_mask[1]) == 3:
+                                json_State["Low Volt Disconnect"] = True
+                            if D3_D0_mask[0]&(Modbus_Value.registers[0]>>D3_D0_mask[1]) == 2:
+                                json_State["Under Volt"] = True
+                            if D3_D0_mask[0]&(Modbus_Value.registers[0]>>D3_D0_mask[1]) == 1:
+                                json_State["Overvolt"] = True
+                            if D3_D0_mask[0]&(Modbus_Value.registers[0]>>D3_D0_mask[1]) == 0:
+                                json_State["Normal Voltage"] = True
+                            if D7_D4_mask[0]&(Modbus_Value.registers[0]>>D7_D4_mask[1]) == 2:
+                                json_State["Low Temp"] = True
+                            if D7_D4_mask[0]&(Modbus_Value.registers[0]>>D7_D4_mask[1]) == 1:
+                                json_State["Over Temp"] = True
+                            if D7_D4_mask[0]&(Modbus_Value.registers[0]>>D7_D4_mask[1]) == 0:
+                                json_State["Normal Temp"] = True
+                            if D8_mask[0]&(Modbus_Value.registers[0]>>D8_mask[1]) == 1:
+                                json_State["Battery internal resistance abnormal"] = True
+                            if D15_mask[0]&(Modbus_Value.registers[0]>>D15_mask[1]) == 1:
+                                json_State["Wrong identification for rated voltage"] = True
+
+                            Modbus_Value = json.dumps(json_State)
+
 
                         elif Info['Name'] == 'Charger Status':
-                            Modbus_Value = EP_Logger_Client.read_input_registers(int(Info['id'], 16), 1, unit=1)
-                            print "Info['Name']"
-                            print Info['Name']
-                            print Modbus_Value.registers
 
-                            for i in range(15):
-                                print i
-                                print Modbus_Value.registers[i]
-                        
+                            # D15-D14: Input volt status. 
+                            #     00H normal
+                            #     01H no power connected
+                            #     02H Higher volt input
+                            #     03H Input volt error.
+                            # D13: Charging MOSFET is shorted.
+                            # D12: Charging or Anti-reverse MOSFET is shorted.
+                            # D11: Anti-reverse MOSFET is shorted.
+                            # D10: Input is over current.
+                            # D9: The load is Over current.
+                            # D8: The load is shorted.
+                            # D7: Load MOSFET is shorted.
+                            # D4: PV Input is shorted.
+                            # D3-2: Charging status.
+                            #     00 No charging
+                            #     01 Float
+                            #     02 Boost
+                            #     03 Equlization.
+                            # D1: 0 Normal, 1 Fault.
+                            # D0: 1 Running, 0 Standby
+
+
+                            # Define each mask as a tuple with all the bit at 1 and distance from the right:
+                            D0_mask = (0b1, 0)
+                            D1_mask = (0b1, 1)
+                            D3_D2_mask = (0b11, 2)
+                            D4_mask = (0b1, 4)
+                            D7_mask = (0b1, 7)
+                            D8_mask = (0b1, 8)
+                            D9_mask = (0b1, 9)
+                            D10_mask = (0b1, 10)
+                            D11_mask = (0b1, 11)
+                            D12_mask = (0b1, 12)
+                            D13_mask = (0b1, 13)
+                            D15_D14_mask = (0b11, 14)
+
+                            # Creating the json dict with all values as false
+                            json_State = {}
+                            json_State['Running'] = False
+                            json_State['Standby'] = False
+                            json_State['Normal'] = False
+                            json_State['Fault'] = False
+                            json_State['No charging'] = False
+                            json_State['Float'] = False
+                            json_State['Boost'] = False
+                            json_State['Equlization'] = False
+                            json_State['PV Input is shorted'] = False
+                            json_State['Charging or Anti-reverse MOSFET is shorted'] = False
+                            json_State['Anti-reverse MOSFET is shorted'] = False
+                            json_State['Input is over current'] = False
+                            json_State['The load is Over current'] = False
+                            json_State['The load is shorted'] = False
+                            json_State['Load MOSFET is shorted'] = False
+                            json_State['Load MOSFET is shorted'] = False
+                            json_State['Input voltage normal'] = False
+                            json_State['No power connected'] = False
+                            json_State['Higher volt input'] = False
+                            json_State['Input volt error'] = False
+
+                            # D0
+                            if D0_mask[0]&(Modbus_Value.registers[0]>>D0_mask[1]) == 1:
+                                json_State['Running'] = True
+                            else:
+                                json_State['Standby'] = True
+                            # D1
+                            if D1_mask[0]&(Modbus_Value.registers[0]>>D1_mask[1]) == 0:
+                                json_State['Normal'] = True
+                            else:
+                                json_State['Fault'] = True
+                            # D3-D2
+                            if D3_D2_mask[0]&(Modbus_Value.registers[0]>>D3_D2_mask[1]) == 0:
+                                json_State['No charging'] = True
+                            if D3_D2_mask[0]&(Modbus_Value.registers[0]>>D3_D2_mask[1]) == 1:
+                                json_State['Float'] = True
+                            if D3_D2_mask[0]&(Modbus_Value.registers[0]>>D3_D2_mask[1]) == 2:
+                                json_State['Boost'] = True
+                            if D3_D2_mask[0]&(Modbus_Value.registers[0]>>D3_D2_mask[1]) == 3:
+                                json_State['Equlization'] = True
+                            # D4
+                            if D4_mask[0]&(Modbus_Value.registers[0]>>D4_mask[1]) == 1:
+                                json_State['PV Input is shorted'] = True
+                            # D7
+                            if D7_mask[0]&(Modbus_Value.registers[0]>>D7_mask[1]) == 1:
+                                json_State['Charging or Anti-reverse MOSFET is shorted'] = True
+                            # D8
+                            if D8_mask[0]&(Modbus_Value.registers[0]>>D8_mask[1]) == 1:
+                                json_State['Anti-reverse MOSFET is shorted'] = True
+                            # D9
+                            if D9_mask[0]&(Modbus_Value.registers[0]>>D9_mask[1]) == 1:
+                                json_State['Input is over current'] = True
+                            # D10
+                            if D10_mask[0]&(Modbus_Value.registers[0]>>D10_mask[1]) == 1:
+                                json_State['The load is Over current'] = True
+                            # D11
+                            if D11_mask[0]&(Modbus_Value.registers[0]>>D11_mask[1]) == 1:
+                                json_State['The load is shorted'] = True
+                            # D12
+                            if D12_mask[0]&(Modbus_Value.registers[0]>>D12_mask[1]) == 1:
+                                json_State['Load MOSFET is shorted'] = True
+                            # D13
+                            if D13_mask[0]&(Modbus_Value.registers[0]>>D13_mask[1]) == 1:
+                                json_State['Load MOSFET is shorted'] = True
+                            # D3-D2
+                            if D15_D14_mask[0]&(Modbus_Value.registers[0]>>D15_D14_mask[1]) == 0:
+                                json_State['Input voltage normal'] = True
+                            if D15_D14_mask[0]&(Modbus_Value.registers[0]>>D15_D14_mask[1]) == 1:
+                                json_State['No power connected'] = True
+                            if D15_D14_mask[0]&(Modbus_Value.registers[0]>>D15_D14_mask[1]) == 2:
+                                json_State['Higher volt input'] = True
+                            if D15_D14_mask[0]&(Modbus_Value.registers[0]>>D15_D14_mask[1]) == 3:
+                                json_State['Input volt error'] = True
+
+                            Modbus_Value = json.dumps(json_State)
+                            
                         else:
-                            Modbus_Value = EP_Logger_Client.read_input_registers(int(Info['id'], 16), 1, unit=1)
                             Modbus_Value = str(float(Modbus_Value.registers[0] * Info['Multiplier']))
 
-                        # else:
-                        #     print "other"
-                        #     return
-                        #     # Modbus_Value = str(Modbus_Value.registers[0])
-
-                            # print 'str(Modbus_Value.registers[0])'
-                            # print float(Modbus_Value)
-                            # print str(Info['id'])
-                            # print str(Info['Multiplier'])
-                            # print str(int(Info['id'], 16))
-                            # print str(Modbus_Value.registers[0])
-
-
-                        # Log Value
-                        if Info['Action'] in [1, 2]:
-                            try:
-                                db_Curser.execute("INSERT INTO `" + Dobby_Config['Log_db'] + "`.`EP_Logger` (Device, Name, Value) Values('" + self.Name + "','" + Info['Name'] + "' , '" + str(Modbus_Value) + "');")
-                            except (MySQLdb.Error, MySQLdb.Warning) as e:
-                                # Table missing, create it
-                                if e[0] == 1146:
-                                    Log("Info", "EP Logger", "db", "EP Logger Table missing creating it")
-                                    try:
-                                        db_Curser.execute("CREATE TABLE `" + Dobby_Config['Log_db'] + "`.`EP_Logger` (`id` int(11) NOT NULL AUTO_INCREMENT, `Device` varchar(75) NOT NULL, `Name` varchar(75) NOT NULL, `Value` varchar(75) NOT NULL, `DateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`id`))ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;")
-                                        # Try logging the message again
-                                        db_Curser.execute("INSERT INTO `" + Dobby_Config['Log_db'] + "`.`EP_Logger` (Device, Name, Value) Values('" + self.Name + "','" + Info['Name'] + "' , '" + str(Modbus_Value) + "');")
-
-                                    except (MySQLdb.Error, MySQLdb.Warning) as e:
-                                        # Error 1050 = Table already exists
-                                        if e[0] != 1050:
-                                            Log("Fatal", "EP Logger", Info['Name'], "Unable to create log db table, failed with error: " + str(e))
-                                            return
-                                else:
-                                    Log("Critical", "EP Logger", "db", "Unable to log message. Error: " + str(e))
-                                    return
-
-                        # Publish value
-                        if Info['Action'] in [2, 3]:
-                            Log("Debug", "EP Logger", "db", "Publish")
-
-                            # Publish
-                            MQTT_Client.publish(Dobby_Config['System_Header'] + '/EP/' + str(self.Name) + '/' + str(Info['Name']), payload=str(Modbus_Value), qos=0, retain=True)
+                        # Publish
+                        MQTT_Client.publish(Dobby_Config['System_Header'] + '/EP/' + str(self.Name) + '/' + str(Info['Name']), payload=str(Modbus_Value), qos=0, retain=True)
+                        # Log event
+                        Log("Debug", "EP Logger", "db", "Publish")
 
                         time.sleep(0.05)
 
-                    Close_db(db_Connection, db_Curser)
-                    
                     self.OK_To_Kill = True
 
                     time.sleep(EP_Logger.Loop_Delay)
@@ -1877,13 +2635,15 @@ Dobby_init()
 
 MQTT_init()
 
+Alert_Trigger()
+
 Action_Trigger()
 
-Mail_Trigger()
+MQTT_Client_gBridge = gBridge_Trigger()
 
 Spammer()
 
-Log_Trigger_Init()
+Log_Trigger()
 
 Counters()
 
@@ -1892,45 +2652,3 @@ EP_Logger()
 # ---------------------------------------- Loop ----------------------------------------
 # Start MQTT Loop
 MQTT_Client.loop_forever()
-
-
-
-            # # Get id and Last Modified to check if Action Triggers needs to be started
-            # db_Curser.execute("SELECT id, Timeout, `Triggered DateTime`, Last_Modified FROM Dobby.`Action_Trigger` WHERE Enabled=1;")
-            # Action_Info = db_Curser.fetchall()
-
-            # # Close db connection
-            # Close_db(db_Connection, db_Curser)
-
-            # for i in range(len(Action_Info)):
-            #     # Action_Info[i][0] - id
-            #     # Action_Info[i][1] - Timeout
-            #     # Action_Info[i][2] - Triggered DateTime
-            #     # Action_Info[i][3] - Last Modified
-
-            #     # Check if the trigger is in the Active_Triggers dict
-            #     if Action_Info[i][0] in self.Active_Triggers:
-                    
-            #         # Check if last modified changed
-            #         if self.Active_Triggers[Action_Info[i][0]] != Action_Info[i][3]:
-            #             self.Active_Triggers[Action_Info[i][0]] = Action_Info[i][3]
-            #             self.Restart_Trigger(Action_Info[i][0])
-                        
-            #     # If not add then to the list and start the trigger
-            #     else:
-            #         self.Active_Triggers[Action_Info[i][0]] = Action_Info[i][3]
-            #         # Start the trigger
-            #         self.Start_Trigger(Action_Info[i][0])
-
-            #     # Check for timeout
-            #     if Action_Info[i][1] != None:
-
-            #         # Subtract current time with last entry
-            #         Time_Diff = datetime.datetime.now() - Action_Info[i][2]
-            #         # Convert time differance to sec
-            #         Time_Diff = Time_Diff.total_seconds()
-
-            #         # Compare the differance in sec to timeout
-            #         if int(Time_Diff) > Action_Info[i][1]:
-            #             print "HIT TIMEOUT"
-                        

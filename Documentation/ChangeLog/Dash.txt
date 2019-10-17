@@ -1,3 +1,9 @@
+================================================== 102015 ==================================================
+Log Trigger change in 102008 to use signle table per trigger, adjusting dash to match
+
+================================================== 102014 ==================================================
+Something happened
+
 ================================================== 102013 ==================================================
 Working on EP Tab - For interfacing with EP Ever TRacer A series charge controller
 

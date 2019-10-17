@@ -1,3 +1,25 @@
+######################################## 102008 ########################################
+-- Log Trigger - Savering each id to individiual tables
+-- EP Logger - Removing logging from , Log Trigger will be used for this in stead
+---- EP Logger - Battery State and Charger State now supported
+
+######################################## 102007 ########################################
+-- Redoing notifications. Renaming Push Trigger to Alert Trigger. Deleting Mail trigger
+-- Looking into db usage to see if it can be limited
+
+######################################## 102006 ########################################
+-- Added MQTT Timeout Trigger
+-- Added thermostat support for gBridge
+
+######################################## 102005 ########################################
+-- Added support so local state is reflected on gBridge
+
+######################################## 102004 ########################################
+-- Added support for voice commands via google home and gBridge 
+
+######################################## 102003 ########################################
+-- Added support for push notifications via https://wirepusher.com (Requires internet) 
+
 ######################################## 102002 ########################################
 -- Seems stable
 -- Working on check for Action trigger and alarm if not heard from with x time

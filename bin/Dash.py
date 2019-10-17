@@ -425,7 +425,7 @@ def Tabs_List():
 
 def Config_Tab_Dropdown_List():
 
-    return ['Action Trigger', 'APC Monitor', 'DashButtons', 'DeviceConfig', 'EP Logger', 'Log Trigger', 'Mail Trigger', 'MQTT Functions', 'Spammer', 'SystemConfig', 'Users']
+    return ['Alert Targets', 'Alert Trigger', 'Action Trigger', 'APC Monitor', 'DashButtons', 'DeviceConfig', 'Dobby Assistant', 'EP Logger', 'gBridge Trigger', 'Log Trigger', 'MQTT Functions', 'Push Trigger', 'Spammer', 'SystemConfig', 'Users']
 
 
 def Log_Graph_Tab_Dropdown_List():
@@ -462,7 +462,7 @@ def Log_Graph_Tab_Dropdown_List():
 # import json
 
 # MISC
-Version = 102014
+Version = 102015
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
@@ -665,7 +665,7 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
             # Dropdown to selecte device
             dcc.Dropdown(
                 id='Devices_Dropdown',
-                options=[{'label': Trigger, 'value': Trigger} for Trigger in SQL_To_List("SELECT DISTINCT Name FROM `" + Log_db + "`.Log_Trigger;")],
+                options=[{'label': Trigger, 'value': Trigger} for Trigger in SQL_To_List("SELECT DISTINCT Name FROM `Dobby`.Log_Trigger;")],
                 multi=True,
                 value=Devices_Tab_Variables.get('Live_Dropdown', None),
             ),
@@ -772,7 +772,7 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
                 # Dropdown to select logs
                 dcc.Dropdown(
                     id='Live_Dropdown',
-                    options=[{'label': Trigger, 'value': Trigger} for Trigger in SQL_To_List("SELECT DISTINCT Name FROM `" + Log_db + "`.Log_Trigger;")],
+                    options=[{'label': Trigger, 'value': Trigger} for Trigger in SQL_To_List("SELECT DISTINCT Name FROM `Dobby`.Log_Trigger;")],
                     multi=True,
                     value=Live_Tab_Variables.get('Live_Dropdown', None),
                 ),
@@ -890,7 +890,7 @@ def render_content(tab, Alerts_Tab_Variables, Buttons_Tab_Variables, Counters_Ta
                 # Dropdown to select logs
                 dcc.Dropdown(
                     id='Log_Graph_Dropdown_Entry',
-                    options=[],
+                    options=[{'value': None, 'lable': None}],
                     value=Log_Graph_Tab_Variables.get('Log_Graph_Dropdown_Entry', None),
                     multi=True,
                     ),
@@ -1751,10 +1751,11 @@ def EP_Dropdown_Entry(EP_Dropdown_Device, EP_Tab_Variables):
         Input('Log_Graph_Slider', 'value'),
         ],
     [
-        State('Log_Graph_Tab_Variables', 'children')
+        State('Log_Graph_Tab_Variables', 'children'),
+        State('Log_Graph_Dropdown_Entry', 'options')
         ]
     )
-def Log_Graph_Tab_Variables(Log_Graph_Dropdown, Log_Graph_Dropdown_Entry, Log_Graph_Dropdown_Rj, Log_Graph_Slider, Log_Graph_Tab_Variables):
+def Log_Graph_Tab_Variables(Log_Graph_Dropdown, Log_Graph_Dropdown_Entry, Log_Graph_Dropdown_Rj, Log_Graph_Slider, Log_Graph_Tab_Variables, Log_Graph_Dropdown_Entry_Options):
 
     Log_Graph_Tab_Variables = Generate_Variable_Dict(Log_Graph_Tab_Variables)
 
@@ -1769,9 +1770,9 @@ def Log_Graph_Tab_Variables(Log_Graph_Dropdown, Log_Graph_Dropdown_Entry, Log_Gr
             Log_Graph_Tab_Variables['Log_Graph_Dropdown_Entry'] = "None"
         else:
             Log_Graph_Tab_Variables['Log_Graph_Dropdown_Entry'] = Log_Graph_Dropdown_Entry
-            Log_Graph_Tab_Variables['Log_Graph_Dropdown_Rj'] = Log_Graph_Dropdown_Rj
+            Log_Graph_Tab_Variables['Log_Graph_Dropdown_Rj'] = Log_Graph_Dropdown_Rj            
 
-    # Slider
+    # Slider - only adjust slier when all values is slected
     if Log_Graph_Dropdown is not None and Log_Graph_Dropdown_Entry is not None and Log_Graph_Dropdown != [] and Log_Graph_Dropdown_Entry != []:
 
         Slider_Name_String = ""
@@ -1779,23 +1780,32 @@ def Log_Graph_Tab_Variables(Log_Graph_Dropdown, Log_Graph_Dropdown_Entry, Log_Gr
         # Find first entry
         Name_Column = 'Name'
 
+        # EP Logger
         if Log_Graph_Dropdown == "EP Logger":
             Name_Column = 'Device'
+            SQL_Base_String = "SELECT DateTime FROM `" + Log_db + "`.`" + Log_Graph_Dropdown.replace(" ", "_") + "` WHERE " + Slider_Name_String + " ORDER BY id"
+
 
         for Selection in Log_Graph_Dropdown_Entry:
             if i != 0:
                 Slider_Name_String = Slider_Name_String + " OR "
             Slider_Name_String = Slider_Name_String + "`" + Name_Column + "`='" + str(Selection) + "'"
             i = i + 1
+        
+        # Log Trigger
+        if Log_Graph_Dropdown == "Log Trigger":
+            for Entry in Log_Graph_Tab_Variables['Log_Graph_Dropdown_Entry']:            
+                SQL_Base_String = "SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger_" + str(Entry) + "` ORDER BY id"
+
 
         db_Connection = Open_db(Log_db)
         db_Curser = db_Connection.cursor()
 
         try:
-            db_Curser.execute("SELECT DateTime FROM `" + Log_db + "`.`" + Log_Graph_Dropdown.replace(" ", "_") + "` WHERE " + Slider_Name_String + " ORDER BY id ASC LIMIT 1;")
+            db_Curser.execute(SQL_Base_String + " ASC LIMIT 1;")
             Min_Date = db_Curser.fetchone()
 
-            db_Curser.execute("SELECT DateTime FROM `" + Log_db + "`.`" + Log_Graph_Dropdown.replace(" ", "_") + "` WHERE " + Slider_Name_String + " ORDER BY id DESC LIMIT 1;")
+            db_Curser.execute(SQL_Base_String + " DESC LIMIT 1;")
             Max_Date = db_Curser.fetchone()
 
         except (MySQLdb.Error, MySQLdb.Warning) as e:
@@ -1845,8 +1855,8 @@ def Log_Graph_Tab_Variables(Log_Graph_Dropdown, Log_Graph_Dropdown_Entry, Log_Gr
     Output('Log_Graph_Dropdown_Entry', 'options'),
     [
         Input('Log_Graph_Dropdown', 'value'),
-        Input('Log_Graph_Tab_Variables', 'children'),
-        ],
+        Input('Log_Graph_Tab_Variables', 'children'),   
+        ]
     )
 def Log_Graph_Dropdown_Entry(Log_Graph_Dropdown, Log_Graph_Tab_Variables):
 
@@ -1857,10 +1867,12 @@ def Log_Graph_Dropdown_Entry(Log_Graph_Dropdown, Log_Graph_Tab_Variables):
 
     Name_Field_String = Column_Name_Check(Log_Graph_Dropdown)
 
+    SQL_String = "SELECT id, `" + Name_Field_String + "` FROM `Dobby`.`" + Log_Graph_Dropdown.replace(" ", "_") + "` ORDER BY `" + Name_Field_String + "`;"
+
     db_Connection = Open_db("Dobby")
     db_Curser = db_Connection.cursor()
 
-    db_Curser.execute("SELECT id, `" + Name_Field_String + "` FROM `Dobby`.`" + Log_Graph_Dropdown.replace(" ", "_") + "` ORDER BY `" + Name_Field_String + "`;")
+    db_Curser.execute(SQL_String)
     db_Fetch = db_Curser.fetchall()
 
     # Close db connection
@@ -1869,7 +1881,7 @@ def Log_Graph_Dropdown_Entry(Log_Graph_Dropdown, Log_Graph_Tab_Variables):
     Return_List = []
 
     for Key, Value in db_Fetch:
-        Return_List.append({'label': Value, 'value': Value})
+        Return_List.append({'label': Value, 'value': Key})
 
     return Return_List
 
@@ -1881,8 +1893,11 @@ def Log_Graph_Dropdown_Entry(Log_Graph_Dropdown, Log_Graph_Tab_Variables):
         Input('Log_Graph_Dropdown', 'value'),
         Input('Log_Graph_Tab_Variables', 'children'),
         ],
+    [
+        State('Log_Graph_Dropdown_Entry', 'options')
+        ]
     )
-def Log_Graph_Tab_Row_json_Dropdown(Log_Graph_Dropdown, Log_Graph_Tab_Variables):
+def Log_Graph_Tab_Row_json_Dropdown(Log_Graph_Dropdown, Log_Graph_Tab_Variables, Log_Graph_Dropdown_Entry_Options):
 
     # Make variable dic from children
     Log_Graph_Tab_Variables = Generate_Variable_Dict(Log_Graph_Tab_Variables)
@@ -1896,6 +1911,7 @@ def Log_Graph_Tab_Row_json_Dropdown(Log_Graph_Dropdown, Log_Graph_Tab_Variables)
     # Create the return list
     Return_List = []
 
+    # APC Monitor
     if Log_Graph_Dropdown == "APC Monitor":
 
         # Open DB commection
@@ -1936,18 +1952,19 @@ def Log_Graph_Tab_Row_json_Dropdown(Log_Graph_Dropdown, Log_Graph_Tab_Variables)
         # Close db connection
         Close_db(db_Connection, db_Curser)
 
-
-
+    # Log Trigger
     elif Log_Graph_Dropdown == "Log Trigger":
-        # Open DB commection
+        # Open db commection
         db_Connection = Open_db("DobbyLog")
         db_Curser = db_Connection.cursor()
-
+      
         # Get tags for each entry
         for Entry in Log_Graph_Tab_Variables['Log_Graph_Dropdown_Entry']:
 
+            SQL_String = "SELECT distinct json_Tag FROM DobbyLog.Log_Trigger_" + str(Entry) + " Where datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' AND datetime<'" + str(Log_Graph_Tab_Variables['Slider_Value_High']) + "' ORDER BY json_Tag;"
+
             try:
-                db_Curser.execute("SELECT distinct json_Tag FROM DobbyLog.Log_Trigger Where Name = '" + str(Entry) + "' AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' AND datetime<'" + str(Log_Graph_Tab_Variables['Slider_Value_High']) + "' ORDER BY json_Tag;")
+                db_Curser.execute(SQL_String)
                 db_Fetch = db_Curser.fetchall()
             except:
                 return {}
@@ -1965,21 +1982,6 @@ def Log_Graph_Tab_Row_json_Dropdown(Log_Graph_Dropdown, Log_Graph_Tab_Variables)
     else:
         print "HIT code the rest you fool"
         return {}
-
-    # Name_Field_String = Column_Name_Check(Log_Graph_Dropdown)
-    #
-    # db_Connection = Open_db("Dobby")
-    # db_Curser = db_Connection.cursor()
-    #
-    # db_Curser.execute("SELECT id, `" + Name_Field_String + "` FROM `Dobby`.`" + Log_Graph_Dropdown.replace(" ", "_") + "` ORDER BY `" + Name_Field_String + "`;")
-    # db_Fetch = db_Curser.fetchall()
-    #
-    # # Close db connection
-    # Close_db(db_Connection, db_Curser)
-    #
-    #
-    # for Key, Value in db_Fetch:
-    #     Return_List.append({'label': Value, 'value': Value})
 
     return Return_List
 
@@ -2032,11 +2034,10 @@ def Log_Graph_Update_Slider_Marks(Log_Graph_Tab_Variables):
         # Input('Log_Graph_Tab_Row_json_Dropdown', 'options'),
         ],
     [
-        # State('Log_Graph_Tab_Variables', 'children'),
-        # State('Log_Graph_Tab_Variables', 'children'),
+        State('Log_Graph_Dropdown_Entry', 'options'),
         ]
     )
-def Log_Graph_Graph(Log_Graph_Tab_Variables):
+def Log_Graph_Graph(Log_Graph_Tab_Variables, Log_Graph_Dropdown_Entry_Options):
 
     # Import variables from div able
     Log_Graph_Tab_Variables = Generate_Variable_Dict(Log_Graph_Tab_Variables)
@@ -2044,7 +2045,7 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
     # Do nothing if no device have been selected in the dropdown
     if Log_Graph_Tab_Variables['Log_Graph_Dropdown'] == 'None' or Log_Graph_Tab_Variables['Log_Graph_Dropdown_Entry'] == 'None' or Log_Graph_Tab_Variables is {}:
         return {'data': ''}
-
+    
     # ======================================== Read Logs ========================================
     else:
         db_Connection = Open_db(Log_db)
@@ -2067,7 +2068,7 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
                         )
                     )
 
-        # KeepAliveMonitor
+        # EP Logger
         elif Log_Graph_Tab_Variables['Log_Graph_Dropdown'] == "EP Logger" and Log_Graph_Tab_Variables['Log_Graph_Dropdown_Rj'] != "None":
 
             # Add values for each device
@@ -2114,7 +2115,13 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
         # Log Trigger
         elif Log_Graph_Tab_Variables['Log_Graph_Dropdown'] == "Log Trigger" and Log_Graph_Tab_Variables['Log_Graph_Dropdown_Rj'] != "None" and Log_Graph_Tab_Variables['Log_Graph_Dropdown_Rj'] != ['']:
 
-            for Name in Log_Graph_Tab_Variables['Log_Graph_Dropdown_Entry']:
+            for id in Log_Graph_Tab_Variables['Log_Graph_Dropdown_Entry']:
+
+                # Find name
+                for Entry in Log_Graph_Dropdown_Entry_Options:
+                    # Find name in list
+                    if Entry['value'] == int(id):
+                        Name = Entry['label']
 
                 # Create and style traces
                 for Tag_Name in Log_Graph_Tab_Variables['Log_Graph_Dropdown_Rj']:
@@ -2127,12 +2134,12 @@ def Log_Graph_Graph(Log_Graph_Tab_Variables):
                         Tag_Search_String = "AND json_Tag='" + str(Tag_Name) + "'"
                         Plot_Name = str(Name + " - " + Tag_Name)
 
-                    Date_Search_String = " AND datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' AND datetime<'" + str(Log_Graph_Tab_Variables['Slider_Value_High']) + "'"
+                    Date_Search_String = " datetime>'" + str(Log_Graph_Tab_Variables['Slider_Value_Low']) + "' AND datetime<'" + str(Log_Graph_Tab_Variables['Slider_Value_High']) + "'"
 
                     Data.append(
                             go.Scatter(
-                                x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"),
-                                y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`Log_Trigger` WHERE Name='" + str(Name) + "' " + Tag_Search_String + Date_Search_String + "ORDER BY id DESC;"),
+                                x=SQL_To_List("SELECT DateTime FROM `" + Log_db + "`.`Log_Trigger_" + str(id) + "`  WHERE " + Date_Search_String + Tag_Search_String + "ORDER BY id DESC;"),
+                                y=SQL_To_List("SELECT Value FROM `" + Log_db + "`.`Log_Trigger_" + str(id) + "`  WHERE " + Date_Search_String + Tag_Search_String + "ORDER BY id DESC;"),
                                 # x=[1, 2],
                                 # y=[1, 2],
                                 name=Plot_Name,
