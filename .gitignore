@@ -13,13 +13,16 @@
 .ftpconfig
 
 /Script/platformio.ini
-.vscode/settings.json
-Script/Wemos/.vscode/settings.json
-Script/Wemos/.vscode/extensions.json
 Script/Wemos/platformio.ini
 .gitignore
-/.vscode
 Script/Wemos/platformio.ini
 /Cert
 /Test
 /Backup
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
