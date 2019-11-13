@@ -9,4 +9,4 @@ platformio run --target upload && pio device monitor --port /dev/ttyUSB0 --baud 
 avr-nm -Crtd --size-sort .pioenvs/megaatmega2560/firmware.elf | grep -i ' [dbv] '
 
 -- Flash from cli
-espota -i 192.168.1.112 -p 8266 --auth=StillNotSinking -f  .pioenvs/d1_mini/firmware.bin
+../../Tools/espota.py -i 192.168.1.112 -p 8266 --auth=StillNotSinking -f  .pioenvs/d1_mini/firmware.bin

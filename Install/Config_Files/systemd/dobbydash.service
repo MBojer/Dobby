@@ -1,0 +1,17 @@
+[Unit]
+Description=Dobby - Dash - Webinterface for dobby on port 8050
+After=network.target mosquitto.service mysql.service dobby.service
+# If the dobby folder is placed on external storage aka a SSD on USB
+# then change the path below to math the mountpoint if the device
+ConditionPathIsMountPoint=/media/ssd
+
+[Service]
+Type=simple
+ExecStart=/etc/Dobby/bin/DobbyDash.py
+RestartSec=1
+Restart=on-abort
+User=dobby
+Group=dobby
+
+[Install]
+WantedBy=multi-user.target

@@ -1,7 +1,21 @@
+######################################## 102010 ########################################
+-- Adding backup
+--- If System - Backup - Local is set anything but '' dobby will backup to the path specified
+--- All avalible diskspace on the path is used a dedicated USB stick is recommended
+-- Adding Raspberry Monitor
+--- Monitors for: lov disk space, Low memory, Under voltage
+--- if System - Raspberry Monitor - Alert Target ID not set to ''
+--- dobby will send an alert when a issue is detected   
+
+######################################## 102009 ########################################
+-- Adding Timeouts
+
 ######################################## 102008 ########################################
 -- Log Trigger - Savering each id to individiual tables
 -- EP Logger - Removing logging from , Log Trigger will be used for this in stead
 ---- EP Logger - Battery State and Charger State now supported
+-- Did a lot of work on logging
+-- Added '--verbose' to get dobby to print all logs to console
 
 ######################################## 102007 ########################################
 -- Redoing notifications. Renaming Push Trigger to Alert Trigger. Deleting Mail trigger

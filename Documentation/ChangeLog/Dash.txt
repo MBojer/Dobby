@@ -1,5 +1,8 @@
+================================================== 102016 ==================================================
+Script renamed to DobbyDash and is not started via systemd insted of supervisor
+
 ================================================== 102015 ==================================================
-Log Trigger change in 102008 to use signle table per trigger, adjusting dash to match
+Log Trigger change in Dobby 102008 to use signle table per trigger, adjusting dash to match
 
 ================================================== 102014 ==================================================
 Something happened

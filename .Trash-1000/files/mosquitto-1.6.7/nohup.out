@@ -1,0 +1,24 @@
+1572392461: mosquitto version 1.4.10 (build date Wed, 13 Feb 2019 00:45:38 +0000) starting
+1572392461: Using default config.
+1572392461: Opening ipv4 listen socket on port 1883.
+1572392461: Opening ipv6 listen socket on port 1883.
+1572392461: New connection from 192.168.8.106 on port 1883.
+1572392461: New client connected from 192.168.8.106 as Bedroom (c1, k15, u'DasBoot').
+1572392461: New connection from 192.168.8.101 on port 1883.
+1572392461: New connection from 192.168.8.102 on port 1883.
+1572392461: New client connected from 192.168.8.101 as Kitchen (c1, k15, u'DasBoot').
+1572392461: New client connected from 192.168.8.102 as Inverter (c1, k15, u'DasBoot').
+1572392462: New connection from 192.168.8.100 on port 1883.
+1572392462: New client connected from 192.168.8.100 as Bathroom (c1, k15, u'DasBoot').
+1572392462: New connection from 192.168.8.103 on port 1883.
+1572392462: New client connected from 192.168.8.103 as HeatingPump (c1, k15, u'DasBoot').
+1572392462: New connection from 192.168.8.107 on port 1883.
+1572392462: New client connected from 192.168.8.107 as BedroomSensor (c1, k15, u'DasBoot').
+1572392462: New connection from 192.168.8.105 on port 1883.
+1572392462: New client connected from 192.168.8.105 as Engineroom (c1, k15, u'DasBoot').
+1572392462: New connection from 192.168.8.113 on port 1883.
+1572392462: New client connected from 192.168.8.113 as Test (c1, k15, u'DasBoot').
+1572392463: New connection from 192.168.8.104 on port 1883.
+1572392463: New client connected from 192.168.8.104 as LivingroomLights (c1, k15, u'DasBoot').
+1572392502: New connection from ::1 on port 1883.
+1572392502: New client connected from ::1 as Dobby (c1, k60, u'DasBoot').

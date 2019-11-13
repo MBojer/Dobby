@@ -1,0 +1,10 @@
+// dht
+{0: {"Pin":"D4", "Type": 22, "Average": 50, "Round": 2}}
+
+// Button
+{"Lights": {"Pin": "D1", "Trigger": 1, "Message": ["OnTopic", "On Payload"]}}
+// MQTT Message: Topic and Payload sendt when button is pressed
+// Note: A message is always published when the button is pressed, in /Log/Debug
+// Type:
+//     1 = FALLING: When pin starts to fall aka triggers on press
+//     2 = RISING: When pin start to rise aka trigger on release

@@ -1,0 +1,17 @@
+[Unit]
+Description=Dobby - Main service
+After=network.target mosquitto.service mysql.service
+# If the dobby folder is placed on external storage aka a SSD on USB
+# then change the path below to math the mountpoint if the device
+ConditionPathIsMountPoint=/media/ssd
+
+[Service]
+Type=simple
+ExecStart=/etc/Dobby/bin/Dobby.py
+RestartSec=1
+Restart=on-abort
+User=dobby
+Group=dobby
+
+[Install]
+WantedBy=multi-user.target

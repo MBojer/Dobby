@@ -16,6 +16,9 @@ import time
 import random
 import os
 import json
+import subprocess
+import optparse
+import argparse
 
 # FTP
 import ftplib
@@ -34,19 +37,52 @@ import MySQLdb
 import threading
 
 # EP Logger
-from pymodbus.client.sync import ModbusSerialClient as ModbusClient
+import pymodbus.client.sync as pyModbus
 
 # For Push Notifications
 import requests
+
+# Backup()
+import glob
+import pipes
+Backup = None
 
 # Used to calc uptime
 Start_Time = datetime.datetime.now()
 
 # System variables
-Version = 102008
+Version = 102010
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
+
+# Execution options
+# Instantiate the parser
+parser = argparse.ArgumentParser(description='Serving the master')
+
+parser.add_argument('--verbose', action='store_true',
+                    help='Prints ALL Log output to terminal')
+         
+parser.add_argument("--version", help="prints the script version and quits",
+                    action="store_true")
+
+# Parse arguemnts
+Dobby_Arugments = vars(parser.parse_args())
+
+# Save or act on arugments
+# Parse arguemnts
+Dobby_Arugments = vars(parser.parse_args())
+
+# Save or act on arugments
+# Verbose
+if Dobby_Arugments.get('verbose', False) is True: 
+    Verbose = True
+else:
+    Verbose = False
+# Version
+if Dobby_Arugments.get('version', False) is True:
+    print "Dobby script version: " + str(Version)
+    quit()
 
 # MySQL
 MQTT_Topic_Dict = {}
@@ -60,7 +96,8 @@ MQTT_Client = MQTT.Client(client_id="Dobby", clean_session=True)
 MQTT_Client_gBridge = ""
 
 # ---------------------------------------- MISC ----------------------------------------
-def Open_db(db=""):
+def Open_db(db="", Create_If_Missing=False):
+    db_Name = db
     try:
         db = MySQLdb.connect(host="localhost",    # your host, usually localhost
                              user="dobby",         # your username
@@ -69,20 +106,41 @@ def Open_db(db=""):
         return db
 
     except (MySQLdb.Error, MySQLdb.Warning) as e:
-        print(e)
-        return None
+        # Create db if requested
+        if Create_If_Missing == True and int(e[0]) == 1049:
+            Log("Debug", 'System', 'db', "Create db on missing True. Creating db: " + db_Name)
+            # Create connection to MySQL without selecting a db
+            db_Connection = Open_db()
+            if db_Connection is not None:
+                db_Curser = db_Connection.cursor()
+                # Create db
+                if Create_db(db_Curser, db_Name) == True:
+                    Log("Debug", 'System', 'db', "Created db: " + db_Name)
+                    return Open_db(db_Name)
+                else:
+                    Log("Debug", 'System', 'db', "Unable to connect to db: " + db_Name + " after creating it")
+                    return None
+
+            else:
+                Log("Error", 'System', 'db', "Unable to create db: " + db_Name)
+                return None
+        else:
+            Log("Error", 'System', 'db', "While opening db connection: " + str(e))
+            return None
 
 
 def Close_db(conn, cur):
     try:
         conn.commit()
-        cur.close()
+        # Check if curser was created
+        if cur is not None:
+            cur.close()
         conn.close()
         return True
 
     except (MySQLdb.Error, MySQLdb.Warning) as e:
-        print(e)
-        return None
+        Log("Error", 'System', 'db', "While closing curser: " + str(e))
+        return False
 
 
 def Create_db(db_Curser, db_Name):
@@ -90,51 +148,93 @@ def Create_db(db_Curser, db_Name):
         db_Curser.execute("CREATE DATABASE " + db_Name)
     except (MySQLdb.Error, MySQLdb.Warning) as e:
         # Error 1007 = db already exists
-        if e[0] != 1007:
-            print e
-            print "CREATE DB ERROR"
-            # ADD ME - Something
+        if e[0] == 1007:
+            Log("Debug", 'System', 'db', "While creating db: " + str(db_Name) + " db already exists")
+            return True
+        else:
+            Log("Error", 'System', 'db', "While creating db: " + str(db_Name) + " - " + str(e))
+            return False
+    return True
 
 
-def Get_System_Config_Value(db_Curser, Target, Header, Name, QuitOnError=True):
+def Get_System_Config_Value(db_Curser, Target, Header, Name, QuitOnError=True, Error_Value=""):
     try:
         db_Curser.execute("SELECT Value FROM `Dobby`.`SystemConfig` WHERE Target='" + Target + "' AND Header='" + Header + "' AND Name='" + Name + "'")
         data = db_Curser.fetchone()
     except (MySQLdb.Error, MySQLdb.Warning) as e:
         if QuitOnError is True:
-            print "Error when getting setting fom SystemConfig db. Error: " + str(e)
-            print "Unable to continue quitting"
-            # FIX - Add error handling
+            Log('Fatal', 'System', 'db', "Unable to get system setting: " + Target + "-" + Header + "-" + Name + " - Error: " + str(e) + " - This setting is required for the system to run. Quitting")
             quit()
-        else:
-            return ""
 
-    if data is None:
-        print "Missing config line in SystemConfig db - Target: " + Target + " - Header: " + Header + " - Name: " + Name
-        print "Unable to continue quitting"
-        # FIX - Add error handling in stead of quit
+    if data is None and Error_Value is not "":
+        Log("Debug", "System", "Settings", "Unable to get system setting: " + str(Target) + "-" + str(Header) + "-" + str(Name) + " - Defaulting to error value: " + str(Error_Value))
+        return Error_Value
+
+    if data is None and QuitOnError is True:
+        Log('Fatal', 'System', 'db', "Unable to get system setting: " + Target + "-" + Header + "-" + Name + " this setting is required for the system to run. Quitting")
         quit()
 
     return data[0]
 
 
+def Table_Size_Check(db_Curser, Table, Max_Size):
+
+    # Set auto commit 
+    db_Curser.execute("set autocommit = 1")
+    # Its not possible to delete with offset so the best way i found is to get the last id we want to keep and delete everything before it
+    # Get last log entry id we want to keep, so we can delete everything before it
+    db_Curser.execute("SELECT id FROM `" + Table + "` ORDER BY id DESC LIMIT 1 OFFSET " + str(Max_Size) + ";")
+    Last_id = db_Curser.fetchone()
+    # if Last_id is none then there is no rows to delete
+    if Last_id is None:
+        return
+    # Converto tuber to int
+    Last_id = int(Last_id[0])
+    # Delete rows
+    db_Curser.execute("DELETE FROM `" + Table + "` WHERE id<=" + str(Last_id) + ";")
+    # Get number of deleted rows
+    db_Curser.execute("SELECT ROW_COUNT();")
+    Row_Count = db_Curser.fetchone()
+    # Convert to int
+    Row_Count = int(Row_Count[0])
+    # Log event if we deleted rows
+    if Row_Count is not 0:
+        Log("Debug", "Dobby", "db", "Size check, deleting " + str(Row_Count) + " rows from table: " + str(Table))
+
+
 # ---------------------------------------- Logging ----------------------------------------
 def Log(Log_Level, Log_Source, Log_Header, Log_Text):
-    Log_Thread = threading.Thread(target=Write_Log, kwargs={"Log_Level": Log_Level, "Log_Source": Log_Source, "Log_Header": Log_Header, "Log_Text": Log_Text})
+    Log_Thread = threading.Thread(name='DobbyLogging', target=Write_Log, kwargs={"Log_Level": Log_Level, "Log_Source": Log_Source, "Log_Header": Log_Header, "Log_Text": Log_Text})
     Log_Thread.daemon = True
     Log_Thread.start()
 
 
 def Write_Log(Log_Level, Log_Source, Log_Header, Log_Text):
 
+    # Dobby_Config['Init'] is set true after the system is able to write to the db untill then print all messages
+    if Dobby_Config.get('Init', False) is False:
+        print "*" + Log_Level + " - " + Log_Source + " - " + Log_Header + " - " + Log_Text
+        return
+
+    # if Verbose is active print log message regarding log level
+    if Verbose is True:
+        print Log_Level + " - " + Log_Source + " - " + Log_Header + " - " + Log_Text
+
     if Log_Level_Check(Log_Source, Log_Level) is False:
         return
 
-    db_Log_Connection = Open_db(Dobby_Config['Log_db'])
+    # Strip unvanted caractors from the Log Text, if the chars belos is in the log text it will create a db error
+    Log_Text = Log_Text.replace('"', "")
+
+    db_Log_Connection = Open_db(Dobby_Config['Log_db'], Create_If_Missing=True)
+    
     db_Log_Curser = db_Log_Connection.cursor()
+    db_Log_Curser.execute("set autocommit = 1")
+
+    SQL_String = 'INSERT INTO `' + Dobby_Config['Log_db'] + '`.`SystemLog` (LogLevel, Source, Header, Text) VALUES("' + Log_Level + '", "' + Log_Source + '", "' + Log_Header + '", "' + Log_Text + '");'
 
     try:
-        db_Log_Curser.execute('INSERT INTO `' + Dobby_Config['Log_db'] + '`.`SystemLog` (LogLevel, Source, Header, Text) VALUES("' + Log_Level + '", "' + Log_Source + '", "' + Log_Header + '", "' + Log_Text + '");')
+        db_Log_Curser.execute(SQL_String)
     except (MySQLdb.Error, MySQLdb.Warning) as e:
         # 1146 = Table is missing
         if e[0] == 1146:
@@ -143,30 +243,14 @@ def Write_Log(Log_Level, Log_Source, Log_Header, Log_Text):
             except (MySQLdb.Error, MySQLdb.Warning) as e:
                 # Error 1050 = Table already exists
                 if e[0] != 1050:
-                    # FIX add some error handling here
-                    print "DB WTF ERROR 3: " + str(e)
-
-            # Try to write log again
-            db_Log_Curser.execute('INSERT INTO `' + Dobby_Config['Log_db'] + '`.`SystemLog` (LogLevel, Source, Header, Text) VALUES("' + Log_Level + '", "' + Log_Source + '", "' + Log_Header + '", "' + Log_Text + '");')
+                    # That the table already exists is not really an error could have been created by another log instance in the meantime
+                    # Try to write log again
+                    db_Log_Curser.execute(SQL_String)
         else:
-            # FIX add some error handling here
-            print "DB WTF ERROR 4:" + str(e)
-            print "Log_Level: " + str(Log_Level)
-            print "Log_Source: " + str(Log_Source)
-            print "Log_Header: " + str(Log_Header)
-            print "Log_Text: " + str(Log_Text)
+            Log('Error', 'Logging', 'db', 'Error while logging: ' + str(e))
 
-    finally:
-        db_Log_Curser.execute("SELECT count(*) FROM SystemLog")
-        Rows_Number_Of = db_Log_Curser.fetchone()
-
-        if Rows_Number_Of[0] > Dobby_Config['Log_Length_System']:
-            Rows_To_Delete = Rows_Number_Of[0] - int(Dobby_Config['Log_Length_System'])
-            # Limit the max ammount of rows to delete to 250 to prevent the log from getting cleaned if a lot of log threads is spawned at the same time
-            if Rows_To_Delete > 250:
-                Rows_To_Delete = 250
-            db_Log_Curser.execute("DELETE FROM `" + Dobby_Config['Log_db'] + "`.SystemLog ORDER BY id LIMIT " + str(Rows_To_Delete))
-            # Log("Debug", "Dobby", "db", "History Length reached, deleting " + str(Rows_To_Delete) + " rows for Table: SystemLog")
+    if db_Log_Curser is not None:
+        Table_Size_Check(db_Log_Curser, 'SystemLog', Dobby_Config['Log_Length_System'])
 
     Close_db(db_Log_Connection, db_Log_Curser)
 
@@ -209,128 +293,259 @@ def Log_Level_Check(Log_Source, Log_Level):
     return False
 
 
-def Check_db_Length(db_Log_Curser, Log_Table):
-    db_Log_Curser.execute("SELECT count(*) FROM " + Log_Table)
-    Rows_Number_Of = db_Log_Curser.fetchall()
-
-    if Rows_Number_Of[0][0] > Dobby_Config['Log_Length_System']:
-        Rows_To_Delete = Rows_Number_Of[0][0] - Dobby_Config['Log_Length_System']
-        db_Log_Curser.execute("DELETE FROM '" + Log_Table + "' ORDER BY 'LastKeepAlive' LIMIT " + str(Rows_To_Delete) + " OFFSET 0")
-        Log("Debug", "Dobby", "db", "History Length reached, deleting " + str(Rows_To_Delete) + " rows for Hostname: " + Log_Table)
-
-
 # ---------------------------------------- Counters ----------------------------------------
 class Counters:
-    # Refresh rate
-    Loop_Delay = 10.000
+    # How often does esch spammer read write to the db (sec)
+    db_Refresh_Rate = 30
+    Loop_Delay = 0.500
 
     def __init__(self):
-        # Check if table exists
-        db_Connection = Open_db("Dobby")
-        db_Curser = db_Connection.cursor()
-
-        try:
-            db_Curser.execute("SELECT id FROM Dobby.Counters LIMIT 1;")
         # Log event
-        except (MySQLdb.Error, MySQLdb.Warning):
-            Log("Info", "Counters", "Value Calculator", "No entries in 'Counters' table not starting")
-            # Close db connection
-            Close_db(db_Connection, db_Curser)
-            return
-        else:
-            Log("Info", "Counters", "Value Calculator", "Starting")
+        Log("Info", "Counters", "Checker", "Initializing")
 
-        # Close db connection
-        Close_db(db_Connection, db_Curser)
-
-        self.Checkers_Dict = {}
+        self.Agent_Dict = {}
 
         # Start checker thread
-        Checkers_Thread = threading.Thread(target=self.Value_Calc, kwargs={})
-        Checkers_Thread.daemon = True
-        Checkers_Thread.start()
+        File_Change_Checker_Thread = threading.Thread(target=self.Checker, kwargs={}, name="DobbyCounterChecker")
+        File_Change_Checker_Thread.daemon = True
+        File_Change_Checker_Thread.start()
 
-    def Value_Calc(self):
+    def Checker(self):
         # Start eternal loop
         while True:
-            # Open db connection
             db_Connection = Open_db("Dobby")
             db_Curser = db_Connection.cursor()
 
-            # Get needed date needed to refresh values
-            db_Curser.execute("SELECT Name, `Log Trigger id`, `json Tag`, `Ticks`, `Math` FROM Dobby.Counters")
-            Checkers_data = db_Curser.fetchall()
+            db_Curser.execute("SELECT id, Name, Last_Modified FROM Dobby.Counters")
+            Counters_db = db_Curser.fetchall()
 
-            # Calc values for each counter
-            for Counter_Info in Checkers_data:
-                # Get last reset id
-
-                try:
-                    db_Curser.execute('SELECT id FROM DobbyLog.Log_Trigger_' + str(Counter_Info[1]) + ' where Value="Reset" order by id desc Limit 1;')
-                    Last_Reset_ID = db_Curser.fetchall()
-                except (MySQLdb.Error, MySQLdb.Warning) as e:
-                    Log("Debug", "Counters", "db error", str(e[0]) + ": " + str(e[1]))
-                    continue
-
-                if (Last_Reset_ID == ()):
-                    Last_Reset_ID = 0
-                else:
-                    Last_Reset_ID = Last_Reset_ID[0][0]
-
-                # Get values since last reset
-                db_Curser.execute('SELECT Value FROM DobbyLog.Log_Trigger_' + str(Counter_Info[1]) + ' where id > "' + str(Last_Reset_ID) + '" order by id desc;')
-                db_Data = db_Curser.fetchall()
-
-                Counter_State = 0
-
-                # if db data is empyth set counter to 0
-                if db_Data != ():
-                    # Get the value before each boot message and add them together to the first value
-                    try:
-                        if db_Data[0][0] != "Boot":
-                            Counter_State = int(db_Data[0][0])
-                    except IndexError:
-                        # Set Counter_State to 0 if not 
-                        pass
-
-                    Add_Next = False
-
-                    for i in range(len(db_Data)):
-                        # If Value == "Boot" add next value if not
-                        if db_Data[i][0] == 'Boot':
-                            Add_Next = True
-                        
-                        elif Add_Next == True:
-                            Counter_State = Counter_State + int(db_Data[i][0])
-                            Add_Next = False
-
-                # Check if value has changed and needs to be published
-                if Counter_State != int(Counter_Info[3]):
-                    Math_Value = 0
-                    # Do math
-                    if Counter_Info[4] != "":
-                        # Set string
-                        Math_Value = Counter_Info[4]
-                        # Replace value
-                        Math_Value = Math_Value.replace("[Value]", str(Counter_State))
-                        # Do math
-                        Math_Value = eval(Math_Value)
-                        # Round value
-                        Math_Value = round(Math_Value,2)
-
-                    # Write values to db
-                    db_Curser.execute("UPDATE `Dobby`.`Counters` SET `Ticks` = '" + str(Counter_State) + "' WHERE (`Name` = '" + Counter_Info[0] + "');")
-                    db_Curser.execute("UPDATE `Dobby`.`Counters` SET `Calculated Value` = '" + str(Math_Value) + "' WHERE (`Name` = '" + Counter_Info[0] + "');")
-
-                    # Publish Values
-                    MQTT_Client.publish(Dobby_Config['System_Header'] + '/Counters/Dobby/' + str(Counter_Info[0]) + "/Ticks", payload=Counter_State, qos=0, retain=True)
-                    MQTT_Client.publish(Dobby_Config['System_Header'] + '/Counters/Dobby/' + str(Counter_Info[0]), payload=Math_Value, qos=0, retain=True)
-            
-            # Close db connection
             Close_db(db_Connection, db_Curser)
 
-            # Sleep untill next calc
-            time.sleep(self.Loop_Delay)
+            for i in Counters_db:
+                id = str(i[0])
+                Name = str(i[1])
+                Last_Modified = i[2]
+
+                # Agent not in dict so add it
+                if id not in self.Agent_Dict:
+                    # Log event
+                    Log("Debug", "Counters", "Checker", "Starting: " + id + " - " + Name)
+                    # Creat Agent
+                    self.Agent_Dict[id] = self.Agent(id)
+
+                # Agent in dict so check if there was changes
+                else:
+                    # Change to Counters
+                    if str(self.Agent_Dict[id].Last_Modified) != str(Last_Modified):
+                        # Log event
+                        Log("Debug", "Counters", "Checker", "Change found in: " + id + " - " + Name + " restarting agent")
+                        # Kill agent
+                        self.Agent_Dict[id].Kill()
+                        # Create a new agent
+                        self.Agent_Dict[id] = self.Agent(id)
+
+                # Sleep random time to go easy on the db
+                time.sleep(random.uniform(0.150, 0.500))
+
+            time.sleep(Counters.db_Refresh_Rate)
+
+    class Agent:
+        def __init__(self, id):
+
+            self.id = int(id)
+
+            db_Connection = Open_db("Dobby")
+            db_Curser = db_Connection.cursor()
+
+            db_Curser.execute("SELECT Name, `Log Trigger id`, `json Tag`, `Refresh Rate`, Enabled, Ticks, Math, `Last Triggered`, `Last_Modified` FROM Dobby.Counters WHERE id='" + str(self.id) + "';")
+            Counters_Info = db_Curser.fetchone()
+
+            Close_db(db_Connection, db_Curser)
+
+            self.Name = str(Counters_Info[0])
+
+            # Can't log event before now if you want to use name
+            Log("Debug", "Counters", self.Name, 'Initializing')
+
+            self.Log_Trigger_id = Counters_Info[1]
+            self.json_Tag = Counters_Info[2]
+            self.Refresh_Rate = float(Counters_Info[3])
+            # self.Enabled = bool(Counters_Info[4])
+            self.Next_Check = Counters_Info[7] + datetime.timedelta(seconds=self.Refresh_Rate)
+            self.Ticks = Counters_Info[5]
+            self.Math_Formular = Counters_Info[6]
+            # self.Last_Triggered = Counters_Info[7]
+            self.Last_Modified = Counters_Info[8]
+
+            # Check if Counter is Enabled
+            if bool(Counters_Info[4]) == 0:
+                Log("Debug", "Counters", self.Name, 'Disabled - Not starting agent')
+                quit()
+
+            self.Kill_Command = False
+
+            Log("Debug", "Counters", self.Name, 'Initialization compleate')
+
+            Agent_Thread = threading.Thread(target=self.Run, kwargs={}, name="DobbyCounterAgent" + str(self.id))
+            Agent_Thread.daemon = True
+            Agent_Thread.start()
+
+
+        # ========================= Agent - Kill =========================
+        def Kill(self):
+            Log("Debug", "Counters", self.Name, "Kill command issue")
+            self.Kill_Command = True
+
+
+        # ========================= Agent - Kill Now =========================
+        def Kill_Now(self):
+            Log("Debug", "Counters", self.Name, "Killing, buy buy")
+            quit()
+
+
+        # ========================= Agent - Run =========================
+        def Run(self):
+            # Log event
+            Log("Info", "Counters", self.Name, "Running")
+            # Start eternal loop
+            while True:
+
+                # Check if its time to check
+                if self.Next_Check < datetime.datetime.now():
+                
+                    Log("Debug", "Counters", self.Name, "Checking")
+
+                    # Calculate new value
+                    ## Open db connection
+                    db_Connection = Open_db("Dobby")
+                    db_Curser = db_Connection.cursor()
+
+                    # Agent Info
+                    ## self.Name
+                    ## self.id
+                    ## self.Log_Trigger_id
+                    ## self.json_Tag
+                    ## self.Refresh_Rate
+                    ## self.Next_Check
+                    ## self.Ticks
+                    ## self.Math_Formular
+
+                    # Get last reset id
+                    try:
+                        db_Curser.execute('SELECT id FROM DobbyLog.Log_Trigger_' + str(self.Log_Trigger_id) + ' where Value="Reset" and json_Tag="' + str(self.json_Tag) + '" order by id desc Limit 1;')
+                        Last_Reset_ID = db_Curser.fetchone()
+                    except (MySQLdb.Error, MySQLdb.Warning) as e:
+                        Log("Error", "Counters", self.Name, "Unable to get agent info from db, killing agent. db error:" + str(e[0]) + ": " + str(e[1]))
+                        # Kill the agent so we dont kill the db to reading agent info all the time
+                        self.Kill()
+
+                    # Check if db select above failed if so do nothing
+                    if self.Kill_Command is not True:
+                        
+                        # Check if reset was in table if not set it Last_Reset_ID to 0
+                        if Last_Reset_ID is None:
+                            Last_Reset_ID = 0
+                        else:
+                            Last_Reset_ID = Last_Reset_ID[0]
+
+                        # Get list of all "Boot" since last "Reset"
+                        db_Curser.execute('SELECT id FROM DobbyLog.Log_Trigger_' + str(self.Log_Trigger_id) + ' where id > "' + str(Last_Reset_ID) + '" and Value="Boot" and json_Tag="' + str(self.json_Tag) + '" order by id desc;')
+                        Boot_id_List = db_Curser.fetchall()
+
+                        Counter_State = 0
+
+                        # Check if any "Boot" since last "Reset"
+                        if Boot_id_List == ():
+                            # When no boot and reset present then just use last number entry
+                            db_Curser.execute('SELECT Value FROM DobbyLog.Log_Trigger_' + str(self.Log_Trigger_id) + ' where id > "' + str(Last_Reset_ID) + '" and json_Tag="' + str(self.json_Tag) + '" order by id desc limit 1;')
+                            Counter_State = db_Curser.fetchone()
+                            if Counter_State is None:
+                                Counter_State = 0
+                            # If the value is not a number ignore the value by setting it to 0
+                            elif Counter_State.get(0, None).isdigit() is False:
+                                Counter_State = 0
+                            else:
+                                Counter_State = int(Counter_State[0])
+
+                        # Add the last Value before first boot aka the current sensor value
+                        else:
+                            db_Curser.execute('SELECT Value FROM DobbyLog.Log_Trigger_' + str(self.Log_Trigger_id) + ' where id > "' + str(Boot_id_List[0][0]) + '" and json_Tag="' + str(self.json_Tag) + '" order by id desc limit 1;')
+                            Counter_State = db_Curser.fetchone()
+
+                            # if None is returned then "Boot" was the last value hence we will set Counter_State to 0
+                            if Counter_State is None:
+                                Counter_State = 0
+                            # If the value is not a number ignore the value by setting it to 0
+                            elif Counter_State[0].isdigit() is False:
+                                Counter_State = 0
+                            # Remove tubler
+                            else:
+                                Counter_State = int(Counter_State[0])
+
+                            # Add each value just before "Boot"
+                            for i in range(len(Boot_id_List)):
+                                Boot_id = Boot_id_List[i][0]
+                                # At the end we need to replace Next_Boot_id with Last_Reset_ID
+                                try:
+                                    Next_Boot_id = Boot_id_List[i + 1][0]
+                                except IndexError:
+                                    Next_Boot_id = Last_Reset_ID
+
+                                # When selecting based on "Boot" remember to do less then Boot_id to get the value just before
+                                # OFFSET 0 prevents the return of "Boot"
+                                db_Curser.execute('SELECT Value FROM DobbyLog.Log_Trigger_' + str(self.Log_Trigger_id) + ' WHERE id BETWEEN ' + str(Next_Boot_id) + ' AND ' + str(Boot_id) + ' AND json_Tag="' + str(self.json_Tag) + '" order by id DESC limit 1 OFFSET 1;')
+                                db_Value = db_Curser.fetchone()
+
+                                # Correct for instances where the device booted but posted no value
+                                if db_Value is None:
+                                    db_Value = 0
+                                # If the value is not a number ignore the value by setting it to 0
+                                elif db_Value[0].isdigit() is False:
+                                    db_Value = 0
+                                # Remove tubler
+                                else:
+                                    db_Value = db_Value[0]
+                                # Add found value to Counter_State
+                                Counter_State = Counter_State + int(db_Value)
+
+                        # Check if value has changed and needs to be published
+                        if int(Counter_State) != int(self.Ticks):
+
+                            # Change self.Ticks
+                            self.Ticks = Counter_State
+                            # Do math
+                            # Set string
+                            Math_Value = self.Math_Formular
+                            # Replace value
+                            Math_Value = Math_Value.replace("[Value]", str(Counter_State))
+                            # Do math
+                            Math_Value = eval(Math_Value)
+                            # Round value
+                            Math_Value = round(Math_Value,2)
+
+                            # Write values to db
+                            db_Curser.execute("UPDATE `Dobby`.`Counters` SET `Ticks` = '" + str(Counter_State) + "' WHERE (`id` = '" + str(self.id) + "');")
+                            db_Curser.execute("UPDATE `Dobby`.`Counters` SET `Calculated Value` = '" + str(Math_Value) + "' WHERE (`id` = '" + str(self.id) + "');")
+                            db_Curser.execute("UPDATE `Dobby`.`Counters` SET `Last Triggered` = '" + str(datetime.datetime.now()) + "' WHERE (`id` = '" + str(self.id) + "');")
+
+                            # Publish Values
+                            MQTT_Client.publish(Dobby_Config['System_Header'] + '/Counters/Dobby/' + self.Name + "/Ticks", payload=Counter_State, qos=0, retain=True)
+                            MQTT_Client.publish(Dobby_Config['System_Header'] + '/Counters/Dobby/' + self.Name, payload=Math_Value, qos=0, retain=True)
+
+                    
+                    # Save next check time            
+                    self.Next_Check = datetime.datetime.now() + datetime.timedelta(seconds=self.Refresh_Rate)
+                    
+                    # Close db connection
+                    Close_db(db_Connection, db_Curser)
+
+                # Nite nite
+                while self.Next_Check > datetime.datetime.now():
+                    # Check if we need to kill our selvels
+                    if self.Kill_Command is True:
+                        self.Kill_Now()
+                    # Sleep for a bit
+                    time.sleep(Counters.Loop_Delay)
 
 
 # ---------------------------------------- MQTT Commands ----------------------------------------
@@ -371,112 +586,157 @@ def Device_Config(Payload):
         Payload = Payload.replace(";", "")
 
     Payload = Payload.split(",")
+    # 0 Device name
+    # 1 Config id
+    # 2 Request type
 
-    Request_Type = "MQTT"
-
-    # Check if UDP config have been requested
-    UDP_Request = False
-
+    # Check if all config request info has been provided
+    Config_id = 0
+    # If not log Warning and return
     try:
-        if Payload[2]:
-            if Payload[2] == "FTP":
-                Request_Type = "FTP"
-            elif Payload[2] == "UDP":
-                Request_Type = "UDP"
-                UDP_Request = True
-            else:
-                Log("Warning", "MQTT Config", "Request", "Unknown request type:" + Request_Type)
-                return
-    except ValueError or IndexError:
-        pass
+        Device_Name = str(Payload[0])
+    except (ValueError, IndexError):
+        Log("Warning", "Device Config", "Request", "Missing 'Device Name' from request")
+        return
+    try:
+        Config_id = str(Payload[1])
+    except (ValueError, IndexError):
+        Log("Warning", "Device Config", "Request", "Missing 'Config id' from request")
+        return
+    # Get reqyest type
+    try:
+        Request_Type = Payload[2]
+    except (ValueError, IndexError):
+        Log("Warning", "Device Config", "Request", "Missing 'Request type' from request")
+        # Set Request_Type to MQTT if none specified to backword compatibility
+        Request_Type = 'MQTT'
+        return
+    # IP is only required for: FTP and UDP
+    if Request_Type in ('FTP', 'UDP'):
+        try:
+            Device_IP = Payload[3]
+        except (ValueError, IndexError):
+            Log("Warning", "Device Config", "Request", "Missing 'Request type' from request")
+            return
 
-    db_FSCJ_Connection = Open_db("Dobby")
-    db_FSCJ_Curser = db_FSCJ_Connection.cursor()
-
-    Log("Info", "MQTT Config", "Request", Payload[0])
+    Log("Info", "Device Config", "Request", Device_Name)
+    
+    db_Connection = Open_db("Dobby")
+    db_Curser = db_Connection.cursor()
 
     # Get device's "config id" from db
     try:
-        db_FSCJ_Curser.execute("SELECT Config_ID FROM Dobby.DeviceConfig WHERE Hostname='" + Payload[0] + "';")
-        Config_ID_Value = db_FSCJ_Curser.fetchone()
+        db_Curser.execute("SELECT Config_ID FROM Dobby.DeviceConfig WHERE Hostname='" + Device_Name + "';")
+        Device_db_Config_id = db_Curser.fetchone()
 
     except (MySQLdb.Error, MySQLdb.Warning) as e:
         if e[0] == 1146:
-            Log("Warning", "MQTT Config", "Missing", Payload[0])
+            Log("Warning", "Device Config", "Missing", Device_Name)
         else:
-            Log("Error", "MQTT Config", "db error", str(e[0]))
-            Close_db(db_FSCJ_Connection, db_FSCJ_Curser)
-            return
+            Log("Error", "Device Config", "db error", str(e[0]))
+        Close_db(db_Connection, db_Curser)
+        return
 
-    # Check config id agents current and return if =
-    if Config_ID_Value[0] == int(Payload[1]):
-        if UDP_Request is True:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.sendto("OK".encode('utf-8'), (Payload[3], 8888))
-            sock.close()
-            return
-        else:
-            Log("Debug", "MQTT Config", "Config up to date", Payload[0] + " id: " + Payload[1])
-            return
+    # Config if config is in db
+    if Device_db_Config_id is None:
+        Log("Warning", "Device Config", "Missing", Device_Name)
+        return
+    else:
+        # Remove tubler
+        Device_db_Config_id = Device_db_Config_id[0]
 
-    # Get config
+    # Check config id agents current config id and return if =
+    if Device_db_Config_id == int(Config_id):
+        Log("Debug", "Device Config", "Config up to date", Device_Name + " id: " + Config_id)
+        return
+        # if UDP_Request is True:
+        #     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        #     sock.sendto("OK".encode('utf-8'), (Device_IP, 8888))
+        #     sock.close()
+        #     return
+        # else:
+
+    # Log event
+    Log("Debug", "Device Config", "Config outdated", Device_Name + " Device Config ID: " + Config_id + " Config ID: " + str(Device_db_Config_id))
+
+
+    # Config outdated, getting device config
     try:
-        db_FSCJ_Curser.execute("SELECT DISTINCT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA`='Dobby' AND `TABLE_NAME`='DeviceConfig';")
-        Config_Name_List = db_FSCJ_Curser.fetchall()
-
-        db_FSCJ_Curser.execute("SELECT * FROM DeviceConfig WHERE Hostname='" + Payload[0] + "';")
-        Config_Value_List = db_FSCJ_Curser.fetchall()
+        # Get config name
+        db_Curser.execute("SELECT DISTINCT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA`='Dobby' AND `TABLE_NAME`='DeviceConfig';")
+        Config_Name_List = db_Curser.fetchall()
+        # Get config value
+        db_Curser.execute("SELECT * FROM DeviceConfig WHERE Hostname='" + Device_Name + "';")
+        Config_Value_List = db_Curser.fetchall()
 
     except (MySQLdb.Error, MySQLdb.Warning) as e:
         if e[0] == 1146:
-            Log("Warning", "MQTT Config", "Missing", Payload[0])
+            Log("Warning", "Device Config", "Missing", Device_Name)
         else:
-            Log("Error", "MQTT Config", "db error", str(e[0]))
-            Close_db(db_FSCJ_Connection, db_FSCJ_Curser)
-            return
+            Log("Error", "Device Config", "db error", str(e[0]))
+        Close_db(db_Connection, db_Curser)
+        return
 
-    Close_db(db_FSCJ_Connection, db_FSCJ_Curser)
-
-    # Compare ConfigID
-    if Config_Name_List is None:
-        Log("Warning", "MQTT Config", "Missing", "ConfigID for Hostname: " + Payload[0])
-
-    Log("Debug", "MQTT Config", "Config outdated", Payload[0] + " Device Config ID: " + Payload[1] + " Config ID: " + str(Config_ID_Value[0]))
+    Close_db(db_Connection, db_Curser)
 
     if Config_Name_List is () or Config_Value_List is ():
-        Log("Error", "MQTT Config", "Config Empthy", Payload[0])
+        Log("Error", "Device Config", "Config Empthy", Device_Name)
         return
 
     # Create json config
     Config_Dict = {}
     Interation = 0
-    for x in Config_Name_List:
-        if str(x[0]) != "id" and str(x[0]) != "Config_Active" and str(x[0]) != "Last_Modified" and Config_Value_List[0][Interation] is not None:
-            Config_Dict[str(x[0])] = str(Config_Value_List[0][Interation])
+    Ignore_List = ('id', 'Config_Active', 'Last_Modified')
+    Empthy_Values = ('None', '')
+
+    for Config_Name in Config_Name_List:
+        # Correct name for human readable
+        Config_Name = str(Config_Name[0])
+        Config_Value = str(Config_Value_List[0][Interation])
+
+        Add_Value = False
+
+        # Check if config entry needs to be ignored
+        if Config_Name not in Ignore_List:
+            # Ignore all empyth values
+            if Config_Value in Empthy_Values:
+                # Dont ignore "System sub header"
+                if Config_Name == "System_Sub_Header":
+                    Add_Value = True
+            # Value not empyth
+            else:
+                Add_Value = True
+
+        if Add_Value is True:
+            # Add config to config dict
+            Config_Dict[Config_Name] = Config_Value
+        
         Interation = Interation + 1
 
-    # Check if MQTT or UDP
+
+    # Check request type
     # MQTT Request
     if Request_Type == "MQTT":
-        Log("Info", "MQTT Config", "Publish Config", Payload[0])
+        Log("Info", "Device Config", "MQTT", 'Publish config to: - ' + Device_Name)
         # Publish json
-        MQTT_Client.publish(Dobby_Config['System_Header'] + "/Config/" + Payload[0], payload=json.dumps(Config_Dict) + ";", qos=0, retain=False)
-        return
+        MQTT_Client.publish(Dobby_Config['System_Header'] + "/Commands/" + Device_Name + "/Config", payload=json.dumps(Config_Dict), qos=0, retain=False)
+
 
     # UDP Request
     elif Request_Type == "UPD":
-        Log("Info", "UDPConfig", "Publish Config", Payload[0] + " - IP: " + Payload[3])
+        Log("Info", "Device Config", "UDP", 'Send to: - ' + Device_Name + " - IP: " + Device_IP)
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto(json.dumps(Config_Dict).encode('utf-8'), (Payload[3], 8888))
+        sock.sendto(json.dumps(Config_Dict).encode('utf-8'), (Device_IP, 8888))
         sock.close()
+
 
     # FTP Request
     elif Request_Type == "FTP":
-        Log("Info", "FTPConfig", "Upload Config", Payload[0] + " - IP: " + Payload[3])
+        Log("Info", "Device Config", "FTP", 'Upload to: - ' + Device_Name + " - IP: " + Device_IP)
 
         # Generate unique config id
-        Config_File_Name = "/var/tmp/Dobby/" + str(Payload[0])
+        Config_File_Name = "/var/tmp/Dobby/" + str(Device_Name)
 
         # Check if temp dir exists
         if not os.path.exists("/var/tmp/Dobby/"):
@@ -491,7 +751,12 @@ def Device_Config(Payload):
 
         # Upload file
         # FIX - Change user and pass
-        FTP_Connection = ftplib.FTP(Payload[3],'dobby','heretoserve')
+        try:
+            FTP_Connection = ftplib.FTP(Device_IP,'dobby','heretoserve')
+        except socket.error as Error:
+            Log("Info", "Device Config", "FTP", 'Upload to: - ' + Device_Name + " - IP: " + Device_IP + " Failed: " + str(Error))
+            # close file and FTP
+            return
 
         # Open and read file to send
         with open(Config_File_Name + ".json", 'r') as Config_File:
@@ -503,11 +768,11 @@ def Device_Config(Payload):
         # Not deleting file so the last generated config is saved, uncomment below to delete file
         # os.remove(Config_File_Name)
 
-        # 2 sec delay so the device can reconnect after ftp upload
-        time.sleep(2.500)
+        # 10 sec delay so the device can reconnect after ftp upload
+        time.sleep(10)
 
         # Send reboot command to device
-        MQTT_Client.publish(Dobby_Config['System_Header'] + "/Commands/" + str(Payload[0]) + "/Power", payload="Reboot;", qos=0, retain=False)
+        MQTT_Client.publish(Dobby_Config['System_Header'] + "/Commands/" + Device_Name + "/Power", payload="Reboot", qos=0, retain=False)
 
 
 # ---------------------------------------- MISC ----------------------------------------
@@ -523,6 +788,337 @@ def Is_json(myjson):
         return False
 
     return True
+
+    
+
+# ---------------------------------------- Timeouts ----------------------------------------
+class Dobby_Timeouts():
+
+    def __init__(self):
+        # Log event
+        Log("Info", "Timeouts", "Checker", "Initializing")
+        # Create needed variables
+        self.Active = {}
+        # How often the db is cheched for changes
+        self.Refresh_Rate = 5
+        # Start checker thread
+        File_Change_Checker_Thread = threading.Thread(name='DobbyTimeoutsChecker', target=self.Checker, kwargs={})
+        File_Change_Checker_Thread.daemon = True
+        File_Change_Checker_Thread.start()
+
+
+    def Checker(self):
+        # Start eternal loop and monitor for changes
+        while True:
+            # Open db connection get id, Last Modified
+            db_Connection = Open_db("Dobby")
+            db_Curser = db_Connection.cursor()
+
+            # Get id and Last Modified to check if Timeouts's needs to be started
+            db_Curser.execute("SELECT id, Last_Modified FROM Dobby.`Timeouts` WHERE Enabled=1;")
+            Action_Info = db_Curser.fetchall()
+
+            # Close db connection
+            Close_db(db_Connection, db_Curser)
+
+            for i in range(len(Action_Info)):
+                # Save values to vars
+                id = Action_Info[i][0]
+                Last_Modified = Action_Info[i][1]
+
+                # Check if the Timeout is in the Active dict
+                if id in self.Active:
+                    # Check if last modified changed
+                    if self.Active[id]['Last_Modified'] != Last_Modified:
+                        # Add last modified
+                        self.Active[id]['Last_Modified'] = Last_Modified
+                        # Restart timer to refresh all values
+                        self.Reregister_Timeout(id)
+                        
+                # If not add then to the list and start the Timeout
+                else:
+                    # Add Timeout to Active
+                    self.Active[id] = {}
+                    # Add last modified
+                    self.Active[id]['Last_Modified'] = Last_Modified
+                    # Start the Timeout
+                    self.Register_Timeout(id)
+
+            # Sleep till next check
+            time.sleep(self.Refresh_Rate)
+
+
+    def Get_Timeout_Info(self, id):
+            # Open db connection
+            db_Connection = Open_db("Dobby")
+            db_Curser = db_Connection.cursor()
+            # Get needed info
+            db_Curser.execute("SELECT Name, `MQTT Target`, `Alert Target id`, `Timeout days`, `Timeout hours`, `Timeout min`, `Timeout sec`, `Timeout at` FROM Dobby.`Timeouts` WHERE id="+ str(id) + ";")
+            Timeout_Info = db_Curser.fetchone()
+            # Close db connection
+            Close_db(db_Connection, db_Curser)
+            # Save values to vars
+            self.Active[id]['Name'] = Timeout_Info[0]
+            self.Active[id]['MQTT Target'] = Timeout_Info[1]
+            self.Active[id]['Alert Target id'] = Timeout_Info[2]
+            if self.Active[id] is None:
+                self.Active[id]['Timeout days'] = 0
+            else:
+                self.Active[id]['Timeout days'] = Timeout_Info[3]
+            if self.Active[id] is None:
+                self.Active[id]['Timeout hours'] = 0
+            else:
+                self.Active[id]['Timeout hours'] = Timeout_Info[4]
+            if self.Active[id] is None:
+                self.Active[id]['Timeout min'] = 0
+            else:
+                self.Active[id]['Timeout min'] = Timeout_Info[5]
+            if self.Active[id] is None:
+                self.Active[id]['Timeout sec'] = 0
+            else:
+                self.Active[id]['Timeout sec'] = Timeout_Info[6]
+            
+            # If none then there is no active timeout, so set the date to some random day in the future
+            if Timeout_Info[7] is None:
+                self.Active[id]['Timeout at'] = datetime.datetime(2420, 9, 24, 0, 0, 0)
+            else: 
+                self.Active[id]['Timeout at'] = Timeout_Info[7]
+
+            # Create the agetn
+            self.Active[id]['Agent'] = self.Agent(id)
+
+
+    def Register_Timeout(self, id):
+        # Get needed settings from db and fill them into vars
+        self.Get_Timeout_Info(id)
+        # Log Event
+        Log("Info", "Timeouts", self.Active[id]['Name'], "Registering callback")
+        Log("Debug", "Timeouts", self.Active[id]['Name'], "Subscribing to: '" + self.Active[id]['MQTT Target'] + "'")
+        # Add topic to topic tict
+        MQTT_Add_Sub_Topic(self.Active[id]['MQTT Target'], 'Timeouts', id)
+        # Subscribe
+        MQTT_Client.subscribe(self.Active[id]['MQTT Target'])
+        # Register callbacks
+        MQTT_Client.message_callback_add(self.Active[id]['MQTT Target'], MQTT_On_Message_Callback)
+                
+
+    def Unregister_Timeout(self, id):
+         # Log Event
+        Log("Info", "Timeouts", self.Active[id]['Name'], "Unregistering callback")
+        Log("Debug", "Timeouts", self.Active[id]['Name'], "Unsubscribing from: '" + self.Active[id]['MQTT Target'] + "'")
+        MQTT_Del_Sub_Topic(self.Active[id]['Name'], 'Timeouts', id)
+        # Kill the running timeout
+        self.Active[id]['Agent'].Kill()
+        # remove id from vars
+        del self.Active[id]
+
+
+    def Reregister_Timeout(self, id):
+        self.Register_Timeout(id)
+        self.Unregister_Timeout(id)
+
+
+    def On_Message(self, id):
+        # Ping() does what it needed
+        self.Active[id]['Agent'].Ping()
+
+    class Agent:
+        def __init__(self, id):
+
+            Timeouts.Active[id]
+
+            self.id = int(id)
+            # Log event
+            Log("Debug", "Timeouts", Timeouts.Active[id]['Name'], 'Agent - Init')
+
+            self.Kill_Command = False
+
+            self.Start()
+
+        # ========================= Agent - Kill =========================
+        def Kill(self):
+            self.Kill_Command = True
+
+
+        # ========================= Agent - Ping =========================
+        def Ping(self):
+            Log("Debug", "Timeouts", Timeouts.Active[self.id]['Name'], 'Agent - Ping')
+            # Calculate new timeout datetime
+            Time_Delta = datetime.timedelta(days=Timeouts.Active[self.id]['Timeout days'])
+            Time_Delta = Time_Delta + datetime.timedelta(hours=Timeouts.Active[self.id]['Timeout hours'])
+            Time_Delta = Time_Delta + datetime.timedelta(minutes=Timeouts.Active[self.id]['Timeout min'])
+            Time_Delta = Time_Delta + datetime.timedelta(seconds=Timeouts.Active[self.id]['Timeout sec'])
+            Timeout_At = datetime.datetime.now() + Time_Delta
+            # Save local Timeout at
+            Timeouts.Active[self.id]['Timeout at'] = Timeout_At
+            # Save value to db
+            db_Connection = Open_db("Dobby")
+            db_Curser = db_Connection.cursor()
+            # Update Timeout At and Last Ping
+            db_Curser.execute("UPDATE `Dobby`.`Timeouts` SET `Timeout at`='" + str(Timeout_At) + "', `Last Ping`='" + datetime.datetime.strftime("%Y-%m-%d %H:%M:%S") + "' WHERE id = '" + str(self.id) + "';")
+            # Close db connection
+            Close_db(db_Connection, db_Curser)
+
+
+            
+
+
+        # ========================= Agent - Start =========================
+        def Start(self):
+            Timeouts_Thread = threading.Thread(name='DobbyTimeouts' + str(self.id), target=self.Run, kwargs={})
+            Timeouts_Thread.daemon = True
+            Timeouts_Thread.start()
+
+
+        # ========================= Agent - Run =========================
+        def Run(self):
+            # Log event
+            Log("Debug", "Timeouts", Timeouts.Active[self.id]['Name'], 'Agent - Running')
+
+            # Eternal loop
+            while True:
+                # Check if we timed out
+                if Timeouts.Active[self.id]['Timeout at'] < datetime.datetime.now():
+                    # Log event
+                    Log("Debug", "Timeouts", Timeouts.Active[self.id]['Name'], "Timeout")
+                    # Save Timeout at to db before sending alert
+                    # Open db connectio
+                    db_Connection = Open_db("Dobby")
+                    db_Curser = db_Connection.cursor()
+                    # Set autocommit
+                    db_Curser.execute("set autocommit = 1")
+                    # Update 'Timeout at' to '' indicating no timeout is active and 'Triggered DateTime' 
+                    db_Curser.execute("UPDATE `Dobby`.`Timeouts` SET `Timeout at` = '', `Triggered DateTime` = '" + datetime.datetime.strftime("%Y-%m-%d %H:%M:%S") + "' WHERE (`id` = '" + str(self.id) + "');")
+                    # db_Curser.execute("UPDATE `Dobby`.`Timeouts` SET `Timeout at` = '', `Triggered DateTime`='" + str(datetime.datetime.now()) + "' WHERE id = '" + str(self.id) + "';")
+                    # Close db connection
+                    Close_db(db_Connection, db_Curser)
+                    # Set 'Timeout at' local var 
+                    Timeouts.Active[self.id]['Timeout at'] = datetime.datetime(2420, 9, 24, 0, 0, 0)
+                    # Send Alert after logging to keep db up to date
+                    Send_Alert(Timeouts.Active[self.id]['Alert Target id'])
+
+                #     self.Next_Ping = datetime.datetime.now() + datetime.timedelta(seconds=self.Log_Rate)
+
+                #     self.OK_To_Kill = False
+
+                #     db_Connection = Open_db("Dobby")
+                #     db_Curser = db_Connection.cursor()
+
+                #     db_Curser.execute("set autocommit = 1")
+       
+                #     # Update next / last ping
+                #     db_Curser.execute("UPDATE `Dobby`.`Timeouts` SET `Next Ping`='" + str(self.Next_Ping) + "', `Last Ping`='" + str(datetime.datetime.now()) + "' WHERE id = '" + str(self.id) + "';")
+                    
+                #     Close_db(db_Connection, db_Curser)             
+                #     # Get row names
+                #     db_Curser.execute("SELECT `COLUMN_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA`='Dobby' AND `TABLE_NAME`='Timeouts';")
+                #     Timeouts_Info_Names = db_Curser.fetchall()
+                
+                #     # Get row values
+                #     db_Curser.execute("SELECT * FROM Dobby.Timeouts WHERE id = '" + str(self.id) + "';")
+                #     Timeouts_Info_Values = db_Curser.fetchone()
+
+                #     # Update next / last ping
+                #     db_Curser.execute("UPDATE `Dobby`.`Timeouts` SET `Next Ping`='" + str(self.Next_Ping) + "', `Last Ping`='" + str(datetime.datetime.now()) + "' WHERE id = '" + str(self.id) + "';")
+                    
+                #     Close_db(db_Connection, db_Curser)
+                       
+                #         # # Publish only if value changed
+                #         # if self.Value_Dict.get(Info['Name'], None) != Modbus_Value:
+                #         #     # Save value to value dict
+                #         #     self.Value_Dict[Info['Name']] = Modbus_Value
+                #         #     Topic = Dobby_Config['System_Header'] + '/EP/' + str(self.Name) + '/' + str(Info['Name'])
+                #         #     # Publish
+                #         #     MQTT_Client.publish(Topic, payload=str(Modbus_Value), qos=0, retain=True)
+                #         #     # Log event
+                #         #     Log("Debug", "Timeouts", "MQTT Publish", "Topic: " + Topic + " - Payload: " + str(Modbus_Value))
+
+                #         # time.sleep(0.05)
+
+                    # time.sleep(Timeouts.Loop_Delay)
+
+                time.sleep(0.100)
+
+                if self.Kill_Command is True:
+                    quit()
+
+
+        # db_Connection = Open_db("Dobby")
+        # db_Curser = db_Connection.cursor()
+
+        # db_Curser.execute("set autocommit = 1")
+
+        # db_Curser.execute("SELECT Name, `Alert State`, `MQTT Payload Clear`, `MQTT Payload Trigger`, `Alert Target`, `Alert Payload Clear`, `Alert Payload Trigger`, Timeout, `Timeout Alert Target` FROM Dobby.Timeouts WHERE id=" + str(id) + ";")
+        # Trigger_Info = db_Curser.fetchone()
+
+        # Name = Trigger_Info[0]
+        # Alert_State = Trigger_Info[1]
+        # MQTT_Payload_Clear = Trigger_Info[2]
+        # MQTT_Payload_Trigger = Trigger_Info[3]
+        # Alert_Target = Trigger_Info[4]
+        # Alert_Payload_Clear = Trigger_Info[5]
+        # Alert_Payload_Trigger = Trigger_Info[6]
+        # Timeout_Sec =  Trigger_Info[7]
+        # Timeout_Alert_Target =  Trigger_Info[8]
+
+
+        # # Find out what to do
+        # Action = 2
+        # # 0 = Clear
+        # # 1 = Trigger
+        # # 2 = In-between
+
+
+
+
+    # How often the db is cheched for changes
+    # Refresh_Rate = 5
+
+    # def __init__(self):
+    #     # Log event
+    #     Log("Info", "Timeouts", "System", "Initializing")
+
+    #     db_Connection = Open_db("Dobby")
+    #     db_Curser = db_Connection.cursor()
+
+    #     db_Curser.execute("SELECT 'id', 'Name', 'State', 'MQTT Target', 'Alert Target id', 'Timeout days', 'Timeout hours', 'Timeout min', 'Timeout sec', 'Timeout at', Last_Modified' FROM Dobby.Timeouts WHERE Enabled='1'")
+    #     Timeouts_db = db_Curser.fetchall()
+
+    #     for i in range(len(Timeouts_db)):
+    #         # id                0
+    #         # Name              1
+    #         # State             2
+    #         # MQTT Target       3
+    #         # Alert Target id   4
+    #         # Timeout days      5
+    #         # Timeout hours     6
+    #         # Timeout min       7
+    #         # Timeout sec       8
+    #         # Timeout at        9
+    #         # Last_Modified     
+
+    #         # Log Event
+    #         Log("Debug", "Timeouts", Timeouts_db[i][1], "Subscribing to: '" + Timeouts_db[i][3] + "'")
+    #         # Add topic to topic tict
+    #         MQTT_Add_Sub_Topic(str(Timeouts_db[i][3]), 'Timeouts', {'id': Timeouts_db[i][0], 'Name': Timeouts_db[i][1], 'Tags': Timeouts_db[i][2], 'Max_Entries': Timeouts_db[i][3]})
+    #         # Subscribe
+    #         MQTT_Client.subscribe(str(Timeouts_db[i][3]))
+    #         # Register callbacks
+    #         MQTT_Client.message_callback_add(str(Timeouts_db[i][3]), MQTT_On_Message_Callback)
+
+    #     Close_db(db_Connection, db_Curser)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -641,35 +1237,22 @@ class Log_Trigger():
         Close_db(db_Connection, db_Curser)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # ---------------------------------------- Action Trigger ----------------------------------------
 class Action_Trigger():
     # How often the db is cheched for changes
     Refresh_Rate = 5
-
+    # Create needed variables
     Active_Triggers = {}
-    Trigger_Timeouts = {}
-    MQTT_Target_Checks = {}
+    # Trigger_Timeouts = {}
+    # MQTT_Target_Checks = {}
+    Retrigger_Counter = {}
 
     def __init__(self):
         # Log event
         Log("Info", "Action Trigger", "Checker", "Initializing")
 
         # Start checker thread
-        File_Change_Checker_Thread = threading.Thread(target=self.Checker, kwargs={})
+        File_Change_Checker_Thread = threading.Thread(name='DobbyActionTriggerChecker', target=self.Checker, kwargs={})
         File_Change_Checker_Thread.daemon = True
         File_Change_Checker_Thread.start()
 
@@ -712,17 +1295,6 @@ class Action_Trigger():
     def Start_Trigger(self, id):
 
         Trigger_Info = self.Get_Trigger_Info(id)
-        # Open db connection
-        db_Connection = Open_db("Dobby")
-        db_Curser = db_Connection.cursor()
-
-        db_Curser.execute("SELECT Name, `MQTT Target` FROM Dobby.`Action_Trigger` WHERE id="+ str(id) + ";")
-        Trigger_Info = db_Curser.fetchone()
-        # Trigger_Info[0] - Name
-        # Trigger_Info[1] - Target
-
-        # Close db connection
-        Close_db(db_Connection, db_Curser)
 
         # Log Event
         Log("Debug", "Action Trigger", str(Trigger_Info[0]), "Starting")
@@ -733,11 +1305,13 @@ class Action_Trigger():
         MQTT_Client.subscribe(str(Trigger_Info[1]))
         # Register callbacks
         MQTT_Client.message_callback_add(str(Trigger_Info[1]), MQTT_On_Message_Callback)
+        # Create or reset retrigger
+        Action_Trigger.Retrigger_Counter[id] = 0
 
-        # Create Timeout Trigger
-        self.Trigger_Timeouts[id] = Timeout_Trigger()
+        # # Create Timeout Trigger
+        # self.Trigger_Timeouts[id] = Timeout_Trigger()
+        # print "CREATE target trigger here if timeout_set is set"
 
-        print "CREATE target trigger here if timeout_set is set"
 
 
     def Stop_Trigger(self, id):
@@ -832,24 +1406,47 @@ class Action_Trigger():
         if Action == 0:
             # Check agains current alert state
             if Action == Alert_State:
-                Log("Debug", "Action Trigger", str(Name), 'Already cleared ignoring new clear value: ' + str(Payload))
- 
+                # Check if its time to retrigger
+                if Action_Trigger.Retrigger_Counter[id] > 3:
+                    Log("Debug", "Action Trigger", str(Name), 'Retrigger Clear')
+                    # Republish mqtt trigger message
+                    MQTT_Client.publish(Alert_Target, payload=str(Alert_Payload_Clear), qos=0, retain=False)
+                    # Reset retrigger counter
+                    Action_Trigger.Retrigger_Counter[id] = 0
+                else:
+                    Log("Debug", "Action Trigger", str(Name), 'Already cleared ignoreing new clear value: ' + str(Payload))
+                    # Add one to retrigger counter
+                    Action_Trigger.Retrigger_Counter[id] = Action_Trigger.Retrigger_Counter[id] + 1
             else:
                 Trigger_Change = True
                 # Publish Message
-                MQTT_Client.publish(Alert_Target, payload=str(Alert_Payload_Clear) + ";", qos=0, retain=False)
+                MQTT_Client.publish(Alert_Target, payload=str(Alert_Payload_Clear), qos=0, retain=False)
                 Log("Info", "Action Trigger", str(Name), 'Cleared at: ' + str(Payload) + " Target: " + str(MQTT_Payload_Clear))
+                # Reset retrigger counter
+                Action_Trigger.Retrigger_Counter[id] = 0
 
         # Trigger
         elif Action == 1:
             # Check agains current alert state
             if Action == Alert_State:
-                Log("Debug", "Action Trigger", str(Name), 'Already triggered ignoring new trigger value: ' + str(Payload))
+                # Check if its time to retrigger
+                if Action_Trigger.Retrigger_Counter[id] > 3:
+                    Log("Debug", "Action Trigger", str(Name), 'Retrigger Trigger')
+                    # Republish mqtt trigger message
+                    MQTT_Client.publish(Alert_Target, payload=str(Alert_Payload_Trigger), qos=0, retain=False)
+                    # Reset retrigger counter
+                    Action_Trigger.Retrigger_Counter[id] = 0
+                else:
+                    Log("Debug", "Action Trigger", str(Name), 'Already triggered ignoreing new trigger value: ' + str(Payload))
+                    # Add one to retrigger counter
+                    Action_Trigger.Retrigger_Counter[id] = Action_Trigger.Retrigger_Counter[id] + 1
             else:
                 Trigger_Change = True
                 # Publish Message
-                MQTT_Client.publish(Alert_Target, payload=str(Alert_Payload_Trigger) + ";", qos=0, retain=False)
+                MQTT_Client.publish(Alert_Target, payload=str(Alert_Payload_Trigger), qos=0, retain=False)
                 Log("Info", "Action Trigger", str(Name), 'Triggered at: ' + str(Payload) + " Target: " + str(MQTT_Payload_Trigger))
+                # Reset retrigger counter
+                Action_Trigger.Retrigger_Counter[id] = 0
 
         # In-between value
         elif Action == 2:
@@ -860,6 +1457,8 @@ class Action_Trigger():
             db_Curser.execute("UPDATE `Dobby`.`Action_Trigger` SET `Alert State`='" + str(Action) + "' WHERE `id`='" + str(id) + "';")
             # Update Triggered_DateTime
             db_Curser.execute("UPDATE `Dobby`.`Action_Trigger` SET `Triggered DateTime`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(id) + "';")
+            # Reset retrigger counter
+            Action_Trigger.Retrigger_Counter[id] = 0
 
         # Close the db connection
         Close_db(db_Connection, db_Curser)
@@ -881,7 +1480,7 @@ class Action_Trigger():
 
 
 
-# ---------------------------------------- Timeout Trigger ----------------------------------------
+# ---------------------------------------- Send Alert ----------------------------------------
 def Send_Alert(id, Value=None, Subject=None, Text=None):
 
     # Get Alert into
@@ -909,16 +1508,6 @@ def Send_Alert(id, Value=None, Subject=None, Text=None):
     Mail_Target = Alert_Info[1]
     MQTT_Target = Alert_Info[2]
     Push_Target = Alert_Info[3]
-
-    print "Mail_Target"
-    print Mail_Target
-    print type(Mail_Target)
-    print "MQTT_Target"
-    print MQTT_Target
-    print type(MQTT_Target)
-    print "Push_Target"
-    print Push_Target
-    print type(Push_Target)
 
     # Add value to Text if value is set
     if Value is not None and Value != "":
@@ -954,115 +1543,114 @@ def Send_Alert(id, Value=None, Subject=None, Text=None):
             
 
     if Push_Target is not None and Push_Target != "":
-        print "Push_Target"
-        print Push_Target
         Send_Push(Push_Target, Subject, Text)
 
 
-# ---------------------------------------- Timeout Trigger ----------------------------------------
-class Timeout_Trigger():
+# # ---------------------------------------- Timeout Trigger ----------------------------------------
+# class Timeout_Trigger():
 
-    Check_Delay = 0.500
+#     Check_Delay = 0.500
     
-    def __init__(self):
-        # Log event
-        Log("Debug", "System", "Timeout Trigger", "Initializing")
+#     def __init__(self):
+#         # Log event
+#         Log("Debug", "System", "Timeout Trigger", "Initializing")
 
-        # Create vars
-        self.Timeout_At = datetime.datetime.now()
-        self.Alert_Target_id = ""
-        self.Delete_Me = False
-        self.Triggered = True
+#         # Create vars
+#         self.Timeout_At = datetime.datetime.now()
+#         self.Alert_Target_id = ""
+#         self.Delete_Me = False
+#         self.Triggered = True
 
-        # Start timeout
-        Timer_Thread = threading.Thread(target=self.Run)
-        Timer_Thread.daemon = True
-        Timer_Thread.start()
+#         # Start timeout
+#         Timer_Thread = threading.Thread(target=self.Run)
+#         Timer_Thread.daemon = True
+#         Timer_Thread.start()
 
-    def Reset(self, Timeout, Alert_Target_id):
-        # Log event
-        Log("Debug", "System", "Timeout Trigger", "Reset alert id: " + str(Alert_Target_id))
+#     def Reset(self, Timeout, Alert_Target_id):
+#         # Log event
+#         Log("Debug", "System", "Timeout Trigger", "Reset alert id: " + str(Alert_Target_id))
         
-        # Save vars
-        self.Alert_Target_id = Alert_Target_id
-        ## Add timeout to current time to get Timeout_At
-        self.Timeout_At = datetime.datetime.now() + datetime.timedelta(seconds=Timeout)
-        ## Alert id
-        self.Alert_Target_id = Alert_Target_id
+#         # Save vars
+#         self.Alert_Target_id = Alert_Target_id
+#         ## Add timeout to current time to get Timeout_At
+#         self.Timeout_At = datetime.datetime.now() + datetime.timedelta(seconds=Timeout)
+#         ## Alert id
+#         self.Alert_Target_id = Alert_Target_id
 
-        # Reset triggered
-        self.Triggered = False
+#         # Reset triggered
+#         self.Triggered = False
         
 
-    def Delete(self):
-        Log("Debug", "System", "Timeout Trigger", "Deleted alert id: " + str(self.Alert_Target_id))
-        # Mark thread for deletions
-        self.Delete_Me = True
+#     def Delete(self):
+#         Log("Debug", "System", "Timeout Trigger", "Deleted alert id: " + str(self.Alert_Target_id))
+#         # Mark thread for deletions
+#         self.Delete_Me = True
 
 
-    def Trigger_Timeout(self):
-        if self.Triggered == True:
-            return
+#     def Trigger_Timeout(self):
+#         if self.Triggered == True:
+#             return
         
-        # Set var to prevent retrigger
-        self.Triggered = True
+#         # Set var to prevent retrigger
+#         self.Triggered = True
 
-        # Log event
-        Log("Debug", "System", "Timeout Trigger", "Triggered alert id:" + str(self.Alert_Target_id))
+#         # Log event
+#         Log("Debug", "System", "Timeout Trigger", "Triggered alert id:" + str(self.Alert_Target_id))
         
-        # Get alert information from db        
-        ## Open db connection
-        db_Connection = Open_db("Dobby")
-        db_Curser = db_Connection.cursor()
-        # Set autocommit so no delay on saving changes
-        db_Curser.execute("set autocommit = 1")
+#         # Get alert information from db        
+#         ## Open db connection
+#         db_Connection = Open_db("Dobby")
+#         db_Curser = db_Connection.cursor()
+#         # Set autocommit so no delay on saving changes
+#         db_Curser.execute("set autocommit = 1")
 
-        ## Get id and Last Modified to check if gBridge Triggers needs to be started
-        db_Curser.execute("SELECT `Mail Target`, `MQTT Target`, `Push Target`, Subject, Body FROM Dobby.`Alert_Targets` WHERE id=" + str(self.Alert_Target_id) + ";")
-        Alert_Info = db_Curser.fetchone()
+#         ## Get id and Last Modified to check if gBridge Triggers needs to be started
+#         db_Curser.execute("SELECT `Mail Target`, `MQTT Target`, `Push Target`, Subject, Body FROM Dobby.`Alert_Targets` WHERE id=" + str(self.Alert_Target_id) + ";")
+#         Alert_Info = db_Curser.fetchone()
 
-        # Change Last_Trigger
-        db_Curser.execute("UPDATE `Dobby`.`Alert_Targets` SET `Last_Trigger`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(id) + "';")
+#         # Change Last_Trigger
+#         db_Curser.execute("UPDATE `Dobby`.`Alert_Targets` SET `Last_Trigger`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(id) + "';")
 
-        ## Close db connection
-        Close_db(db_Connection, db_Curser)
+#         ## Close db connection
+#         Close_db(db_Connection, db_Curser)
 
-        # Send Alerts
-        ## 0 = Mail Target
-        ## 1 = MQTT Target
-        ## 2 = Push Target
-        ## 3 = Subject
-        ## 4 = Body
-        print "fix timout trigger"
-        # Send_Alert(Alert_Info[3], Alert_Info[4], None, Alert_Info[0], Alert_Info[1], Alert_Info[2])
+#         # Send Alerts
+#         ## 0 = Mail Target
+#         ## 1 = MQTT Target
+#         ## 2 = Push Target
+#         ## 3 = Subject
+#         ## 4 = Body
+#         print "fix timout trigger"
+#         # Send_Alert(Alert_Info[3], Alert_Info[4], None, Alert_Info[0], Alert_Info[1], Alert_Info[2])
 
 
-    def Run(self):
-        # Just sleep untill id is set
-        while self.Alert_Target_id == "" and self.Delete_Me == False:
-            # Sleep untill next check
-            time.sleep(self.Check_Delay)
+#     def Run(self):
+#         # Just sleep untill id is set
+#         while self.Alert_Target_id == "" and self.Delete_Me == False:
+#             # Sleep untill next check
+#             time.sleep(self.Check_Delay)
 
-        # When id is set start the timeout
-        while self.Delete_Me == False:
+#         # When id is set start the timeout
+#         while self.Delete_Me == False:
  
-            # Check if current time vs timeout at time
-            if self.Timeout_At < datetime.datetime.now():
-                self.Trigger_Timeout()
+#             # Check if current time vs timeout at time
+#             if self.Timeout_At < datetime.datetime.now():
+#                 self.Trigger_Timeout()
 
-            # Sleep untill next check
-            time.sleep(self.Check_Delay)
+#             # Sleep untill next check
+#             time.sleep(self.Check_Delay)
 
 
 # ---------------------------------------- gBridge Trigger ----------------------------------------
 # From local to gBridge
-def gBridge_Trigger_Local(id, Topic, Payload):
-
-    # Ignore "/set" messages to avoid message loops
-    if "/set" in Topic:
-        return
-
-    MQTT_Client_gBridge.Publish_Reply(id, Topic, Payload)
+# def gBridge_Trigger_Local(id, Topic, Payload):
+#     # Log event
+#     Log("Debug", "gBridge Trigger", str(gBridge_Trigger.Active_Triggers[id]['Name']), "Dobby: " + str(Payload))
+#     # Ignore "/set" messages to avoid message loops
+#     if "/set" in Topic:
+#         return
+#     # Publish reply
+#     MQTT_Client_gBridge.Publish_Reply(id, Topic, Payload)
 
 
 
@@ -1076,46 +1664,10 @@ class gBridge_Trigger():
     # Create a MQTT client to connect to gBridge
     MQTT_Client = MQTT.Client(client_id="Dobby", clean_session=True)
 
-    MQTT_Client_Connected = False
-
     MQTT_Broker = ""
     MQTT_Base_Topic = ""
 
-    def Publish_Reply(self, id, Topic, Payload):
-        
-        Payload.replace(";", "")
-
-        # Temperature
-        if Topic.endswith("/Humidity"):
-            # Round Payload to nearest 0.5 to make google understand
-            Payload = round(float(Payload)*2)/2
-            self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/tempset-humidity/set", payload=str(Payload), qos=0, retain=False)
-        
-        # Humidity
-        elif Topic.endswith("/Temperature"):
-            # Round Payload to nearest 0.5 to make google understand
-            Payload = round(float(Payload)*2)/2
-            self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/tempset-ambient/set", payload=str(Payload), qos=0, retain=False)
-        
-        # DS18B20
-        elif "/DS18B20/" in Topic:
-            # Round Payload to nearest 0.5 to make google understand
-            Payload = round(float(Payload)*2)/2
-            self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/tempset-ambient/set", payload=str(Payload), qos=0, retain=False)
-        
-        else:
-            if str(Payload) == "0":
-                # On Off
-                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/onoff/set", payload="0", qos=0, retain=False)
-                # Brightness
-                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/brightness/set", payload="0", qos=0, retain=False)
-            else:
-                # On Off
-                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/onoff/set", payload="1", qos=0, retain=False)
-                # Brightness
-                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/brightness/set", payload=str(Payload), qos=0, retain=False)
-
-    
+    Checker_Stop = False
 
     def __init__(self):
         # Log event
@@ -1148,43 +1700,101 @@ class gBridge_Trigger():
         self.MQTT_Client.on_connect = self.MQTT_On_Connect
         self.MQTT_Client.on_disconnect = self.MQTT_On_Disconnect
 
+        # Variables to hold MQTT Broker connection statuses
+        self.MQTT_Connected_Dobby = False
+        self.MQTT_Connected_gBridge = False
+
         # Connect to broker
         self.MQTT_Client.connect(self.MQTT_Broker, port=MQTT_Port, keepalive=60, bind_address="")
 
         # Spawn thread for MQTT Client Loop
-        MQTTC_Thread = threading.Thread(target=self.MQTT_Client_Loop)
+        MQTTC_Thread = threading.Thread(name='DobbygBridgeMQTTClient', target=self.MQTT_Client_Loop)
         MQTTC_Thread.daemon = True
         MQTTC_Thread.start()
 
         # Start checker thread
-        File_Change_Checker_Thread = threading.Thread(target=self.Checker, kwargs={})
+        File_Change_Checker_Thread = threading.Thread(name='DobbygBridgeChecker', target=self.Checker, kwargs={})
         File_Change_Checker_Thread.daemon = True
         File_Change_Checker_Thread.start()
 
 
+    # From local to gBridge
+    def Trigger_Local(self, id, Topic, Payload):
+        # Ignore "/set" messages to avoid message loops
+        if "/set" in Topic:
+            # Log event
+            Log("Debug", "gBridge Trigger", str(self.Active_Triggers[id]['Name']), "Ignored - gBridge -> Dobby: " + str(Payload))
+            return
+        # Publish reply
+        self.Publish_Reply(id, Topic, Payload)
+
+
+    def Publish_Reply(self, id, Topic, Payload):
+        
+        Payload.replace(";", "")
+
+        # Log event
+        Log("Debug", "gBridge Trigger", str(self.Active_Triggers[id]['Name']), "Dobby -> gBridge: " + str(Payload))
+
+        # Temperature
+        if Topic.endswith("/Humidity"):
+            # Round Payload to nearest 0.5 to make google understand
+            Payload = round(float(Payload)*2)/2
+            self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/tempset-humidity/set", payload=str(Payload), qos=0, retain=False)
+        
+        # Humidity
+        elif Topic.endswith("/Temperature"):
+            # Round Payload to nearest 0.5 to make google understand
+            Payload = round(float(Payload)*2)/2
+            self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/tempset-ambient/set", payload=str(Payload), qos=0, retain=False)
+        
+        # DS18B20
+        elif "/DS18B20/" in Topic:
+            # Round Payload to nearest 0.5 to make google understand
+            Payload = round(float(Payload)*2)/2
+            self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/tempset-ambient/set", payload=str(Payload), qos=0, retain=False)
+        
+        # Dimmer
+        else:
+            if str(Payload) == "0":
+                # On Off
+                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/onoff/set", payload="0", qos=0, retain=False)
+                # Brightness
+                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/brightness/set", payload="0", qos=0, retain=False)
+            else:
+                # On Off
+                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/onoff/set", payload="1", qos=0, retain=False)
+                # Brightness
+                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/brightness/set", payload=str(Payload), qos=0, retain=False)
+
+    
     def MQTT_Subscribe_To(self, MQTT_Client, Topic):
         Log("Debug", "gBridge Trigger", "MQTT", "Subscribing to topic: " + Topic)
         self.MQTT_Client.subscribe(Topic)
 
+    def Local_MQTT_On_Connect(self):
+        Log("Debug", "gBridge Trigger", "MQTT", "Connected to local broker")
+        self.MQTT_Connected_Dobby = True 
+   
+    def Local_MQTT_On_Disconnect(self):
+        Log("Warning", "gBridge Trigger", "MQTT", "Lost connection to local broker")
+        self.MQTT_Connected_Dobby = False
+   
 
     def MQTT_On_Disconnect(self, MQTT_Client, userdata, rc):
-        self.MQTT_Client.Connected = False
         Log("Warning", "gBridge", "MQTT", "Disconnected from broker : " + str(self.MQTT_Broker) + " with result code " + str(rc))
+        self.MQTT_Connected_gBridge = False
 
 
     def MQTT_On_Connect(self, MQTT_Client, userdata, flags, rc):
-
-        self.MQTT_Client.Connected = True
         Log("Info", "gBridge Trigger", "MQTT", "Connected to broker " + str(self.MQTT_Broker) + " with result code " + str(rc))
+        self.MQTT_Connected_gBridge = True 
 
-        # # Restart trigger to resubscribe and register callbacks
-        # for id in dict(self.Active_Triggers).keys():
-        #     self.Restart_Trigger(id)
-    
+
     # ---------------------------------------- # On message callbacks - Spawns threads ----------------------------------------
     def MQTT_On_Message_Callback(self, mosq, obj, msg):
  
-        Message_Thread = threading.Thread(target=self.MQTT_On_Message, kwargs={"Topic": msg.topic, "Payload": msg.payload, "Retained": msg.retain})
+        Message_Thread = threading.Thread(name='DobbygBridgeOnMessage', target=self.MQTT_On_Message, kwargs={"Topic": msg.topic, "Payload": msg.payload, "Retained": msg.retain})
         Message_Thread.daemon = True
         Message_Thread.start()
         return
@@ -1226,31 +1836,42 @@ class gBridge_Trigger():
         # Nothing to do here yet
         elif "/brightness" in Topic:
             pass
-
         elif "/tempset-mode" in Topic:
-            print "tempset-mode"
+            pass
         elif "/tempset-setpoint" in Topic:
-            print "tempset-setpoint"
+            pass
         elif "/tempset-ambient" in Topic:
-            print "tempset-ambient"
+            pass
         elif "/tempset-humidity" in Topic:
-            print "tempset-humidity"
-
+            pass
         else:
-            print "UNKNOWN Command type"
+            Log("Error", "gBridge Trigger", str(self.Active_Triggers[id]['Name']), "Unknown gBridge Topic: " + str(Topic))
+            return
 
         # Publish Message
-        MQTT_Client.publish(self.Active_Triggers[id]["MQTT Target"], payload=str(Payload) + ";", qos=0, retain=False)
+        MQTT_Client.publish(self.Active_Triggers[id]["MQTT Target"], payload=str(Payload), qos=0, retain=False)
+        # Log event
+        Log("Debug", "gBridge Trigger", str(self.Active_Triggers[id]['Name']), "gBridge -> Dobby: " + str(Payload))
         
 
     def MQTT_Client_Loop(self):
         # Start MQTT Loop
         self.MQTT_Client.loop_forever()
 
-
+    # ---------------------------------------- Checker ----------------------------------------
     def Checker(self):
         # Start eternal loop
         while True:
+            # Wait for MQTT Connections
+            while self.MQTT_Connected_Dobby == False and self.MQTT_Connected_gBridge == False:
+                # Log event
+                Log("Debug", "gBridge Trigger", 'MQTT', "Waiting for connection to MQTT brokers to be established")
+                # Delete all triggers
+                self.Delete_All_Triggers()
+                # Dont sent the message again
+                while self.MQTT_Connected_Dobby == False and self.MQTT_Connected_gBridge == False:
+                    pass
+
             # Open db connection get id, Last Modified
             db_Connection = Open_db("Dobby")
             db_Curser = db_Connection.cursor()
@@ -1284,7 +1905,25 @@ class gBridge_Trigger():
 
             # Sleep till next check
             time.sleep(self.Refresh_Rate)
-    
+
+            # if self.Checker_Stop is True:
+            #     # Log event
+            #     Log("Info", "gBridge Trigger", 'Checker', "Stopping")
+
+            #     # Stop all triggers
+            #     for Key, Value in self.Active_Triggers.items():
+            #         Key = Key
+            #         Log("Debug", "gBridge Trigger", 'Checker', "Removing trigger: " + str(Value['Name']))
+            #         # gBridge_Trigger Restart_Trigger(id)
+
+            #     quit()
+
+    def Delete_All_Triggers(self):
+        # Stop all triggers
+        for id, Info in self.Active_Triggers.items():
+            Log("Debug", "gBridge Trigger", 'Checker', "Removing trigger: " + str(Info['Name']))
+            self.Delete_Trigger(id)
+
 
     def Add_Trigger(self, id):
 
@@ -1319,14 +1958,14 @@ class gBridge_Trigger():
         Source_Topic = self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/#"
         
         # Log Event
-        Log("Debug", "gBridge Trigger", str(self.Active_Triggers[id]["Name"]), "Starting")
+        Log("Info", "gBridge Trigger", str(self.Active_Triggers[id]["Name"]), "Starting")
         Log("Debug", "gBridge Trigger", str(self.Active_Triggers[id]["Name"]), "Subscribing to: '" + str(Source_Topic) + "'")
-        # Subscribe
+        # Subscribe - gBridge
         self.MQTT_Client.subscribe(str(Source_Topic))
-        # Register callbacks
+        # Register callbacks - gBridge
         self.MQTT_Client.message_callback_add(str(Source_Topic), self.MQTT_On_Message_Callback)
 
-        # Subscribe - local
+        # Generate Subscribe Topic
         Sub_Topic = str(self.Active_Triggers[id]["MQTT Target"])
         # Temp and humidity
         if "Temperature" in self.Active_Triggers[id]["MQTT Target"]:
@@ -1335,21 +1974,19 @@ class gBridge_Trigger():
         elif "Humidity" in self.Active_Triggers[id]["MQTT Target"]:
             # Do nothing to target topic
             pass
-
         # Dont add state if alread there
         elif Sub_Topic.endswith("/State"):
             pass
-
         # Anything else
         # Remember to add "/State" to get the devices state and not create a message loop
         else:
             Sub_Topic = Sub_Topic + "/State"
 
-        # Add topic to topic tict
+        # Add topic to topic dict - Dobby
         MQTT_Add_Sub_Topic(Sub_Topic, 'gBridge Trigger', id)
-        # Subscribe
+        # Subscribe - Dobby
         MQTT_Client.subscribe(Sub_Topic)
-        # Register callbacks
+        # Register callbacks - Dobby
         MQTT_Client.message_callback_add(Sub_Topic, MQTT_On_Message_Callback)
 
 
@@ -1371,26 +2008,40 @@ class gBridge_Trigger():
 
 
 # ---------------------------------------- KeepAlive Monitor ----------------------------------------
-def KeepAlive_Monitor(Topic, Payload):
-    db_KL_Connection = Open_db(Dobby_Config['Log_db'])
-    db_KL_Curser = db_KL_Connection.cursor()
+def KeepAlive_Monitor(Topic, Payload, Retained):
 
+    # Ignore retinaed messages
+    if Retained is True:
+        return
+
+    # Open db connection and create log db if needed
+    db_Connection = Open_db("DobbyKeepAliveMonitorLog", True)
+    if db_Connection is not None:
+        db_Curser = db_Connection.cursor()
+        db_Curser.execute("set autocommit = 1")
+    # Unable to connect to log db
+    else:
+        # Log event logged as debug so we dont spam the log
+        Log("Debug", "KeepAliveMonitor", "db", "Unable to connect")
+
+    # Check if the message contains a json
     try:
         root_KL = json.loads(Payload)
     except ValueError:
-        Log("Warning", "KeepAliveMonitor", "KeepAlive", "From unknown device")
-        Log("Debug", "KeepAliveMonitor", "KeepAlive", "From unknown device - Topic: " + Topic + " Payload: " + Payload)
+        Log("Warning", "KeepAliveMonitor", "KeepAlive", "From unknown device - Topic: " + Topic + " Payload: " + Payload)
         return
-
-    Log("Debug", "KeepAliveMonitor", "KeepAlive", " From: " + root_KL["Hostname"])
-
+    # Log event
+    Log("Debug", "KeepAliveMonitor", root_KL["Hostname"], "Recived keepalive")
+    # Check if the json has the values we need
     if "IP" not in root_KL:
+        Log("Debug", "KeepAliveMonitor", root_KL["Hostname"], "'IP' not in keepalive")
         if root_KL["Hostname"] is "Dobby":
             root_KL["IP"] = "127.0.0.1"
         else:
             root_KL["IP"] = "0.0.0.0"
 
     if "RSSI" not in root_KL:
+        Log("Debug", "KeepAliveMonitor", root_KL["Hostname"], "'RSSI' not in keepalive")
         root_KL["RSSI"] = "0"
 
     # if root_KL["Hostname"] != "Dobby":
@@ -1399,36 +2050,37 @@ def KeepAlive_Monitor(Topic, Payload):
     #     AU_Thread.daemon = True
     #     AU_Thread.start()
 
-    # Try writing message to log
+    Failed = False
+    SQL_String = "INSERT INTO `" + root_KL["Hostname"] + "` (UpFor, FreeMemory, SoftwareVersion, IP, RSSI) VALUES('" + str(root_KL["Uptime"]) + "', '" + str(root_KL["FreeMemory"]) + "', '" + str(root_KL["Software"]) + "', '" + str(root_KL["IP"]) + "', '" + str(root_KL["RSSI"]) + "');"
+    # Try to log
     try:
-        db_KL_Curser.execute("INSERT INTO `KeepAliveMonitor` (Device, UpFor, FreeMemory, SoftwareVersion, IP, RSSI) VALUES('" + root_KL["Hostname"] + "', '" + str(root_KL["Uptime"]) + "', '" + str(root_KL["FreeMemory"]) + "', '" + str(root_KL["Software"]) + "', '" + str(root_KL["IP"]) + "', '" + str(root_KL["RSSI"]) + "');")
+        db_Curser.execute(SQL_String)
     except (MySQLdb.Error, MySQLdb.Warning) as e:
-        # Table missing, create it
+        # 1146 = Table is missing
         if e[0] == 1146:
-            Log("Debug", "KeepAliveMonitor", "db", "Log table missing, creating it")
+            # Log event
+            Log("Debug", "KeepAliveMonitor", root_KL["Hostname"], "Missing db table creating it")
             try:
-                db_KL_Curser.execute("CREATE TABLE `KeepAliveMonitor` (`id` INTEGER PRIMARY KEY AUTO_INCREMENT NOT NULL, `Device` VARCHAR(25) NOT NULL, `LastKeepAlive` timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL, `UpFor` int(11) unsigned NOT NULL, `FreeMemory` DECIMAL(13,0) NOT NULL, `SoftwareVersion` int(6) NOT NULL, `IP` VARCHAR(16) NOT NULL, `RSSI` INT(5) NOT NULL);")
+                db_Curser.execute("CREATE TABLE `" + root_KL["Hostname"] + "` (`id` INTEGER PRIMARY KEY AUTO_INCREMENT NOT NULL, `LastKeepAlive` timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL, `UpFor` int(11) unsigned NOT NULL, `FreeMemory` DECIMAL(13,0) NOT NULL, `SoftwareVersion` int(6) NOT NULL, `IP` VARCHAR(16) NOT NULL, `RSSI` INT(5) NOT NULL);")
             except (MySQLdb.Error, MySQLdb.Warning) as e:
                 # Error 1050 = Table already exists
+                # This miight happen if another KeepAliveMonitor process triggered at almost the same time, this is NOT an error
                 if e[0] != 1050:
-                    # FIX add some error handling here
-                    Log("Error", "KeepAliveMonitor", "db", "Error: " + str(e[0]))
-                    Close_db(db_KL_Connection, db_KL_Curser)
-                    return
+                    Log("Error", "KeepAliveMonitor", root_KL["Hostname"], "db table created")
+                    # Try to write log again
+                    db_Curser.execute(SQL_String)
+                else:
+                    Log("Error", "KeepAliveMonitor", root_KL["Hostname"], "db error: " + str(e))
+                    Failed = True
+        else:
+            Log("Error", "KeepAliveMonitor", "db", str(e))
+            Failed = True
 
-        # Try to write log again
-        db_KL_Curser.execute("INSERT INTO `KeepAliveMonitor` (Device, UpFor, FreeMemory, SoftwareVersion, IP, RSSI) VALUES('" + root_KL["Hostname"] + "', '" + str(root_KL["Uptime"]) + "', '" + str(root_KL["FreeMemory"]) + "', '" + str(root_KL["Software"]) + "', '" + str(root_KL["IP"]) + "', '" + str(root_KL["RSSI"]) + "');")
+    # Max entries check
+    if Failed == False:
+        Table_Size_Check(db_Curser, root_KL["Hostname"], Dobby_Config['Log_Length_KeepAliveMonitor'])
 
-    # Check log length
-    db_KL_Curser.execute("SELECT COUNT(*) FROM `" + Dobby_Config['Log_db'] + "`.`KeepAliveMonitor` WHERE Device='" + root_KL["Hostname"] + "';")
-    Current_Log_Length = db_KL_Curser.fetchone()
-
-    if Current_Log_Length[0] > Dobby_Config['Log_Length_KeepAliveMonitor']:
-        Rows_To_Delete = Current_Log_Length[0] - Dobby_Config['Log_Length_KeepAliveMonitor']
-        Log("Debug", "KeepAliveMonitor", "db", "Log Length reached, deleting " + str(Rows_To_Delete))
-        db_KL_Curser.execute("DELETE FROM `" + Dobby_Config['Log_db'] + "`.KeepAliveMonitor WHERE Device='" + root_KL["Hostname"] + "' ORDER BY id LIMIT " + str(Rows_To_Delete) + ";")
-
-    Close_db(db_KL_Connection, db_KL_Curser)
+    Close_db(db_Connection, db_Curser)
 
 
 # ---------------------------------------- MQTT Functions ----------------------------------------
@@ -1461,7 +2113,7 @@ def MQTT_Functions(Payload):
             Publish_String = Command[1].split("&")
 
             if Publish_String[1][-1:] is not ";":
-                MQTT_Client.publish(Publish_String[0], payload=Publish_String[1] + ";", qos=0, retain=False)
+                MQTT_Client.publish(Publish_String[0], payload=Publish_String[1], qos=0, retain=False)
             else:
                 MQTT_Client.publish(Publish_String[0], payload=Publish_String[1], qos=0, retain=False)
 
@@ -1477,7 +2129,7 @@ def MQTT_Functions(Payload):
 
 # ---------------------------------------- # On message callbacks - Spawns threads ----------------------------------------
 def MQTT_On_Message_Callback(mosq, obj, msg):
-    Message_Thread = threading.Thread(target=MQTT_On_Message, kwargs={"Topic": msg.topic, "Payload": msg.payload, "Retained": msg.retain})
+    Message_Thread = threading.Thread(name='DobbygOnMessage', target=MQTT_On_Message, kwargs={"Topic": msg.topic, "Payload": msg.payload, "Retained": msg.retain})
     Message_Thread.daemon = True
     Message_Thread.start()
     return
@@ -1485,6 +2137,10 @@ def MQTT_On_Message_Callback(mosq, obj, msg):
 
 # ---------------------------------------- MQTT On Message ----------------------------------------
 def MQTT_On_Message(Topic, Payload, Retained):
+
+    # Ignore retained messages
+    if Retained == True:
+        return
 
     for Target_Topic, Target_Function in dict(MQTT_Topic_Dict).iteritems():
 
@@ -1514,38 +2170,36 @@ def MQTT_On_Message(Topic, Payload, Retained):
             # Run each function
             for Function in Target_Function:
 
-                # Ignore retained messages
-                if Retained is 0:
+                if Function[0] == "KeepAlive":
+                    KeepAlive_Monitor(Topic, Payload, Retained)
 
-                    if Function[0] == "KeepAlive":
-                        KeepAlive_Monitor(Topic, Payload)
+                elif Function[0] == "Log Trigger":
+                    Log_Trigger.On_Message(Function[1], Payload, Retained)
 
-                    elif Function[0] == "Log Trigger":
-                        Log_Trigger.On_Message(Function[1], Payload, Retained)
+                elif Function[0] == "Alert Trigger":
+                    Alert_Trigger.On_Message(Function[1], Payload)
 
-                    elif Function[0] == "Alert Trigger":
-                        Alert_Trigger.On_Message(Function[1], Payload)
+                elif Function[0] == "Action Trigger":
+                    Action_Trigger.On_Message(Function[1], Topic, Payload)
 
-                    elif Function[0] == "Action Trigger":
-                        Action_Trigger.On_Message(Function[1], Topic, Payload)
+                elif Function[0] == "gBridge Trigger":
+                    MQTT_Client_gBridge.Trigger_Local(Function[1], Topic, Payload)
 
-                    elif Function[0] == "gBridge Trigger":
-                        gBridge_Trigger_Local(Function[1], Topic, Payload)
+                elif Function[0] == "Timeouts":
+                    Timeouts.On_Message(Function[1])
 
-                    elif Function[0] == "Functions":
-                        MQTT_Functions(Payload)
+                elif Function[0] == "Functions":
+                    MQTT_Functions(Payload)
 
-                    elif Function[0] == "Commands":
-                        MQTT_Commands(Topic, Payload)
+                elif Function[0] == "Commands":
+                    MQTT_Commands(Topic, Payload)
 
-                    elif Function[0] == "Device Logger":
-                        Device_Logger(Topic, Payload, Retained)
+                elif Function[0] == "Device Logger":
+                    Device_Logger(Topic, Payload, Retained)
 
-                    else:
-                        print 'Function missing - ' + str(Function)
-                        for Target_Topic, Target_Function in dict(MQTT_Topic_Dict).iteritems():
-                            print Target_Topic
-                            print Target_Function
+                else:
+                    # Log event
+                    Log("Info", "MQTT Functions", "Missing", str(Function))
 
 
 # ---------------------------------------- MQTT ----------------------------------------
@@ -1568,16 +2222,16 @@ def MQTT_Subscribe_To(MQTT_Client, Topic):
 
 
 def MQTT_On_Connect(MQTT_Client, userdata, flags, rc):
-
-    MQTT_Client.Connected = True
     Log("Debug", "Dobby", "MQTT", "Connected to broker " + str(Dobby_Config['MQTT_Broker']) + " with result code " + str(rc))
 
-    for Topic, Callback in dict(MQTT_Topic_Dict).iteritems():
-        Callback = Callback
+    for Topic in MQTT_Topic_Dict.keys():
         MQTT_Subscribe_To(MQTT_Client, Topic)
 
         MQTT_Client.message_callback_add(Topic, MQTT_On_Message_Callback)
 
+    # Tell gBridge that we connected
+    MQTT_Client_gBridge.Local_MQTT_On_Connect()
+    
     # MQTT KeepAlive
     # FIX - CHANGE KEEPALIVE TIMER SOURCE IN DB
     # KeepAlive_Thread = threading.Thread(target=MQTT_KeepAlive_Start, kwargs={"MQTT_Client": MQTT_Client})
@@ -1586,8 +2240,9 @@ def MQTT_On_Connect(MQTT_Client, userdata, flags, rc):
 
 
 def MQTT_On_Disconnect(MQTT_Client, userdata, rc):
-    MQTT_Client.Connected = False
     Log("Warning", "Dobby", "MQTT", "Disconnected from broker : " + str(Dobby_Config['MQTT_Broker']))
+    # Tell gBridge that we disconnected
+    MQTT_Client_gBridge.Local_MQTT_On_Disconnect()
 
 
 def MQTT_On_Log(MQTT_Client, userdata, level, buf):
@@ -1603,8 +2258,13 @@ def MQTT_On_Log(MQTT_Client, userdata, level, buf):
 
 # ---------------------------------------- Init ----------------------------------------
 def Dobby_init():
+
     # Open db connection
-    db_Connection = Open_db("Dobby")
+    db_Connection = Open_db('Dobby')
+    if db_Connection is None:
+        # Log event
+        Log('Fatal', 'System', 'Dobby', "Unable to connect to 'Dobby' db")
+        quit()
     db_Curser = db_Connection.cursor()
     
     # Get db config
@@ -1629,17 +2289,20 @@ def Dobby_init():
     Dobby_Config['Log_db'] = Get_System_Config_Value(db_Curser, "Dobby", "Log", "db")
     Dobby_Config['Log_Level_System'] = Get_System_Config_Value(db_Curser, "Dobby", "Log", "Level").lower()
 
-    Dobby_Config['Log_Length_System'] = int(Get_System_Config_Value(db_Curser, "Dobby", "Log", "Length"))
+    Dobby_Config['Log_Length_System'] = int(Get_System_Config_Value(db_Curser, "Dobby", "Log", "Length", QuitOnError=False, Error_Value=1000000))
+
+    # Device Logger
+    Dobby_Config['Log_Length_Device_Logger'] = int(Get_System_Config_Value(db_Curser, "Device Logger", "Log", "Length", QuitOnError=False, Error_Value=10000))
 
     # MQTT
     Dobby_Config['Log_Level_MQTT'] = Get_System_Config_Value(db_Curser, "MQTT", "Log", "Level", QuitOnError=False).lower()
 
     # From KeepAliveMonitor
-    Dobby_Config['Log_Level_KeepAliveMonitor'] = Get_System_Config_Value(db_Curser, "KeepAliveMonitor", "Log", "Level", QuitOnError=False).lower()
-    Dobby_Config['Log_Length_KeepAliveMonitor'] = int(Get_System_Config_Value(db_Curser, "KeepAliveMonitor", "Log", "Length"))
+    Dobby_Config['Log_Level_KeepAliveMonitor'] = Get_System_Config_Value(db_Curser, "KeepAliveMonitor", "Log", "Level", QuitOnError=False, Error_Value="Info").lower()
+    Dobby_Config['Log_Length_KeepAliveMonitor'] = int(Get_System_Config_Value(db_Curser, "KeepAliveMonitor", "Log", "Length", QuitOnError=False, Error_Value=21600))
 
     # From MQTTConfig
-    Dobby_Config['Log_Level_MQTT_Config'] = Get_System_Config_Value(db_Curser, "MQTT Config", "Log", "Level", QuitOnError=False).lower()
+    Dobby_Config['Log_Level_MQTT_Config'] = Get_System_Config_Value(db_Curser, "Device Config", "Log", "Level", QuitOnError=False).lower()
 
     # From MQTT Functions
     Dobby_Config['Log_Level_MQTT_Functions'] = Get_System_Config_Value(db_Curser, "MQTT Functions", "Log", "Level", QuitOnError=False).lower()
@@ -1656,9 +2319,13 @@ def Dobby_init():
     # APC_Monitor
     Dobby_Config['Log_Level_APC_Monitor'] = Get_System_Config_Value(db_Curser, "APC_Monitor", "Log", "Level", QuitOnError=False).lower()
     
-    # # Backup
-    # Dobby_Config['Backup_URL_FTP'] = Get_System_Config_Value(db_Curser, "Backup", "URL", "FTP", QuitOnError=False).lower()
-    
+    # Close db connection
+    Close_db(db_Connection, db_Curser)
+    # Log event
+    Log('Debug', 'System', 'Logging', "Changing to db logging, to see log in console, run Dobby.py with '--verbose'")
+    # Set Dobby_Configred to true, this will make loggin save the log to db and stop printing to terminal
+    Dobby_Config['Init'] = True
+
     # Append Topics to subscribe to subscribe list
     # Log
     MQTT_Add_Sub_Topic(Dobby_Config['System_Header'] + "/Log/#", 'Device Logger')
@@ -1668,11 +2335,6 @@ def Dobby_init():
     MQTT_Add_Sub_Topic(Dobby_Config['System_Header'] + "/Functions", 'Functions')
     # Dobby Commands
     MQTT_Add_Sub_Topic(Dobby_Config['System_Header'] + "/Commands/Dobby/#", 'Commands')
-
-    # Check if the needed databases exists
-    Create_db(db_Curser, Dobby_Config['Log_db'])
-
-    Close_db(db_Connection, db_Curser)
 
 
 def MQTT_init():
@@ -1693,99 +2355,99 @@ def MQTT_init():
 
 
 
-# ---------------------------------------- MQTT Target Check ----------------------------------------
-class MQTT_Target_Check():
+# # ---------------------------------------- MQTT Target Check ----------------------------------------
+# class MQTT_Target_Check():
 
-    Check_Delay = 0.500
+#     Check_Delay = 0.500
     
-    def __init__(self):
-        # Log event
-        Log("Debug", "System", "MQTT Target Check", "Initializing")
+#     def __init__(self):
+#         # Log event
+#         Log("Debug", "System", "MQTT Target Check", "Initializing")
 
-        # Create vars
-        self.Check_At = datetime.datetime.now()
-        self.MQTT_Target = ""
-        self.Delete_Me = False
-        self.Triggered = True
+#         # Create vars
+#         self.Check_At = datetime.datetime.now()
+#         self.MQTT_Target = ""
+#         self.Delete_Me = False
+#         self.Triggered = True
 
-        # Start timeout
-        Timer_Thread = threading.Thread(target=self.Run)
-        Timer_Thread.daemon = True
-        Timer_Thread.start()
+#         # Start timeout
+#         Timer_Thread = threading.Thread(target=self.Run)
+#         Timer_Thread.daemon = True
+#         Timer_Thread.start()
 
-    def Reset(self, MQTT_Target, Expected_Value, Force_Change=True):
-        # Log event
-        Log("Debug", "System", "MQTT Target Check", "Reset alert id: " + str(MQTT_Target))
+#     def Reset(self, MQTT_Target, Expected_Value, Force_Change=True):
+#         # Log event
+#         Log("Debug", "System", "MQTT Target Check", "Reset alert id: " + str(MQTT_Target))
         
-        # Save vars
-        self.MQTT_Target = MQTT_Target
-        ## Add timeout to current time to get Timeout_At
-        self.Timeout_At = datetime.datetime.now() + datetime.timedelta(seconds=self.Timeout)
-        ## Alert id
-        self.MQTT_Target = MQTT_Target
+#         # Save vars
+#         self.MQTT_Target = MQTT_Target
+#         ## Add timeout to current time to get Timeout_At
+#         self.Timeout_At = datetime.datetime.now() + datetime.timedelta(seconds=self.Timeout)
+#         ## Alert id
+#         self.MQTT_Target = MQTT_Target
 
-        # Reset triggered
-        self.Triggered = False
+#         # Reset triggered
+#         self.Triggered = False
         
 
-    def Delete(self):
-        Log("Debug", "System", "MQTT Target Check", "Deleted alert id: " + str(self.MQTT_Target))
-        # Mark thread for deletions
-        self.Delete_Me = True
+#     def Delete(self):
+#         Log("Debug", "System", "MQTT Target Check", "Deleted alert id: " + str(self.MQTT_Target))
+#         # Mark thread for deletions
+#         self.Delete_Me = True
 
 
-    def Trigger_Timeout(self):
-        if self.Triggered == True:
-            return
+#     def Trigger_Timeout(self):
+#         if self.Triggered == True:
+#             return
         
-        # Set var to prevent retrigger
-        self.Triggered = True
+#         # Set var to prevent retrigger
+#         self.Triggered = True
 
-        # Log event
-        Log("Debug", "System", "MQTT Target Check", "Triggered alert id:" + str(self.Alert_Target_id))
+#         # Log event
+#         Log("Debug", "System", "MQTT Target Check", "Triggered alert id:" + str(self.Alert_Target_id))
         
-        # Get alert information from db        
-        ## Open db connection
-        db_Connection = Open_db("Dobby")
-        db_Curser = db_Connection.cursor()
-        # Set autocommit so no delay on saving changes
-        db_Curser.execute("set autocommit = 1")
+#         # Get alert information from db        
+#         ## Open db connection
+#         db_Connection = Open_db("Dobby")
+#         db_Curser = db_Connection.cursor()
+#         # Set autocommit so no delay on saving changes
+#         db_Curser.execute("set autocommit = 1")
 
-        ## Get id and Last Modified to check if gBridge Triggers needs to be started
-        db_Curser.execute("SELECT `Mail Target`, `MQTT Target`, `Push Target`, Subject, Body FROM Dobby.`Alert_Targets` WHERE id=" + str(self.Alert_Target_id) + ";")
-        Alert_Info = db_Curser.fetchone()
+#         ## Get id and Last Modified to check if gBridge Triggers needs to be started
+#         db_Curser.execute("SELECT `Mail Target`, `MQTT Target`, `Push Target`, Subject, Body FROM Dobby.`Alert_Targets` WHERE id=" + str(self.Alert_Target_id) + ";")
+#         Alert_Info = db_Curser.fetchone()
 
-        # Change Last_Trigger
-        db_Curser.execute("UPDATE `Dobby`.`Alert_Targets` SET `Last_Trigger`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(id) + "';")
+#         # Change Last_Trigger
+#         db_Curser.execute("UPDATE `Dobby`.`Alert_Targets` SET `Last_Trigger`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(id) + "';")
 
-        ## Close db connection
-        Close_db(db_Connection, db_Curser)
+#         ## Close db connection
+#         Close_db(db_Connection, db_Curser)
 
-        # Send Alerts
-        ## 0 = Mail Target
-        ## 1 = MQTT Target
-        ## 2 = Push Target
-        ## 3 = Subject
-        ## 4 = Body
-        print "fix mqtt target check"
-        # Send_Alert(Alert_Info[3], Alert_Info[4], None, Alert_Info[0], Alert_Info[1], Alert_Info[2])
+#         # Send Alerts
+#         ## 0 = Mail Target
+#         ## 1 = MQTT Target
+#         ## 2 = Push Target
+#         ## 3 = Subject
+#         ## 4 = Body
+#         print "fix mqtt target check"
+#         # Send_Alert(Alert_Info[3], Alert_Info[4], None, Alert_Info[0], Alert_Info[1], Alert_Info[2])
 
 
-    def Run(self):
-        # Just sleep untill id is set
-        while self.Alert_Target_id == "" and self.Delete_Me == False:
-            # Sleep untill next check
-            time.sleep(self.Check_Delay)
+#     def Run(self):
+#         # Just sleep untill id is set
+#         while self.Alert_Target_id == "" and self.Delete_Me == False:
+#             # Sleep untill next check
+#             time.sleep(self.Check_Delay)
 
-        # When id is set start the timeout
-        while self.Delete_Me == False:
+#         # When id is set start the timeout
+#         while self.Delete_Me == False:
  
-            # Check if current time vs timeout at time
-            if self.Timeout_At < datetime.datetime.now():
-                self.Trigger_Timeout()
+#             # Check if current time vs timeout at time
+#             if self.Timeout_At < datetime.datetime.now():
+#                 self.Trigger_Timeout()
 
-            # Sleep untill next check
-            time.sleep(self.Check_Delay)
+#             # Sleep untill next check
+#             time.sleep(self.Check_Delay)
 
 
     
@@ -1850,12 +2512,10 @@ def Send_Push(Target, Subject, Message):
 
     # Send Push Notification 
     for Target_Push in Target_List:
-        print "PIK"
-        print "https://wirepusher.com/send?id=" + str(Target_Push) + URL_End
-        
-        r = requests.get("https://wirepusher.com/send?id=" + str(Target_Push) + URL_End)
+        URL = "https://wirepusher.com/send?id=" + str(Target_Push) + URL_End
+        Log("Debug", "System", "Push", 'Get URL: ' + URL)
+        r = requests.get(URL)
         r.status_code
-        
         Log("Debug", "System", "Push", 'Status: ' + str(r.status_code))
 
 
@@ -1871,7 +2531,7 @@ class Alert_Trigger():
         Log("Info", "Alert Trigger", "Checker", "Initializing")
 
         # Start checker thread
-        File_Change_Checker_Thread = threading.Thread(target=self.Checker, kwargs={})
+        File_Change_Checker_Thread = threading.Thread(name='DobbyAlertTriggerChecker', target=self.Checker, kwargs={})
         File_Change_Checker_Thread.daemon = True
         File_Change_Checker_Thread.start()
 
@@ -1914,17 +2574,6 @@ class Alert_Trigger():
     def Start_Trigger(self, id):
 
         Trigger_Info = self.Get_Trigger_Info(id)
-        # Open db connection
-        db_Connection = Open_db("Dobby")
-        db_Curser = db_Connection.cursor()
-
-        db_Curser.execute("SELECT Name, `MQTT Target` FROM Dobby.`Alert_Trigger` WHERE id="+ str(id) + ";")
-        Trigger_Info = db_Curser.fetchone()
-        # Trigger_Info[0] - Name
-        # Trigger_Info[1] - Target
-
-        # Close db connection
-        Close_db(db_Connection, db_Curser)
 
         # Log Event
         Log("Debug", "Alert Trigger", str(Trigger_Info[0]), "Starting")
@@ -1998,6 +2647,9 @@ class Alert_Trigger():
 
         Trigger_Change = False
 
+        if Payload.endswith(";"):
+            Payload = Payload[:-1]
+
         if float(MQTT_Payload_Clear) == float(MQTT_Payload_Trigger):
             Log("Error", "Alert Trigger", str(Name), 'Clear and Trigger payload is the same value')
             Close_db(db_Connection, db_Curser)
@@ -2066,7 +2718,7 @@ class Spammer:
 
     # How often does esch spammer read write to the db (sec)
     db_Refresh_Rate = 5
-    Loop_Delay = 0.500
+    Loop_Delay = 1
 
     def __init__(self):
         # Log event
@@ -2075,7 +2727,7 @@ class Spammer:
         self.Spammer_Dict = {}
 
         # Start checker thread
-        Spammer_Thread = threading.Thread(target=self.Checker, kwargs={})
+        Spammer_Thread = threading.Thread(name='DobbySpammerChecker', target=self.Checker, kwargs={})
         Spammer_Thread.daemon = True
         Spammer_Thread.start()
 
@@ -2144,7 +2796,7 @@ class Spammer:
                 Log("Debug", "Spammer", self.Name, 'Disabled - Not starting agent')
                 quit()
             self.OK_To_Kill = True
-            self.Kill = False
+            self.Kill_Command = False
 
             Log("Debug", "Spammer", self.Name, 'Initialization compleate')
 
@@ -2152,7 +2804,7 @@ class Spammer:
 
         # ========================= Agent - Start =========================
         def Start(self):
-            Spammer_Thread = threading.Thread(target=self.Run, kwargs={})
+            Spammer_Thread = threading.Thread(name='DobbySpammer', target=self.Run, kwargs={})
             Spammer_Thread.daemon = True
             Spammer_Thread.start()
 
@@ -2186,48 +2838,65 @@ class Spammer:
                 while self.Next_Ping > datetime.datetime.now():
                     time.sleep(Spammer.Loop_Delay)
 
-                if self.Kill is True:
+                if self.Kill_Command is True:
                     quit()
 
 
 # ---------------------------------------- Device Logger ----------------------------------------
 def Device_Logger(Topic, Payload, Retained):
 
+    # Ignore retinaed messages
     if Retained is True:
         return
 
-    db_Device_Log_Connection = Open_db(Dobby_Config['Log_db'])
-    db_Device_Log_Curser = db_Device_Log_Connection.cursor()
-
-    Device_Log_Table = "DeviceLog"
-
+    # Get device name
     Device_Name = Topic.split("/")
-    
-    Device_Name = Device_Name[3]
+    Device_Name = str(Device_Name[3])
 
+    Failed = False
+    
+    # Open db connection and create log db if needed
+    db_Connection = Open_db("DobbyDeviceLog", True)
+    if db_Connection is not None:
+        db_Curser = db_Connection.cursor()
+        db_Curser.execute("set autocommit = 1")
+    # Unable to connect to log db
+    else:
+        # Log event
+        Log("Debug", "Device Logger", "db", "Unable to connect")
+        Failed = True
+    # Try to log
     try:
-        db_Device_Log_Curser.execute('INSERT INTO `' + Dobby_Config['Log_db'] + '`.`' + Device_Log_Table + '` (Device, Topic, Payload) VALUES("' + Device_Name + '","' + Topic + '", "' + Payload + '");')
+        db_Curser.execute('INSERT INTO `DobbyDeviceLog`.`' + Device_Name + '` (Topic, Payload) VALUES("' + Topic + '", "' + Payload + '");')
     except (MySQLdb.Error, MySQLdb.Warning) as e:
         # 1146 = Table is missing
         if e[0] == 1146:
+            # Log event
+            Log("Debug", "Device Logger", Device_Name, "Missing db table creating it")
             try:
-                db_Device_Log_Curser.execute("CREATE TABLE `" + Dobby_Config['Log_db'] + "`.`" + Device_Log_Table + "` (`id` int(11) NOT NULL AUTO_INCREMENT, `DateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, `Device` varchar(75) NOT NULL, `Topic` varchar(75) NOT NULL, `Payload` varchar(200) NOT NULL, PRIMARY KEY (`id`))")
+                db_Curser.execute("CREATE TABLE `DobbyDeviceLog`.`" + Device_Name + "` (`id` int(11) NOT NULL AUTO_INCREMENT, `DateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, `Topic` varchar(75) NOT NULL, `Payload` varchar(200) NOT NULL, PRIMARY KEY (`id`))")
             except (MySQLdb.Error, MySQLdb.Warning) as e:
-                print e
                 # Error 1050 = Table already exists
+                # This miight happen if another device logger process triggered at almost the same time, this is NOT an error
                 if e[0] != 1050:
-                    # FIX add some error handling here
-                    print "DB WTF ERROR 1: " + str(e)
-
+                    Log("Error", "Device Logger", Device_Name, "db table created")
                     # Try to write log again
-                    db_Device_Log_Curser.execute('INSERT INTO `' + Dobby_Config['Log_db'] + '`.`' + Device_Log_Table + '` (Device, Topic, Payload) VALUES("' + Device_Name + '","' + Topic + '", "' + Payload + '");')
+                    db_Curser.execute('INSERT INTO `DobbyDeviceLog`.`' + Device_Name + '` (Topic, Payload) VALUES("' + Topic + '", "' + Payload + '");')
                 else:
-                    # FIX add some error handling here
-                    print "DB WTF ERROR 2:" + str(e)
+                    Log("Error", "Device Logger", Device_Name, "db error: " + str(e))
+                    Failed = True
+        else:
+            Log("Error", "Device Logger", "db", str(e))
+            Failed = True
 
-    Check_db_Length(db_Device_Log_Curser, Device_Log_Table)
+    # Max entries check
+    if Failed == False:
+        Table_Size_Check(db_Curser, Device_Name, Dobby_Config['Log_Length_Device_Logger'])
 
-    Close_db(db_Device_Log_Connection, db_Device_Log_Curser)
+
+    # Close db connection
+    Close_db(db_Connection, db_Curser)
+
 
 
 # ---------------------------------------- EP Logger ----------------------------------------
@@ -2235,7 +2904,7 @@ class EP_Logger:
 
     # How often does esch EP_Logger read write to the db (sec)
     db_Refresh_Rate = 5
-    Loop_Delay = 13.37 # 420 :-)
+    Loop_Delay = 3
 
     def __init__(self):
         # Log event
@@ -2244,7 +2913,7 @@ class EP_Logger:
         self.EP_Logger_Dict = {}
 
         # Start checker thread
-        EP_Logger_Thread = threading.Thread(target=self.Checker, kwargs={})
+        EP_Logger_Thread = threading.Thread(name='DobbyEPLoggerChecker', target=self.Checker, kwargs={})
         EP_Logger_Thread.daemon = True
         EP_Logger_Thread.start()
 
@@ -2307,16 +2976,25 @@ class EP_Logger:
             self.Last_Ping = EP_Logger_Info[5]
             self.Last_Modified = EP_Logger_Info[6]
 
-            self.EP_Logger_Client = ModbusClient(method = 'rtu', port = self.Serial_Port, baudrate = 115200)
-            
+
             # Can't log event before now if you want to use name
             Log("Debug", "EP Logger", self.Name, 'Initializing')
+
+            # Check if serial port exists
+            try:
+                os.stat(self.Serial_Port)
+            except OSError:
+                Log("Error", "EP Logger", self.Name, 'Serial port: ' + str(self.Serial_Port) + " does not exist. Quitting. Check the driver")
+                quit()
+            
+            # Create the Modbus client
+            self.EP_Logger_Client = pyModbus.ModbusSerialClient(method = 'rtu', port = self.Serial_Port, baudrate = 115200)            
             
             if self.Enabled == 0:
                 Log("Debug", "EP Logger", self.Name, 'Disabled - Not starting agent')
                 quit()
             self.OK_To_Kill = True
-            self.Kill = False
+            self.Kill_Command = False
 
             Log("Debug", "EP Logger", self.Name, 'Initialization compleate')
 
@@ -2324,7 +3002,7 @@ class EP_Logger:
 
         # ========================= Agent - Start =========================
         def Start(self):
-            EP_Logger_Thread = threading.Thread(target=self.Run, kwargs={})
+            EP_Logger_Thread = threading.Thread(name='DobbyEPLogger', target=self.Run, kwargs={})
             EP_Logger_Thread.daemon = True
             EP_Logger_Thread.start()
 
@@ -2334,29 +3012,38 @@ class EP_Logger:
 
             Address = int(str(Address), 16)
 
-            Modbus_Value = self.EP_Logger_Client.read_input_registers(Address, Count, unit=1)
+            Modbus_Value = ""
 
-            self.Value_Dict
+            try:
+                Modbus_Value = self.EP_Logger_Client.read_input_registers(Address, Count, unit=1)
+            except (pyModbus.ConnectionException):
+                Log("Debug", "EP Logger", self.Name, "Error reading: " + str(Address) + " Count: " + str(Count))
 
-            # Got a valid value
-            if "<class 'pymodbus.register_read_message.ReadInputRegistersResponse'>" == str(type(Modbus_Value)):
-                return Modbus_Value
-            # Something went wrong
-            else:
-                return "ERROR: " + str(Modbus_Value)
-
+            return Modbus_Value
 
         # ========================= Agent - Run =========================
         def Run(self):
 
+            # Make the Modbus client connect and check if we got connected
+            if self.EP_Logger_Client.connect() == False:
+                # Log event
+                Log("Error", "EP Logger", self.Name, "Unable to connect to Modbus quitting.")
+                quit()
+        
+            # Log event
             Log("Info", "EP Logger", self.Name, "Running")
-            self.EP_Logger_Client.connect()
 
-            # Start eternal loop
+            # Eternal loop
             while True:
                 # Check if its time to ping
                 if self.Next_Ping < datetime.datetime.now():
                     Log("Debug", "EP Logger", self.Name, "Ping")
+
+                    # Check if connection is up
+                    if self.EP_Logger_Client.connect() == False:
+                        # Log event
+                        Log("Error", "EP Logger", self.Name, "Modbus connection lost quitting.")
+                        quit()
 
                     self.Next_Ping = datetime.datetime.now() + datetime.timedelta(seconds=self.Log_Rate)
 
@@ -2420,10 +3107,10 @@ class EP_Logger:
                             Modbus_Value = self.Read_Input(Info['id'])
 
                         # Check for errors
-                        if type(Modbus_Value) is str:
-                            # FIX - ADD PROPER ERROR MESSAGE
-                            print "Modbus error: " + Modbus_Value
-                            print Info['Name']
+                        # Not pritty but it works
+                        if str(type(Modbus_Value)) == "<class 'pymodbus.exceptions.ModbusIOException'>":
+                            # Log event
+                            Log("Debug", "EP Logger", "Modbus", "Unable to read: " + Info['Name'] + " - " + str(Modbus_Value))
                             continue
 
                         # Battery Status
@@ -2563,7 +3250,7 @@ class EP_Logger:
                             else:
                                 json_State['Standby'] = True
                             # D1
-                            if D1_mask[0]&(Modbus_Value.registers[0]>>D1_mask[1]) == 0:
+                            if D1_mask[0]&(Modbus_Value.registers[0]>>D1_mask[1]) == 1:
                                 json_State['Normal'] = True
                             else:
                                 json_State['Fault'] = True
@@ -2621,10 +3308,11 @@ class EP_Logger:
                         if self.Value_Dict.get(Info['Name'], None) != Modbus_Value:
                             # Save value to value dict
                             self.Value_Dict[Info['Name']] = Modbus_Value
+                            Topic = Dobby_Config['System_Header'] + '/EP/' + str(self.Name) + '/' + str(Info['Name'])
                             # Publish
-                            MQTT_Client.publish(Dobby_Config['System_Header'] + '/EP/' + str(self.Name) + '/' + str(Info['Name']), payload=str(Modbus_Value), qos=0, retain=True)
+                            MQTT_Client.publish(Topic, payload=str(Modbus_Value), qos=0, retain=True)
                             # Log event
-                            Log("Debug", "EP Logger", "db", "Publish")
+                            Log("Debug", "EP Logger", "MQTT Publish", "Topic: " + Topic + " - Payload: " + str(Modbus_Value))
 
                         time.sleep(0.05)
 
@@ -2635,20 +3323,322 @@ class EP_Logger:
                 while self.Next_Ping > datetime.datetime.now():
                     time.sleep(EP_Logger.Loop_Delay)
 
-                if self.Kill is True:
+                if self.Kill_Command is True:
                     quit()
+
+
+
+# ---------------------------------------- Raspberry Monitor ----------------------------------------
+def Raspberry_Monitor():
+    
+    print 'Raspberry_Monitor'
+    print 'Raspberry_Monitor'
+    print 'Raspberry_Monitor'
+    
+    syslog_file = '/var/log/syslog'
+
+    syslog_file.seek(0,2) # Go to the end of the file
+    while True:
+        line = syslog_file.readline()
+        if not line:
+            time.sleep(0.1) # Sleep briefly
+            continue
+        yield line 
+
+    print 'Raspberry_Monitor'
+
+
+
+
+# ---------------------------------------- Backup() ----------------------------------------
+class Dobby_Backup:
+
+    def __init__(self):
+        # Log event
+        Log("Info", "Backup", "Checker", "Initializing")
+        
+        # Open db connection to get settings
+        db_Connection = Open_db("Dobby")
+        db_Curser = db_Connection.cursor()
+        # Get backup settings
+        self.Backup_Local_Path = Get_System_Config_Value(db_Curser, "Backup", "Local", "Path", QuitOnError=False)
+        self.Backup_Local_Interval = Get_System_Config_Value(db_Curser, "Backup", "Local", "Interval", QuitOnError=False)
+        self.Backup_Local_At = Get_System_Config_Value(db_Curser, "Backup", "Local", "At", QuitOnError=False)
+        # self.Backup_URL_FTP = Get_System_Config_Value(db_Curser, "Backup", "FTP", "URL", QuitOnError=False)
+        # Close db connection
+        Close_db(db_Connection, db_Curser)
+
+        self.Backup_Enabeled = True
+        self.Loop_Delay = 1
+
+        self.Backup_Local_At = self.Time_String_datetime_time(self.Backup_Local_At)
+
+        # Check what we need to disabled backup
+        if self.Backup_Local_Path == '' or self.Backup_Local_Path == None:
+            # Mark backup as disabeled
+            self.Backup_Enabeled = False
+            # Log event
+            Log("Info", "Backup", "Checker", "'Backup - Local - Path' not set, backup disabled")
+            # Do nothing
+            return
+        # check if we have the other needed variables
+        elif self.Backup_Local_Interval == '' or self.Backup_Local_Interval == None:
+            # Mark backup as disabeled
+            self.Backup_Enabeled = False
+            # Log event
+            Log("Error", "Backup", "Checker", "'Backup - Local - Interval' not set, cannot enable backup")
+            # Do nothing
+            return
+        elif self.Backup_Local_At == '' or self.Backup_Local_At == None:
+            # Mark backup as disabeled
+            self.Backup_Enabeled = False
+            # Log event
+            Log("Error", "Backup", "Checker", "'Backup - Local - At' not set, cannot enable backup")
+            # Do nothing
+            return
+
+        # Log event
+        Log("Debug", "Backup", "Checker", "Enabling backup")
+
+        # Check that the path has a / at the end
+        if self.Backup_Local_Path.endswith("/") == False:
+            self.Backup_Local_Path = self.Backup_Local_Path + "/"
+
+        # Needed variables
+        self.Quit = False
+
+        # Check if backup path exists if not make it
+        if not os.path.exists(self.Backup_Local_Path):
+            # Log event
+            Log("Debug", "Backup", "Checker", "Backup dir missing, creating dir: " + str(self.Backup_Local_Path))
+            # Create dir
+            os.makedirs(self.Backup_Local_Path)
+            # Check if the dir got created
+            if not os.path.exists(self.Backup_Local_Path):
+                # Log event
+                Log("Error", "Backup", "Checker", "Unable to create backup dir: '" + str(self.Backup_Local_Path) + "' - Cannot enable backup")
+                # Stop because we cant backup without a dir to do it to
+                return
+
+        # Get last backup date based on folder names if avalible
+        Backup_Dir_List = glob.glob(self.Backup_Local_Path + "*/")
+
+
+        # No backups in backup dir, running backup at backup today
+        if Backup_Dir_List == []:
+            # Log event
+            Log("Debug", "Backup", "Checker", "No backups in dir assuming no backups have been done, running backup today")
+
+            # Set Backup_Local_At to when we need to run the backup
+            self.Backup_Local_At = datetime.datetime.combine(datetime.datetime.now().date(), self.Backup_Local_At)
+
+        # Sart checker thread
+        File_Change_Checker_Thread = threading.Thread(target=self.Checker, kwargs={})
+        File_Change_Checker_Thread.daemon = True
+        File_Change_Checker_Thread.start()
+
+
+    # Converts a 'HH:MM' string to datetime.datetime.time
+    def Time_String_datetime_time(self, Time_String):
+
+        # Split to check if we got a valid HH and MM
+        Time_String = Time_String.split(':')
+        # Convert to int
+        Time_String[0] = int(Time_String[0])
+        Time_String[1] = int(Time_String[1])
+        # Check if valid HH
+        if Time_String[0] < 0 or Time_String[0] > 23:
+            return None
+        # Check if valid MM
+        if Time_String[0] < 0 or Time_String[0] > 59:
+            return None
+    
+        # Add string back together to match HH:MM
+        Time_String = str(Time_String[0]) + ":" + str(Time_String[1])
+    
+        # Convert time string to datetime.time
+        return datetime.time(*map(int, Time_String.split(':')))
+        
+
+    def Checker(self):
+        # start loop untill told to quit
+        while self.Quit is False:
+            if datetime.datetime.now() > self.Backup_Local_At:
+                print "time to backup"
+                print "time to backup"
+                print "time to backup"
+                print "time to backup"
+                print "time to backup"
+                print "time to backup"
+                print "time to backup"
+                print "time to backup"
+
+
+            # Sleep for a bit
+            time.sleep(self.Loop_Delay)
+
+
+        # When we get to here we have been told to quit so shutdown all threads and db connectiongs and log shutdown
+
+        # Log event
+        Log("Info", "Backup", "Checker", "Stopped")
+        
+
+    def Run_db_Backup(self):
+        DB_NAME = 'Dobby'
+
+        Log("Info", "Backup", "Checker", "db Backup Starting")
+        
+        # Getting current DateTime to create the separate backup folder like "20180817-123433".
+        DATETIME = time.strftime('%Y%m%d-%H%M%S')
+        Backup_Path_Today = self.Backup_Path + '/' + DATETIME
+        
+        # Checking if backup folder already exists or not. If not exists will create it.
+        try:
+            os.stat(Backup_Path_Today)
+        except:
+            os.mkdir(Backup_Path_Today)
+        
+        # Code for checking if you want to take single database backup or assinged multiple backups in DB_NAME.
+        if os.path.exists(DB_NAME):
+            file1 = open(DB_NAME)
+            multi = True
+        else:
+            multi = False
+        
+        # Log event
+        Log("Debug", "Backup", "Checker", "Starting backup of db: " + str(DB_NAME))
+        
+        # Starting actual database backup process.
+        if multi:
+            in_file = open(DB_NAME,"r")
+            flength = len(in_file.readlines())
+            in_file.close()
+            p = 1
+            dbfile = open(DB_NAME,"r")
+        
+            while p <= flength:
+                db = dbfile.readline()   # reading database name from file
+                db = db[:-1]         # deletes extra line
+                dumpcmd = "mysqldump -h localhost -u dobby -pHereToServe " + db + " > " + pipes.quote(Backup_Path_Today) + "/" + db + ".sql"
+                os.system(dumpcmd)
+                # gzipcmd = "gzip " + pipes.quote(Backup_Path_Today) + "/" + db + ".sql"
+                # os.system(gzipcmd)
+                p = p + 1
+            dbfile.close()
+        else:
+            db = DB_NAME
+            dumpcmd = "mysqldump -h localhost -u dobby -pHereToServe " + db + " > " + pipes.quote(Backup_Path_Today) + "/" + db + ".sql"
+            os.system(dumpcmd)
+            # gzipcmd = "gzip " + pipes.quote(Backup_Path_Today) + "/" + db + ".sql"
+            # os.system(gzipcmd)
+
+        Log("Debug", "Backup", "Checker", "Local db backup created")
+        
+        # Create temp string of system var
+        # FIX - Load from dc each time
+        Backup_URL_FTP_String = Backup_URL_FTP
+
+        # Split URL it to verious parts
+        # ftp://dobby:heretoserve@18.188.134.96/home/dobby/backup/
+        Backup_URL_FTP_String = Backup_URL_FTP_String.replace('ftp://', '')
+
+        # Username
+        Backup_URL_FTP_String = Backup_URL_FTP_String.split(':')
+        FTP_Username = Backup_URL_FTP_String[0]
+        # Remove username from string
+        Backup_URL_FTP_String = Backup_URL_FTP_String[1].split('@')
+
+        # Password
+        FTP_Password = Backup_URL_FTP_String[0]
+        
+        # FTP Host
+        FTP_Host = Backup_URL_FTP_String[1].split('/')
+        FTP_Host = FTP_Host[0]
+
+        # FTP Remote Dir
+        FTP_Remote_Dir = Backup_URL_FTP_String[1].replace(FTP_Host, '', 1)
+
+        # Open a ftp connection
+        FTP_Connection = ftplib.FTP(FTP_Host, FTP_Username, FTP_Password)
+
+        # Check if dir exists on Backup FTP
+        FTP_Upload_Dir(FTP_Connection, Backup_Path_Today, FTP_Remote_Dir)
+
+        # Close FTP Connection
+        FTP_Connection.quit()
+
+        Log("Info", "Backup", "Checker", "db Backup Compleate")
+
+
+    def Run_SD_Backup(self):
+        Log("Info", "Backup", "Checker", "SD Backup Starting")
+        Log("Warning", "Backup", "Checker", "System might be slow due to backup")
+        
+        # Getting current DateTime to create the separate backup folder like "20180817-123433".
+        DATETIME = time.strftime('%Y%m%d-%H%M%S')
+        Backup_Path_Today = self.Backup_Path + '/' + DATETIME
+        
+        # Checking if backup folder already exists or not. If not exists will create it.
+        try:
+            os.stat(Backup_Path_Today)
+        except:
+            os.mkdir(Backup_Path_Today)
+        
+        # Log event
+        Log("Debug", "Backup", "Checker", "Starting backup SD Card")
+        
+        SD_Backup_String = "sudo dd if=/dev/mmcblk0p2 of=" + Backup_Path_Today + "/" + str(socket.gethostname() + "_" + time.strftime('%Y-%m-%d')) + ".img bs=1M"
+        os.system(SD_Backup_String)
+        
+        Log("Debug", "Backup", "Checker", "Local backup created")
+        
+        # Create temp string of system var
+        # FIX - Load from dc each time
+        Backup_URL_FTP_String = Backup_URL_FTP
+
+        # Split URL it to verious parts
+        Backup_URL_FTP_String = Backup_URL_FTP_String.replace('ftp://', '')
+
+        # Username
+        Backup_URL_FTP_String = Backup_URL_FTP_String.split(':')
+        FTP_Username = Backup_URL_FTP_String[0]
+        # Remove username from string
+        Backup_URL_FTP_String = Backup_URL_FTP_String[1].split('@')
+
+        # Password
+        FTP_Password = Backup_URL_FTP_String[0]
+        
+        # FTP Host
+        FTP_Host = Backup_URL_FTP_String[1].split('/')
+        FTP_Host = FTP_Host[0]
+
+        # FTP Remote Dir
+        FTP_Remote_Dir = Backup_URL_FTP_String[1].replace(FTP_Host, '', 1)
+
+        # Open a ftp connection
+        FTP_Connection = ftplib.FTP(FTP_Host, FTP_Username, FTP_Password)
+
+        # Check if dir exists on Backup FTP
+        FTP_Upload_Dir(FTP_Connection, Backup_Path_Today, FTP_Remote_Dir)
+
+        # Close FTP Connection
+        FTP_Connection.quit()
+
+        Log("Info", "Backup", "Checker", "Backup Compleate")
+
 
 
 # ---------------------------------------- Init ----------------------------------------
 Dobby_init()
+
+MQTT_Client_gBridge = gBridge_Trigger()
 
 MQTT_init()
 
 Alert_Trigger()
 
 Action_Trigger()
-
-MQTT_Client_gBridge = gBridge_Trigger()
 
 Spammer()
 
@@ -2657,6 +3647,12 @@ Log_Trigger()
 Counters()
 
 EP_Logger()
+
+# Timeouts = Dobby_Timeouts()
+
+# Raspberry_Monitor()
+
+# Backup = Dobby_Backup()
 
 # ---------------------------------------- Loop ----------------------------------------
 # Start MQTT Loop

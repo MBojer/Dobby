@@ -1,15 +1,41 @@
-f = open('Dobby.json')
+f = open('boot.py')
 f.read()
 f.close()
 
+import os
+os.listdir()
 
 
+import os
+os.remove('lib/dobbylib.py')
+
+import os
+os.remove('Dobby.json')
+
+print('   Free memory: ' + str(gc.mem_free()))
+
+
+{"Hostname" : "Test", "WiFi_SSID" : "NoInternetHere", "WiFi_Password" : "NoPassword1!", "MQTT_Broker" : "192.168.8.2", "MQTT_Username" : "DasBoot", "MQTT_Password" : "NoSinking", "System_Header" : "/Boat"}
+
+{"0": {"Pin": "D4", "Refresh_Rate": 5, "Average": true}, "77": {"Pin": "D4", "Refresh_Rate": 5, "Average": true}}
+
+f = open('conf/dht.json')
+f.read()
+f.close()
+
+f = open('conf/device.json')
+f.read()
+f.close()
 
 import json
 
 f = open('Dobby.json', 'r')
 c = ujson.loads(f.readall())
 
+0 - debug
+1 - info
+2 - warning
+3 - error
+4 - critical
+5 - fatal
 
-
-parsed = ujson.loads(f)
