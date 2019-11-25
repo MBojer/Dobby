@@ -1,0 +1,166 @@
+// device
+{
+  "Hostname": "Test",
+  "WiFi_SSID": "NoInternetHere",
+  "WiFi_Password": "NoPassword1!",
+  "MQTT_Broker": "192.168.8.2",
+  "MQTT_Username": "DasBoot",
+  "MQTT_Password": "NoSinking",
+  "System_Header": "/Boat",
+  "Log_Level": 1
+}
+{"Hostname":"Test","WiFi_SSID":"NoInternetHere","WiFi_Password":"NoPassword1!","MQTT_Broker":"192.168.8.2","MQTT_Username":"DasBoot","MQTT_Password":"NoSinking","System_Header":"/Boat","Log_Level":1}
+// "Log_Level" : 1 
+//     // Optional
+//     // 0 = Debug
+//     // 1 = (Default) Info
+//     // 2 = Warning
+//     // 3 = Error
+//     // 4 = Critical
+//     // 5 = Fatal
+
+// dht
+{"LivingRoom": {"Pin":"D4", "Type": 22, "Average": 50, "Round": 2}}
+
+// Button
+{
+  "BackDoor": {
+    "Pin": "D1",
+    "Trigger": 1,
+    "Disregard": 150,
+    "Ignore": 2000,
+    "Message": [
+      "/OnTopic",
+      "On Payload"
+    ],
+    "Relay": {
+      "Name": "Pump",
+      "State": "toggle"
+    }
+  }
+}
+{"BackDoor":{"Pin":"D1","Trigger":1,"Disregard":150,"Ignore":2000,"Message":["/OnTopic","On Payload"],"Relay":{"Name":"Pump","State":"toggle"}}}
+// * = Optional
+// Note: A message is always published when the button is pressed, in /Log/Debug
+// Pin: Wemos pin name fx: D1
+// Trigger:
+//      1 = FALLING: When pin starts to fall aka triggers on press
+//      2 = RISING: When pin start to rise aka trigger on release
+// * Disregard: If a press occured again within this time the press is disregarded.
+//              If a device holds a relay and the power supplied is not sufficient the butten migh register a press when the relay is turned on
+//              This setting should help solve that problem
+//              Default: 150
+// * Ignore: How long to ignore the button before the next push is registered
+// * Message: MQTT Topic and Payload sendt when button is pressed
+// * Relay: - Change state on a on device (local) relay
+//      Name - Name of local relay
+//      State - Options = on, off, toggle
+
+
+// Relay
+// "Pin": Wemos Pin Name fx: D1
+// "Flip": If True Flips the output so if relay is on (1) the pin will be set to off (0)
+
+// "Init": Optional - Sets the relay initial "State": 'On' or 'Off'
+// "Auto": Optional - Sets the relay to "State": 'On' or 'Off' timeout is reached
+//      "State": Takes flip into account of enabeled - Values: Off, On
+//      "Time": Timeout in seconds
+{
+    "Pump": {
+      "Pin": "D4",
+      "Flip": true,
+      "Init": false,
+      "Auto": {
+        "State": "on",
+        "Time": 10
+      }
+    }
+}
+{"Pump":{"Pin":"D4","Flip":true,"Auto":{"State":"on","Time":10}}}
+
+
+
+
+// Switch
+// Connector one pin to Ground and the onther to the pin specified
+// * = Optional
+// Note: A message is always published when the button is pressed, in /<System Header>/Log/Debug/Switch/<Switch Name>
+
+// Name: Name of the switch
+
+// Pin: Wemos pin name fx: D1
+
+// * PullUp: true/false
+//      default = true
+//      true = Enable the internal pullup resistor
+//      false = Disable the internal pullup resistor
+//          Remember a pullup resister if you disable the internal resistor
+//          If no pullup resistor is used it might resoult in flapping
+
+// * For: <milliseconds>
+//      If set the switch has to stay in either on or off for the  ammoung of milliseconds before the state change is registered
+//      If a switch has a tendance to flap set this value
+//      On: ms before state change is reported
+//      Off: ms before state change is reported
+
+// * Message - On: MQTT Topic and Payload sendt when button is pressed.
+// * Message - Off: MQTT Topic and Payload sendt when button is pressed.
+
+// * Relay:
+//      Change state of arelay on device (local attached)
+//      Name - Name of local relay
+//      State - Options = on, off, toggle
+
+{"FloatSwitch":{"Pin":"D1","PullUp":true,"For":{"On":250,"Off":1500},"Message":{"On":{"Topic":"/OnTarget","Payload":"Switch ON"},"Off":{"Topic":"/OffState","Payload":"Switch Off"}},"Relay":{"On":{"Name":"Pump","State":"On"},"Off":{"Name":"Pump","State":"Off"}}}}
+{
+  "FloatSwitch": {
+    "Pin": "D1",
+    "PullUp": true,
+    "For": {
+      "On": 250,
+      "Off": 1500
+    },
+    "Message": {
+      "On": {
+        "Topic": "/OnTarget",
+        "Payload": "Switch ON"
+      },
+      "Off": {
+        "Topic": "/OffState",
+        "Payload": "Switch Off"
+      }
+    },
+    "Relay": {
+      "On": {
+        "Name": "Pump",
+        "State": "On"
+      },
+      "Off": {
+        "Name": "Pump",
+        "State": "Off"
+      }
+    }
+  }
+}
+
+// Dimmer
+// Name - Referance name
+// Pin - Wemos pin name fx: D1
+// MaxOn - How long can the dimmer max be on for
+// Fade Jump: How many % to jump between delays
+// Fade Delay: How many ms to ways between jumps
+
+{"Main":{"Pin":"D1","MaxOn":"30s","Fade":{"Jump":1,"Delay":25}},"Mood":{"Pin":"D2"}}
+{
+  "Main": {
+    "Pin": "D1",
+    "MaxOn": "30s",
+    "Fade": {
+      "Jump": 1,
+      "Delay": 25
+    }
+  },
+  "Mood": {
+    "Pin": "D2"
+  }
+}

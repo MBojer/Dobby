@@ -565,6 +565,14 @@ def MQTT_Commands(Topic, Payload):
         # Power_Thread.start()
         return
 
+    elif Topic.endswith("DateTime") is True:
+        # Returns datetime string to set RTC.datetime in micropython
+        # Payload contrains hostname
+        # Publish datetime string to Dobby_Config['System_Header'] + "/Commands/" + Device_Name
+        # Device_Name = payload
+        MQTT_Client.publish(Dobby_Config['System_Header'] + "/Commands/" + Payload, payload="datetime " + str(datetime.datetime.now()), qos=0, retain=False)
+
+
     # elif "KeepAliveMonitor" in Topic:
     #     MQTT_Commands_KeepAliveMontor(Topic, Payload)
     #     return
@@ -1705,7 +1713,13 @@ class gBridge_Trigger():
         self.MQTT_Connected_gBridge = False
 
         # Connect to broker
-        self.MQTT_Client.connect(self.MQTT_Broker, port=MQTT_Port, keepalive=60, bind_address="")
+        try:
+            self.MQTT_Client.connect(self.MQTT_Broker, port=MQTT_Port, keepalive=60, bind_address="")
+        except socket.error as e:
+            # FIX - Check if it reconnects on its own
+            # Log error
+            Log("Error", "gBridge", "MQTT - gBridge", "Error on connect: " + str(e))
+
 
         # Spawn thread for MQTT Client Loop
         MQTTC_Thread = threading.Thread(name='DobbygBridgeMQTTClient', target=self.MQTT_Client_Loop)

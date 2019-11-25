@@ -1,4 +1,28 @@
+config save switch {"LightSwitch":{"Pin":"D1","For":250,"PullUp":true,"Message":{"On":{"Topic":"/OnTarget","Payload":"Switch ON"},"Off":{"Topic":"/OffState","Payload":"Switch ON"}},"Relay":{"Name":"Pump","State":"toggle"}}}
+
+
+config save relay {"Pump":{"Pin":"D4","Flip": true, "Auto":{"State":"off","Time":5}}}
+
+https://wirepusher.com/send?id=KSjcmpg8j&title=MPYtest&message=fromESP&type=Alert
+
+response = urequests.get('https://wirepusher.com/send?id=KSjcmpg8j&title=MPYtest&message=fromESP&type=Alert')
+response = urequests.post('https://wirepusher.com/send?id=KSjcmpg8j&title=MPYtest&message=fromESP&type=Alert')
+print(type(response))
+
+
+
+make clean && make PORT=/dev/ttyUSB0 deploy && ~/piusb0.sh
+
+Timer = machine.Timer(-1)
+Timer.init(period=2000, mode=Timer.PERIODIC, callback=lambda t:print(2))
+Timer.deinit()
+
+
 f = open('boot.py')
+f.read()
+f.close()
+
+f = open('main.py')
 f.read()
 f.close()
 
@@ -10,6 +34,9 @@ import os
 os.remove('lib/dobbylib.py')
 
 import os
+os.remove('main.py')
+
+import os
 os.remove('Dobby.json')
 
 print('   Free memory: ' + str(gc.mem_free()))
@@ -19,7 +46,7 @@ print('   Free memory: ' + str(gc.mem_free()))
 
 {"0": {"Pin": "D4", "Refresh_Rate": 5, "Average": true}, "77": {"Pin": "D4", "Refresh_Rate": 5, "Average": true}}
 
-f = open('conf/dht.json')
+f = open('conf/button.json')
 f.read()
 f.close()
 

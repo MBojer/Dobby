@@ -1,0 +1,21 @@
+# go to home dir
+cd
+# install dependencies
+sudo apt-get update
+sudo apt-get install make unrar-free autoconf automake libtool gcc g++ gperf flex bison texinfo gawk ncurses-dev libexpat-dev python-dev python python-serial sed git unzip bash help2man wget bzip2 libtool-bin build-essential
+# get and make esp-open-sdk
+git clone --recursive https://github.com/pfalcon/esp-open-sdk.git
+cd esp-open-sdk
+make
+# Add to path
+echo PATH="$PATH:$HOME/esp-open-sdk/xtensa-lx106-elf/bin" >> ~/.profile
+# go to home dir
+cd
+# get micropython for esp8266
+git clone https://github.com/micropython/micropython.git
+# update submodules
+cd micropython
+git submodule update --init
+make -C mpy-cross
+cd ports/esp8266
+make
