@@ -32,9 +32,10 @@ def Loader():
     # No errors on import
     else:
         # Try to load the config
-        Config = DobbyConfig.Load(Config_Name = 'device', Delete_On_Error = False)
-        # Check if we loaded a config
-        if Config is False:
+        try:
+            Config = DobbyConfig.Load(Config_Name = 'device', Delete_On_Error = False)        
+        except DobbyConfig.Error as e:
+            # On error run the cli
             print("\n\n\n   Unable to load Dobby - Missing 'device' config - Starting CLI\n\n\n")
             CLI_Run()
 

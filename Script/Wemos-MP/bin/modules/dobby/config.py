@@ -5,13 +5,8 @@ import gc
 
 
 # -------------------------------------------------- Config exception --------------------------------------------------
-class DobbyConfigError(Exception):
-    def __init__(self, Message, Errors):
-
-        super().__init__(Message)
-
-        # Should be a list of errors recived
-        self.Errors = Errors
+class Error(Exception):
+    pass
 
 
 # -------------------------------------------------- Config load --------------------------------------------------
@@ -26,24 +21,20 @@ def Load(Config_Name=None, Delete_On_Error=True, Full_Path=None):
 
     # Check if we got a path to load
     if Config_Name == None and Full_Path == None:
-        return {}
+        raise Error("Unable to read config, no config name or full path given")
     
+    if Full_Path == None:
+        Full_Path = '/conf/' + Config_Name
+
     # Check if we got a config store on local fs
     try:
-        if Full_Path != None:
-            f = open(Full_Path)
-        else:
-            f = open("/conf/" + Config_Name)
-        fs_Config = f.read()
-        f.close()
+        with open(Full_Path, 'r') as f:
+            Config = ujson.load(f)
+        return Config
 
     # No config store on fs or other error
-    except:
-        return False
-    
-    # Try to phrase json
-    try:
-        return_json = ujson.loads(fs_Config)
+    except OSError:
+        raise Error("Unable to read config path: " + Full_Path)
     except ValueError:
         # if fails, delete config file if told to do so
         if Delete_On_Error == True:
@@ -52,14 +43,10 @@ def Load(Config_Name=None, Delete_On_Error=True, Full_Path=None):
             else:
                 uos.remove("/conf/" + Config_Name)
             # return false to indicate failure
-        return False
-    
-    # return config dict    
-    return return_json
-    
+            raise Error("Bad config: " + Config_Name + " deleted the config file")
 
 # -------------------------------------------------------------------------------------------------------
-def Save(Config_Name, Config_Dict, Path='/conf'):
+def Save(Config_Name, Config, Path='/conf'):
     # Saves the provided config dict to a json /<Path>/<Config_Name>.json
 
     # Dont check path if its the default value
@@ -80,14 +67,23 @@ def Save(Config_Name, Config_Dict, Path='/conf'):
     if Config_Name.endswith('.json') == False:
         Config_Name = Config_Name + ".json"
 
+        
     # Try to write file
     try:
-        f = open(str(Path) + "/" + str(Config_Name), 'w')
-        f.write(ujson.dumps(Config_Dict))
-        f.close()
-    # PRoberly missing folder
+        # check if we got a string
+        if type(Config) is str:
+            # Check if json string is valid
+            Config = ujson.loads(Config)
+
+        # Write json to file is valid json
+        with open(Path + "/" + Config_Name, 'w') as f:
+            ujson.dump(Config , f)
+
+    except ValueError as e:
+        raise Error("Unable to save config, invalid json provided")
+
+    # Proberly missing folder
     except OSError as e:
-        Error_List = [e]
         # Missing dir
         if "Errno 2" in str(e):
             # Create missing dirs, we are not checking if they already exist just ignoreing the error
@@ -104,17 +100,17 @@ def Save(Config_Name, Config_Dict, Path='/conf'):
             # Try to write file again after creating needed dirs
             try:
                 # If it fails again return false
-                f = open(str(Path) + "/" + str(Config_Name), 'w')
-                f.write(ujson.dumps(Config_Dict))
-                f.close()
+                with open('distros.json', 'w') as f:
+                    ujson.dump(f)
+            # Raise error sunce we were unable to save config
             except:
-                return False
+                raise Error("Unable to save config")
             finally:
                 # If we get to here we didnt fail so return True to indicate file saved
                 return True
         
         # FIX - Better error handling
-        return False
+        raise Error("Unable to save config")
     
     # File save all ok return True
     return True

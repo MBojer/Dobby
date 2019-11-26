@@ -52,12 +52,18 @@ class Run:
         self.Log(1, 'System', 'Connecting to WiFi SSID: ' + self.Config['WiFi_SSID'])
         ## Disable AP
         self.ap0 = network.WLAN(network.AP_IF)
-        self.ap0.active(False)
+        # Check if AP is active
+        if self.ap0.active() == True:
+            # Disable ap if active
+            self.ap0.active(False)
+
         ## Setup wlan0
         self.wlan0 = network.WLAN(network.STA_IF)
         # Set wifi hostname
-        self.wlan0.config(dhcp_hostname=self.Config['Hostname'])
+        self.wlan0.config(dhcp_hostname=str(self.Config['Hostname']))
+        # Activate wlan0
         self.wlan0.active(True)
+        # Connect to wifi
         self.wlan0.connect(self.Config['WiFi_SSID'], self.Config['WiFi_Password'], )
 
         # Check if we connected
@@ -105,14 +111,15 @@ class Run:
         Config_List.remove('device.json')
         # Move relay to the front of the list if present
         ## try to remove
-        try:
-            Config_List.remove('relay.json')
-        ## if it fails do nothing
-        except ValueError as e:
-            pass
-        ## If we removed relay.json add it back at the beginning of the list
-        else:
-            Config_List.insert(0, 'relay.json')
+        for Entry in ['dimmer.json' , 'relay.json']:
+            try:
+                Config_List.remove(Entry)
+            ## if it fails do nothing
+            except ValueError as e:
+                pass
+            ## If we removed relay.json add it back at the beginning of the list
+            else:
+                Config_List.insert(0, Entry)
 
         ## Loop over names in config
         for Name in Config_List:
@@ -174,6 +181,7 @@ class Run:
 
 
     # ++++++++++++++++++++++++++++++++++++++++++++++++++ MISC ++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
 
     # -------------------------------------------------------------------------------------------------------
@@ -330,6 +338,19 @@ class Run:
             # reboot
             machine.reset()
             return
+    
+    
+        # ++++++++++++++++++++++++++++++++++++++++ Log level ++++++++++++++++++++++++++++++++++++++++
+        # Reboots the device
+        elif Payload.lower().startswith("log level ") == True:
+            # self.Is_Number will raise a ValueError if supplied log level is not number
+            try:
+                self.Config['Log_Level'] = self.Is_Number(Payload[10:])
+            except ValueError:
+                self.Log(2, "Commands", "Invalid log level: " + Payload[10:])
+            else:
+                self.Log(1, "Commands", "Log level set to: " + str(self.Config['Log_Level']))
+            return
 
         # ++++++++++++++++++++++++++++++++++++++++ Network ++++++++++++++++++++++++++++++++++++++++
         # # Pings a target
@@ -404,10 +425,9 @@ class Run:
                 Config_File = f.read()
                 f.close()
             except OSError:
-                self.Log(1, 'System', "Unable to read config: " + Config_Name + " path: " + Config_Path)
+                self.Log(2, 'System', "Unable to read config: " + Config_Name + " path: " + Config_Path)
                 return
-            # Generate json for payload
-            Config_File = ujson.loads(Config_File)
+
             # Log event - aka publish config
             self.Log(1, 'System', "Config: " + Config_Name + "\nContent: " + str(Config_File))
             return
@@ -437,32 +457,25 @@ class Run:
             if len(Payload.split(' ')) < 4:
                 self.Log(2, 'Commands', "Config save: Missing name")
                 return
-            # Check if we got a json string
-            if Payload.find('{') is -1 or Payload.find('}') is -1:
-                self.Log(2, 'Commands', "Config: Invalid json config string recived")
-                return
-            # Get config name
-            Config_Name = str(Payload.split(' ')[2])
 
+            # Var for of coding
+            Config_Name = Payload.split(' ')[2]
 
-            # Save config to string
-            Config_String = Payload[Payload.find("{"):Payload.rfind("}") + 1]
-            
+            # Remove everything untill first '{'
+            Config_String = Payload[Payload.index('{'):]
 
-            # Remove any \n
-            while '\n' in Config_String:
-                Config_String = Config_String.replace('\n', "")
-            # Remove any \r
-            while '\r' in Config_String:
-                Config_String = Config_String.replace('\r', "")
-            
-            # Save config dict to fs
-            f = open('/conf/' + Config_Name + ".json", 'w')
-            f.write(Config_String)
-            f.close()
-            # Log event
-            self.Log(1, 'System', "Config saved: " + str(Config_Name))
-            return
+            try:
+                # Pass to config module
+                DobbyConfig.Save(
+                    Config_Name,
+                    Config_String
+                )
+            except DobbyConfig.Error:
+                self.Log(3, 'System', "Unable to save config: " + Config_Name)
+            # No errors
+            else:
+                # Log event
+                self.Log(1, 'System', "Config saved: " + Config_Name)
         
         else:
             self.Log(1, 'System', "Unknown command: " + Payload)
@@ -815,6 +828,7 @@ class Run:
             
             # System Loops if configured aka not None
             for Name in self.Sys_Modules:
+                Error = None
                 # Run loop if present
                 try:
                     self.Sys_Modules[Name].Loop()
@@ -826,6 +840,9 @@ class Run:
                     # Save the error to var and contine so we delete the module and log the event
                     else:
                         Error = str(e)
+                # If we get a timer error do something about it
+                except self.Sys_Modules['Timer'].Timer_Error as e:
+                    Error = str(e)
                 finally:
                     # Check for errors
                     if Error != None:
@@ -839,7 +856,10 @@ class Run:
     # -------------------------------------------------------------------------------------------------------
     #Pin monitor
     class Dobby_Pin_Monitor:
-        
+        # -------------------------------------------------- Config exception --------------------------------------------------
+        class Error(Exception):
+            pass
+
         # -------------------------------------------------------------------------------------------------------
         def __init__(self, Dobby):
             # Create needed vars
@@ -853,36 +873,49 @@ class Run:
         # -------------------------------------------------------------------------------------------------------
         def Is_Free(self, Pin):
             # Check if pin is valid
-            if self.Valid_Pin(Pin) is False:
-                return False
+            # self.Valid_Pin will raise an error if not
+            self.Valid_Pin(Pin)
             # Check if pin is free
             if Pin in self.Pins:
-                self.Dobby.Log(2, "PinMonitor", "Pin: " + Pin + " owned by: " + self.Pins[Pin]['Owner'])
-                return False
-            # Pin Free
-            self.Dobby.Log(0, "PinMonitor", "Pin: " + Pin + " is free")
-            return True
-
-
-        # -------------------------------------------------------------------------------------------------------
-        def Reserve(self, Pin, Owner):
-            # Check if pin is free
-            if self.Is_Free(Pin) is False:
                 # Check if its indicator led owning the pin if so we can overwrite it
-                if self.Pins['D4']['Owner'] == 'IndicatorLED':
+                if Pin == "D4":
                     self.Dobby.Log(1, "PinMonitor", "Removed IndicatorLED as owner of pin: D4")
                     # dont return here since we want to reserve the pin
                 # Any other owner then IndicatorLED is failed
                 else:
-                    self.Dobby.Log(2, "PinMonitor", "Pin: " + Pin + " owned by: " + str(Owner))
-                    return False
+                    # Log error
+                    self.Dobby.Log(2, "PinMonitor", "Pin: " + Pin + " owned by: " + self.Pins[Pin]['Owner'])
+                    # Raise error
+                    raise self.Error("Pin: " + Pin + " owned by: " + self.Pins[Pin]['Owner'])
+            # Pin Free
+            else:    
+                self.Dobby.Log(0, "PinMonitor", "Pin: " + Pin + " is free")
+                return True
 
-            # Reserve pin
-            self.Pins[str(Pin)] = {'Owner': str(Owner)}
-            # log event
-            self.Dobby.Log(0, "PinMonitor", "Pin: " + Pin + " reserved for: " + str(Owner))
-            # return true after sucesfully reserving the pin
-            return True
+
+        # -------------------------------------------------------------------------------------------------------
+        def Reserve(self, Pin, Owner, Pull=False):
+            # Check if pin is free
+            # GPIO 16 aka D0 cannot have pull activated so fail if pull is requested active on D0
+
+            # If pull is false do nothing
+            if Pull == True:
+                # Check if we are dealing with pin D0
+                if Pin.lower() == 'd0':
+                    # Log event
+                    self.Dobby.Log(2, "PinMonitor", "Pin: " + Pin + " cannot have pull active, unable to reserve pin")
+                    # Raise error
+                    raise self.Error("Pin: " + Pin + " cannot have pull active, unable to reserve pin")
+
+            # Is free will raise an error if the pin is not free
+            # IndicatorLED will be overwriten if set
+            if self.Is_Free(Pin) == True:
+                # Reserve pin
+                self.Pins[str(Pin)] = {'Owner': str(Owner)}
+                # log event
+                self.Dobby.Log(0, "PinMonitor", "Pin: " + Pin + " reserved for: " + str(Owner))
+                # return true after sucesfully reserving the pin
+                return True
             
 
         # -------------------------------------------------------------------------------------------------------
@@ -935,11 +968,14 @@ class Run:
             elif Pin == "D8":
                 GPIO_Pin = 15
             # Note A0 is pin 0 as well as D3
-            elif "a0" in Pin:
+            elif "A0" in Pin:
                 GPIO_Pin = 0
             # if invalid string return false
             else:
-                return False
+                # Log event
+                self.Dobby.Log(2, "PinMonitor", "Invalid wemos Pin name: " + str(Pin))
+                # Raise error
+                raise self.Error("Invalid wemos Pin name: " + str(Pin))
             # Return value
             return GPIO_Pin
 
@@ -956,6 +992,8 @@ class Run:
                     self.Dobby.Log(0, "PinMonitor", "Valid GPIO number: " + str(Pin))
                     return True
             # Unknown pin
+            # Log event
             self.Dobby.Log(2, "PinMonitor", "Invalid pin: " + str(Pin))
-            return False
+            # Raise error
+            raise self.Error("Invalid pin: " + str(Pin))
 

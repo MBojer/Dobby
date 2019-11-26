@@ -22,6 +22,10 @@ f = open('boot.py')
 f.read()
 f.close()
 
+f = open('conf/relay.json')
+f.read()
+f.close()
+
 f = open('main.py')
 f.read()
 f.close()
@@ -37,7 +41,10 @@ import os
 os.remove('main.py')
 
 import os
-os.remove('Dobby.json')
+os.remove('conf/device.json')
+
+import os
+os.remove('conf/relay.json')
 
 print('   Free memory: ' + str(gc.mem_free()))
 

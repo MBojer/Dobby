@@ -45,7 +45,7 @@ class Init:
                 Name = Payload[0:Payload.index(" ")]
                 # Remember + 1 to not get space
                 self.Dimmers[Name].On_Message(Payload[Payload.index(" ") + 1:])
-            except IndexError as e:
+            except (KeyError, IndexError):
                 self.Dobby.Log(1, 'Dimmer', "Unknown Dimmer: " + Name)
 
             # return true so we end the for loop in dobby.main.MQTT_Handle_Incomming
@@ -107,7 +107,6 @@ class Init:
             # Stors current value in percent for later referance
             self.Percent = 0
 
-            # Load Optional config if any
             ## Fade
             if Config.get("Fade", None) != None:
                 # Save fade config to self.Fade
@@ -144,6 +143,42 @@ class Init:
                         False,
                         False
                     )
+
+
+            ## //////////////////// MaxOn \\\\\\\\\\\\\\\\\\\\
+            if Config.get("MaxOn", None) != None:
+
+                # Convert max on to ms
+                Max_ms = self.Dobby.Sys_Modules['Timer'].Time_To_ms(Config['MaxOn'])
+                # Check if we got a error in convertion
+                if Max_ms == None:
+                    # Log event - error
+                    self.Dobby.Log(0, "Dimmer/" + self.Name + "/MaxOn", "MaxOn not valid: " + str(Config['MaxOn']) + " - Disabling")
+                    
+                else:
+                    # Log event
+                    self.Dobby.Log(0, "Dimmer/" + self.Name + "/MaxOn", "MaxOn set to: " + str(Config['MaxOn']))
+
+                    # Check if the dobby.timer module is loaded
+                    self.Dobby.Timer_Init()
+
+                    # We will store the timer int MaxOn var if configured
+                    # Add a timer
+                    # 1 = Referance Name
+                    # 2 = Timeout
+                    # 3 = Callback
+                    # 4 = Argument
+                    # Note MaxOn is active by creating <state> key with referance to timer in MaxOn dict
+                    self.MaxOn = self.Dobby.Sys_Modules['Timer'].Add(
+                        self.Name + "-MaxOn",
+                        Max_ms,
+                        self.Set_Percent,
+                        Argument=0
+                    )
+            else:
+                self.MaxOn = None
+
+
             # Mark Dimmer as ok aka enable it
             self.OK = True
 
@@ -254,6 +289,17 @@ class Init:
             self.Pin.duty(self.Percent_To_Frequency(New_Percent))
             # Not current percent value
             self.Percent = New_Percent
+
+            # Check if MaxOn is configured
+            if self.MaxOn != None:
+                # if MaxOn is not None then its a timer we need to start if value is not 0 and stop of 0
+                # Stop timer
+                if self.Percent == 0:
+                    self.MaxOn.Stop()
+                # Start timer
+                else:
+                    self.MaxOn.Start(Callback=self.Set_Percent, Argument=0)
+            
             # Check if we need to log the event
             if Log_Event == True:
                 # Log peripheral

@@ -20,7 +20,22 @@
 //     // 5 = Fatal
 
 // dht
-{"LivingRoom": {"Pin":"D4", "Type": 22, "Average": 50, "Round": 2}}
+// * = Optional
+// Pin: Wemos pin name fx: D3
+// Type: 11 or 22
+// * Average: <n> - If enabeled a average will be calculated over the last <n> readings
+// * Round: <n> - Round to <n> didgtes after 0
+{
+  "LivingRoom": {
+    "Pin": "D4",
+    "Type": 22,
+    "Average": 50,
+    "Round": 2
+  }
+}
+
+
+
 
 // Button
 {
@@ -39,7 +54,6 @@
     }
   }
 }
-{"BackDoor":{"Pin":"D1","Trigger":1,"Disregard":150,"Ignore":2000,"Message":["/OnTopic","On Payload"],"Relay":{"Name":"Pump","State":"toggle"}}}
 // * = Optional
 // Note: A message is always published when the button is pressed, in /Log/Debug
 // Pin: Wemos pin name fx: D1
@@ -76,7 +90,6 @@
       }
     }
 }
-{"Pump":{"Pin":"D4","Flip":true,"Auto":{"State":"on","Time":10}}}
 
 
 
@@ -89,6 +102,10 @@
 // Name: Name of the switch
 
 // Pin: Wemos pin name fx: D1
+
+// * Flip: true/false
+//      default = false
+//        true = Flips the switch state aka on becomes off
 
 // * PullUp: true/false
 //      default = true
@@ -111,11 +128,11 @@
 //      Name - Name of local relay
 //      State - Options = on, off, toggle
 
-{"FloatSwitch":{"Pin":"D1","PullUp":true,"For":{"On":250,"Off":1500},"Message":{"On":{"Topic":"/OnTarget","Payload":"Switch ON"},"Off":{"Topic":"/OffState","Payload":"Switch Off"}},"Relay":{"On":{"Name":"Pump","State":"On"},"Off":{"Name":"Pump","State":"Off"}}}}
 {
   "FloatSwitch": {
     "Pin": "D1",
     "PullUp": true,
+    "Flip": true,
     "For": {
       "On": 250,
       "Off": 1500
@@ -149,8 +166,6 @@
 // MaxOn - How long can the dimmer max be on for
 // Fade Jump: How many % to jump between delays
 // Fade Delay: How many ms to ways between jumps
-
-{"Main":{"Pin":"D1","MaxOn":"30s","Fade":{"Jump":1,"Delay":25}},"Mood":{"Pin":"D2"}}
 {
   "Main": {
     "Pin": "D1",

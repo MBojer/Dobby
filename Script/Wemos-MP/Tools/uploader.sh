@@ -103,4 +103,4 @@ fi
 
 # Open serial connection
 echo start serial
-~/piusb0.sh
+picocom -b 115200 $Port
