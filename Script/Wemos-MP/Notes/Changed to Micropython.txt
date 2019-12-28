@@ -1,0 +1,17 @@
+PWM Flicker removal
+https://hackaday.io/project/12933-esp8266-geiger-counter/log/44406-micropython-10khz-soft-pwm
+nano ~/micropython/ports/esp8266/esppwm.c
+Replace:
+    #define PWM_FREQ_MAX 1000
+With:
+    #define PWM_FREQ_MAX 10000
+
+
+virus@LeLAp:~/micropython/ports/esp8266/boards$ nano esp8266.ld 
+
+{
+    dport0_0_seg : org = 0x3ff00000, len = 0x10
+    dram0_0_seg  : org = 0x3ffe8000, len = 0x14000
+    iram1_0_seg  : org = 0x40100000, len = 0x8000
+    irom0_0_seg  : org = 0x40209000, len = 0xFFFFF /* https://github.com/micropython/micropython/issues/2700 */
+}

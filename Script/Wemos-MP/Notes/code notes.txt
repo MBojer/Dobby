@@ -26,6 +26,10 @@ f = open('conf/relay.json')
 f.read()
 f.close()
 
+f = open('conf/ds18b20.json')
+f.read()
+f.close()
+
 f = open('main.py')
 f.read()
 f.close()

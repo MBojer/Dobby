@@ -1,4 +1,20 @@
-// device
+Device
+  Optional
+    gBridgeTopic:
+        If this is set, all subscribe and publishes will be mirrored
+        topic replaced as folles
+        <System Header>/<Hostname>/ = <self.gBridge>
+        We have to load this before mqtt so we know if we need to mirror topics
+
+  CPU_16:
+    Default: False - CPU Frequancy set to 8MHz
+    True: CPU Frequancy set to 16MHz
+
+  PWM_Frequancy:
+    Default: 1000
+    <n>: Set the global PWM Frequncy to this number
+   
+
 {
   "Hostname": "Test",
   "WiFi_SSID": "NoInternetHere",
@@ -7,9 +23,12 @@
   "MQTT_Username": "DasBoot",
   "MQTT_Password": "NoSinking",
   "System_Header": "/Boat",
-  "Log_Level": 1
+  "Log_Level": 1,
+  "gBridge_Topic": "gBridge/u18/",
+  "CPU_16": true,
+  "PWM_Frequancy": 10
 }
-{"Hostname":"Test","WiFi_SSID":"NoInternetHere","WiFi_Password":"NoPassword1!","MQTT_Broker":"192.168.8.2","MQTT_Username":"DasBoot","MQTT_Password":"NoSinking","System_Header":"/Boat","Log_Level":1}
+{"Hostname":"Test","WiFi_SSID":"NoInternetHere","WiFi_Password":"NoPassword1!","MQTT_Broker":"192.168.8.2","MQTT_Username":"DasBoot","MQTT_Password":"NoSinking","System_Header":"/Boat","Log_Level":1,"gBridge_Topic":"gBridge/u18/"}
 // "Log_Level" : 1 
 //     // Optional
 //     // 0 = Debug
@@ -24,13 +43,23 @@
 // Pin: Wemos pin name fx: D3
 // Type: 11 or 22
 // * Average: <n> - If enabeled a average will be calculated over the last <n> readings
+// * Rate: <n s/m/h> - Default: 10s - How fast we are reading the sensor if average is active
 // * Round: <n> - Round to <n> didgtes after 0
+// * Publish
+// *    State: <n s/m/h> - Publishes every <n> under DHT/<Name>/Humidity/State and DHT/<Name>/Temperature/State
+// *    json: <n s/m/h> - Publishes every <n> under DHT/<Name>/json/State
+
 {
-  "LivingRoom": {
+  "Bedroom": {
     "Pin": "D4",
     "Type": 22,
     "Average": 50,
-    "Round": 2
+    "Rate": "15s",
+    "Round": 2,
+    "Publish": {
+      "State": "30s",
+      "json": "5m"
+    }
   }
 }
 
@@ -83,10 +112,10 @@
     "Pump": {
       "Pin": "D4",
       "Flip": true,
-      "Init": false,
+      "Init": "On",
       "Auto": {
         "State": "on",
-        "Time": 10
+        "Time": "10s"
       }
     }
 }
@@ -178,4 +207,294 @@
   "Mood": {
     "Pin": "D2"
   }
+}
+
+
+
+// DS18B20
+// Pins:
+//    <Pin Name>: <Refresh Rate> - Refresh rate is <n>s/m/h - Add each pin with a sensor connected here
+
+// Name - Referance name
+// Pin - Wemos pin name fx: D1
+// * Publish
+// *    State: <n s/m/h> - Publishes every <n> under DS18B20/<Name>/Temperature/State
+// *    json: <n s/m/h> - Publishes every <n> under DS18B20/<Name>/json/State
+// * Relay
+// *    Name: <Relay Name> - Name of the local relay
+// *    State: <on/off/toggle> - State to set the relay to
+// * Message
+// *    Topic: <MQTT Topic> - Topic to publish under
+// *    Payload: <MQTT Payload> - Payload to send when temperature is reached
+{
+  "Pins": {
+    "D1": "1.5s"
+  },
+  "Heater": {
+    "id": "0x4d02189245748528",
+    "Publish": {
+      "State": "15s"
+    }
+  },
+  "Stove": {
+    "id": "0x470000071cbfe028",
+    "Publish": {
+      "State": "25s"
+    },
+    "Message": {
+      "10.5-50": {
+        "Topic": "/OnTarget",
+        "Payload": "Switch ON"
+      }
+    },
+    "Relay": {
+      "10.5-75": {
+        "Name": "Pump",
+        "State": "On"
+      }
+    }
+  }
+}
+
+
+// MPU6050
+// <Name>:
+//      SCL 
+//      SDA 
+//      INT 
+
+
+
+
+
+// Flow
+// <Name>:
+        // Pin
+        // TicksLiter: How many ticks goes to a liter
+        // * Publish_L: Publishes under <System Header>/<Hostname>/Flow/<Sensor Name>/State
+        // * Message: 
+{
+  "ColdWater": {
+    "Pin": "D7",
+    "TicksLiter": 520,
+    "Publish_L": 1,
+    "Message": {
+      "0-29": {
+        "Topic": "/TargetTopic",
+        "Payload": "Tank Low"
+      },
+      "30-100": {
+        "Topic": "/TargetTopic",
+        "Payload": "Tank Full"
+      }
+    },
+  }
+}
+
+
+// Pressure
+// Pin = What analog pin is the sensor connected to
+// Max = Sensor max in bar
+// Wemos D1 mini already has a voltage devider on A0 R1 = 100k R2 = 220k
+// So R3 is the 3rd resistor if present
+// (R1 + R2 + R3) * 0.0000001 = Max v out 
+
+{
+  "Main": {
+    "Pin": "A0",
+    "Min_Volt": 0.5,
+    "Max_Volt": 4.5,
+    "Max_Pressure": 6.89476,
+    "R3": 150000,
+    "Round": 2,
+    "Publish": {
+      "State": "5s"
+    },
+    "Message": {
+      "0-0.9": {
+        "Topic": "/TargetTopic",
+        "Payload": "Low Pressure"
+      },
+      "1-2.2": {
+        "Topic": "/TargetTopic",
+        "Payload": "Normal Pressure"
+      },
+      "2.3-3": {
+        "Topic": "/TargetTopic",
+        "Payload": "Normal Pressure"
+      },
+      "3.1-7": {
+        "Topic": "/TargetTopic",
+        "Payload": "Critical Pressure"
+      }
+    }
+  }
+}
+
+
+// Voltmeter
+// * Optional
+
+// * Rate - Default '0.5s' - How often the voltage is read
+{
+  "Main": {
+    "Pin": "IO35",
+    "R3": 200,
+    "Rate": "1337m"
+  }
+
+// Buzzer
+// * Optional
+{
+  "Main": {
+    "Pin": "IO26"
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Switch
+// Connector one pin to Ground and the onther to the pin specified
+// * = Optional
+// Note: A message is always published when the button is pressed, in /<System Header>/Log/Debug/Switch/<Switch Name>
+
+// Name: Name of the switch
+
+// Pin: Wemos pin name fx: D1
+// Trigger_At: What reading to consider on 
+
+// * Message - On: MQTT Topic and Payload sendt when button is pressed.
+// * Message - Off: MQTT Topic and Payload sendt when button is pressed.
+
+// * Relay:
+//      Change state of arelay on device (local attached)
+//      Name - Name of local relay
+//      State - Options = on, off, toggle
+
+// Dimmer same as relay
+
+
+{
+  "WorkLights": {
+    "Pin": "IO32", 
+    "Dimmer": {
+      "On": {
+        "Name": "WorkDimmer",
+        "State": "75"
+      },
+      "Off": {
+        "Name": "WorkDimmer",
+        "State": "0"
+      }
+    }
+  },
+  "MainLights": {
+    "Pin": "IO27",
+    "Trigger_At": "40",
+    "Message": {
+      "On": {
+        "Topic": "/OnTarget",
+        "Payload": "Lights ON"
+      },
+      "Off": {
+        "Topic": "/OffTarget",
+        "Payload": "Lights Off"
+      }
+    },
+    "Relay": {
+      "On": {
+        "Name": "RelayLights",
+        "State": "On"
+      },
+      "Off": {
+        "Name": "RelayLights",
+        "State": "Off"
+      }
+    }
+  }
+}
+
+
+
+
+// power
+// requires esp32
+// # Delay - how long to wait after turning off relay before marking as ok to turn off
+// # Used for letting the genny heat up and cool down before and after use
+
+// Flip and init sate is done in relay config
+// Contactor_Relay = Name of configured relay
+// Signal_Relay = Name of configured relay
+// * Delay - Default:"2s" - After Supply_Trigger is reached delay before contact on. When Supply switching to other source delay before sending off signal
+// No_Power - how long to wait after activating another source after on power is detected 
+{
+  "Push_id": "KSjcmpg8j",
+  "Output_0": {
+    "Name": "Mains",
+    "Contactor_Relay": "Output-Contactor",
+    "Supply_Voltmeter": "Output",
+    "Supply_Trigger": 2,
+    "No_Power": "2s",
+  },
+  "Input_0": {
+    "Name": "Inverter",
+    "Contactor_Relay": "Inverter-Contactor",
+    "Supply_Voltmeter": "Inverter",
+    "Supply_Trigger": 2,
+    "Signal_Relay": "Inverter-Signal",
+    "Uptime": "30s"
+  },
+  "Input_1": {
+    "Name": "Genny",
+    "Contactor_Relay": "Genny-Contactor",
+    "Supply_Voltmeter": "Genny",
+    "Supply_Trigger": 2,
+    "Signal_Relay": "Genny-Signal",
+    "Delay": "10s",
+    "Uptime": "30s"
+  },
+  "Input_2": {
+    "Name": "Shore",
+    "Contactor_Relay": "Shore-Contactor",
+    "Supply_Voltmeter": "Shore",
+    "Supply_Trigger": 2,
+    "Signal_Relay": "Shore-Signal",
+    "Delay": "10s",
+    "Uptime": "30s"
+  }
+}
+
+// Needed relays for above config
+// NOTE flip on Genny-Signal
+// "Alarm": {"Pin": "IO18"},
+{
+  "Output-Contactor": {"Pin": "IO22"},
+  "Inverter-Contactor": {"Pin": "IO27"},
+  "Inverter-Signal": {"Pin": "IO17"},
+  "Genny-Contactor": {"Pin": "IO25"},
+  "Genny-Signal": {"Pin": "IO16", "Flip": true},
+  "Shore-Contactor": {"Pin": "IO32"},
+  "Shore-Signal": {"Pin": "IO21"}
+}
+
+// Needed voltmeters for above config
+// Note read rate is set to 250 ms aka '0.25s'
+{
+  "Output": {"Pin": "SVN", "R3": 0, "Rate": "0.25s"},
+  "Inverter": {"Pin": "IO35", "R3": 0, "Rate": "0.25s"},
+  "Genny": {"Pin": "IO33", "R3": 0, "Rate": "0.25s"},
+  "Shore": {"Pin": "IO34", "R3": 0, "Rate": "0.25s"},
 }

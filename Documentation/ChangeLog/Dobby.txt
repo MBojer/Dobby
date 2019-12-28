@@ -1,3 +1,6 @@
+######################################## 102011 ########################################
+Converting gBridge to use local moquitto bridge in sted of connecting directly to server
+
 ######################################## 102010 ########################################
 -- Adding backup
 --- If System - Backup - Local is set anything but '' dobby will backup to the path specified

@@ -7,3 +7,13 @@ esptool.py --port /dev/ttyUSB0 --baud 460800 write_flash --flash_size=detect 0 b
 
 # upload modules
 ampy -p /dev/ttyUSB0
+
+esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 460800 write_flash -z 0x1000 
+
+
+upload to esp32
+esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 460800 --before default_reset --after hard_reset erase_flash
+
+esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 460800 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x8000 partitions2.bin 0xe000 boot_app0.bin 0x1000 bootloader.bin
+
+esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 460800 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x10000 firmware.bin

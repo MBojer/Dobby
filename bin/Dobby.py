@@ -51,7 +51,7 @@ Backup = None
 Start_Time = datetime.datetime.now()
 
 # System variables
-Version = 102010
+Version = 102011
 # First didget = Software type 1-Production 2-Beta 3-Alpha
 # Secound and third didget = Major version number
 # Fourth to sixth = Minor version number
@@ -93,7 +93,7 @@ Dobby_Config = {}
 # MQTT
 MQTT_Client = MQTT.Client(client_id="Dobby", clean_session=True)
 
-MQTT_Client_gBridge = ""
+# MQTT_Client_gBridge = ""
 
 # ---------------------------------------- MISC ----------------------------------------
 def Open_db(db="", Create_If_Missing=False):
@@ -1662,362 +1662,296 @@ def Send_Alert(id, Value=None, Subject=None, Text=None):
 
 
 
-# Form gBridge to local
-class gBridge_Trigger():
-    # How often the db is cheched for changes
-    Refresh_Rate = 5
+# # Form gBridge to local
+# class gBridge_Trigger():
+#     # How often the db is cheched for changes
+#     Refresh_Rate = 5
 
-    Active_Triggers = {}
+#     Active_Triggers = {}
 
-    # Create a MQTT client to connect to gBridge
-    MQTT_Client = MQTT.Client(client_id="Dobby", clean_session=True)
+#     Checker_Stop = False
 
-    MQTT_Broker = ""
-    MQTT_Base_Topic = ""
+#     def __init__(self):
+#         # Log event
+#         Log("Info", "gBridge Trigger", "Checker", "Initializing")
 
-    Checker_Stop = False
+#         # Open db connection get id, Last Modified
+#         db_Connection = Open_db("Dobby")
+#         db_Curser = db_Connection.cursor()
 
-    def __init__(self):
-        # Log event
-        Log("Info", "gBridge Trigger", "Checker", "Initializing")
+#         self.MQTT_Base_Topic = Get_System_Config_Value(db_Curser, "gBridge_Trigger", "MQTT", "Base Topic", False)
 
-        # Open db connection get id, Last Modified
-        db_Connection = Open_db("Dobby")
-        db_Curser = db_Connection.cursor()
+#         # Close db connection
+#         Close_db(db_Connection, db_Curser)
 
-        MQTT_User = Get_System_Config_Value(db_Curser, "gBridge_Trigger", "MQTT", "Username", False)
-        MQTT_Pass = Get_System_Config_Value(db_Curser, "gBridge_Trigger", "MQTT", "Password", False)
-        self.MQTT_Broker = Get_System_Config_Value(db_Curser, "gBridge_Trigger", "MQTT", "Broker", False)
-        MQTT_Port = Get_System_Config_Value(db_Curser, "gBridge_Trigger", "MQTT", "Port", False)
-        self.MQTT_Base_Topic = Get_System_Config_Value(db_Curser, "gBridge_Trigger", "MQTT", "Base Topic", False)
+#         # Variables to hold MQTT Broker connection statuses
+#         self.MQTT_Connected_Dobby = False
 
-        # Close db connection
-        Close_db(db_Connection, db_Curser)
+#         # Start checker thread
+#         File_Change_Checker_Thread = threading.Thread(name='DobbygBridgeChecker', target=self.Checker, kwargs={})
+#         File_Change_Checker_Thread.daemon = True
+#         File_Change_Checker_Thread.start()
 
-        # Setup the MQTT client for gBridge
-        # User / Pass
-        self.MQTT_Client.username_pw_set(MQTT_User, MQTT_Pass)
+
+#     # From local to gBridge
+#     def Trigger_Local(self, id, Topic, Payload):
+#         # Ignore "/set" messages to avoid message loops
+#         if "/set" in Topic:
+#             # Log event
+#             Log("Debug", "gBridge Trigger", str(self.Active_Triggers[id]['Name']), "Ignored - gBridge -> Dobby: " + str(Payload))
+#             return
+#         # Publish reply
+#         self.Publish_Reply(id, Topic, Payload)
+
+
+#     def Publish_Reply(self, id, Topic, Payload):
         
-        # Enable SSL
-        self.MQTT_Client.tls_set_context(context=None)
+#         Payload.replace(";", "")
 
-        # FIX - ADD MQTT Logging
-        # self.MQTT_Client.on_log = MQTT_On_Log
+#         # Log event
+#         Log("Debug", "gBridge Trigger", str(self.Active_Triggers[id]['Name']), "Dobby -> gBridge: " + str(Payload))
 
-        # Callbacks
-        self.MQTT_Client.on_connect = self.MQTT_On_Connect
-        self.MQTT_Client.on_disconnect = self.MQTT_On_Disconnect
-
-        # Variables to hold MQTT Broker connection statuses
-        self.MQTT_Connected_Dobby = False
-        self.MQTT_Connected_gBridge = False
-
-        # Connect to broker
-        try:
-            self.MQTT_Client.connect(self.MQTT_Broker, port=MQTT_Port, keepalive=60, bind_address="")
-        except socket.error as e:
-            # FIX - Check if it reconnects on its own
-            # Log error
-            Log("Error", "gBridge", "MQTT - gBridge", "Error on connect: " + str(e))
-
-
-        # Spawn thread for MQTT Client Loop
-        MQTTC_Thread = threading.Thread(name='DobbygBridgeMQTTClient', target=self.MQTT_Client_Loop)
-        MQTTC_Thread.daemon = True
-        MQTTC_Thread.start()
-
-        # Start checker thread
-        File_Change_Checker_Thread = threading.Thread(name='DobbygBridgeChecker', target=self.Checker, kwargs={})
-        File_Change_Checker_Thread.daemon = True
-        File_Change_Checker_Thread.start()
-
-
-    # From local to gBridge
-    def Trigger_Local(self, id, Topic, Payload):
-        # Ignore "/set" messages to avoid message loops
-        if "/set" in Topic:
-            # Log event
-            Log("Debug", "gBridge Trigger", str(self.Active_Triggers[id]['Name']), "Ignored - gBridge -> Dobby: " + str(Payload))
-            return
-        # Publish reply
-        self.Publish_Reply(id, Topic, Payload)
-
-
-    def Publish_Reply(self, id, Topic, Payload):
+#         # Temperature
+#         if Topic.endswith("/Humidity"):
+#             # Round Payload to nearest 0.5 to make google understand
+#             Payload = round(float(Payload)*2)/2
+#             MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/tempset-humidity/set", payload=str(Payload), qos=0, retain=False)
         
-        Payload.replace(";", "")
-
-        # Log event
-        Log("Debug", "gBridge Trigger", str(self.Active_Triggers[id]['Name']), "Dobby -> gBridge: " + str(Payload))
-
-        # Temperature
-        if Topic.endswith("/Humidity"):
-            # Round Payload to nearest 0.5 to make google understand
-            Payload = round(float(Payload)*2)/2
-            self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/tempset-humidity/set", payload=str(Payload), qos=0, retain=False)
+#         # Humidity
+#         elif Topic.endswith("/Temperature"):
+#             # Round Payload to nearest 0.5 to make google understand
+#             Payload = round(float(Payload)*2)/2
+#             MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/tempset-ambient/set", payload=str(Payload), qos=0, retain=False)
         
-        # Humidity
-        elif Topic.endswith("/Temperature"):
-            # Round Payload to nearest 0.5 to make google understand
-            Payload = round(float(Payload)*2)/2
-            self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/tempset-ambient/set", payload=str(Payload), qos=0, retain=False)
+#         # DS18B20
+#         elif "/DS18B20/" in Topic:
+#             # Round Payload to nearest 0.5 to make google understand
+#             Payload = round(float(Payload)*2)/2
+#             MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/tempset-ambient/set", payload=str(Payload), qos=0, retain=False)
         
-        # DS18B20
-        elif "/DS18B20/" in Topic:
-            # Round Payload to nearest 0.5 to make google understand
-            Payload = round(float(Payload)*2)/2
-            self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/tempset-ambient/set", payload=str(Payload), qos=0, retain=False)
-        
-        # Dimmer
-        else:
-            if str(Payload) == "0":
-                # On Off
-                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/onoff/set", payload="0", qos=0, retain=False)
-                # Brightness
-                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/brightness/set", payload="0", qos=0, retain=False)
-            else:
-                # On Off
-                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/onoff/set", payload="1", qos=0, retain=False)
-                # Brightness
-                self.MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/brightness/set", payload=str(Payload), qos=0, retain=False)
+#         # Dimmer
+#         else:
+#             if str(Payload) == "0":
+#                 # On Off
+#                 MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/onoff/set", payload="0", qos=0, retain=False)
+#                 # Brightness
+#                 MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/brightness/set", payload="0", qos=0, retain=False)
+#             else:
+#                 # On Off
+#                 MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/onoff/set", payload="1", qos=0, retain=False)
+#                 # Brightness
+#                 MQTT_Client.publish(self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/brightness/set", payload=str(Payload), qos=0, retain=False)
 
     
-    def MQTT_Subscribe_To(self, MQTT_Client, Topic):
-        Log("Debug", "gBridge Trigger", "MQTT", "Subscribing to topic: " + Topic)
-        self.MQTT_Client.subscribe(Topic)
-
-    def Local_MQTT_On_Connect(self):
-        Log("Debug", "gBridge Trigger", "MQTT", "Connected to local broker")
-        self.MQTT_Connected_Dobby = True 
-   
-    def Local_MQTT_On_Disconnect(self):
-        Log("Warning", "gBridge Trigger", "MQTT", "Lost connection to local broker")
-        self.MQTT_Connected_Dobby = False
-   
-
-    def MQTT_On_Disconnect(self, MQTT_Client, userdata, rc):
-        Log("Warning", "gBridge", "MQTT", "Disconnected from broker : " + str(self.MQTT_Broker) + " with result code " + str(rc))
-        self.MQTT_Connected_gBridge = False
-
-
-    def MQTT_On_Connect(self, MQTT_Client, userdata, flags, rc):
-        Log("Info", "gBridge Trigger", "MQTT", "Connected to broker " + str(self.MQTT_Broker) + " with result code " + str(rc))
-        self.MQTT_Connected_gBridge = True 
-
-
-    # ---------------------------------------- # On message callbacks - Spawns threads ----------------------------------------
-    def MQTT_On_Message_Callback(self, mosq, obj, msg):
+#     # ---------------------------------------- # On message callbacks - Spawns threads ----------------------------------------
+#     def MQTT_On_Message_Callback(self, mosq, obj, msg):
  
-        Message_Thread = threading.Thread(name='DobbygBridgeOnMessage', target=self.MQTT_On_Message, kwargs={"Topic": msg.topic, "Payload": msg.payload, "Retained": msg.retain})
-        Message_Thread.daemon = True
-        Message_Thread.start()
-        return
+#         Message_Thread = threading.Thread(name='DobbygBridgeOnMessage', target=self.MQTT_On_Message, kwargs={"Topic": msg.topic, "Payload": msg.payload, "Retained": msg.retain})
+#         Message_Thread.daemon = True
+#         Message_Thread.start()
+#         return
 
-    # ---------------------------------------- MQTT On Message ----------------------------------------
-    def MQTT_On_Message(self, Topic, Payload, Retained):
+#     # ---------------------------------------- MQTT On Message ----------------------------------------
+#     def MQTT_On_Message(self, Topic, Payload, Retained):
 
-        # Ignore "/set" messages to avoid message loops
-        if "/set" in Topic:
-            return
+#         # Ignore "/set" messages to avoid message loops
+#         if "/set" in Topic:
+#             return
 
-        # Open db connection
-        db_Connection = Open_db("Dobby")
-        db_Curser = db_Connection.cursor()
-        db_Curser.execute("set autocommit = 1")
+#         # Open db connection
+#         db_Connection = Open_db("Dobby")
+#         db_Curser = db_Connection.cursor()
+#         db_Curser.execute("set autocommit = 1")
 
-        gBridge_id = Topic.replace(self.MQTT_Base_Topic, "")
-        gBridge_id = gBridge_id.split("/")
-        gBridge_id = gBridge_id[0]
+#         gBridge_id = Topic.replace(self.MQTT_Base_Topic, "")
+#         gBridge_id = gBridge_id.split("/")
+#         gBridge_id = gBridge_id[0]
 
-        # Get trigger id
-        db_Curser.execute('SELECT id FROM Dobby.`gBridge_Trigger` WHERE `gBridge id`="' + str(gBridge_id) + '";')
-        id = db_Curser.fetchone()
-        id = id[0]
+#         # Get trigger id
+#         db_Curser.execute('SELECT id FROM Dobby.`gBridge_Trigger` WHERE `gBridge id`="' + str(gBridge_id) + '";')
+#         id = db_Curser.fetchone()
+#         id = id[0]
 
-        # Change Last_Trigger
-        db_Curser.execute("UPDATE `Dobby`.`gBridge_Trigger` SET `Triggered DateTime`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(id) + "';")
+#         # Change Last_Trigger
+#         db_Curser.execute("UPDATE `Dobby`.`gBridge_Trigger` SET `Triggered DateTime`='" + str(datetime.datetime.now()) + "' WHERE `id`='" + str(id) + "';")
 
-        # Close db connection
-        Close_db(db_Connection, db_Curser)
+#         # Close db connection
+#         Close_db(db_Connection, db_Curser)
 
-        # Check what kind of message it is
-        if "/onoff" in Topic:
-            # If its a Dimmer, is 1 set value to 75% to get some light
-            if "/Dimmer/" in self.Active_Triggers[id]["MQTT Target"]:
-                if Payload == "1":
-                    Payload = 75
+#         # Check what kind of message it is
+#         if "/onoff" in Topic:
+#             # If its a Dimmer, is 1 set value to 75% to get some light
+#             if "/Dimmer/" in self.Active_Triggers[id]["MQTT Target"]:
+#                 if Payload == "1":
+#                     Payload = 75
         
-        # Nothing to do here yet
-        elif "/brightness" in Topic:
-            pass
-        elif "/tempset-mode" in Topic:
-            pass
-        elif "/tempset-setpoint" in Topic:
-            pass
-        elif "/tempset-ambient" in Topic:
-            pass
-        elif "/tempset-humidity" in Topic:
-            pass
-        else:
-            Log("Error", "gBridge Trigger", str(self.Active_Triggers[id]['Name']), "Unknown gBridge Topic: " + str(Topic))
-            return
+#         # Nothing to do here yet
+#         elif "/brightness" in Topic:
+#             pass
+#         elif "/tempset-mode" in Topic:
+#             pass
+#         elif "/tempset-setpoint" in Topic:
+#             pass
+#         elif "/tempset-ambient" in Topic:
+#             pass
+#         elif "/tempset-humidity" in Topic:
+#             pass
+#         else:
+#             Log("Error", "gBridge Trigger", str(self.Active_Triggers[id]['Name']), "Unknown gBridge Topic: " + str(Topic))
+#             return
 
-        # Publish Message
-        MQTT_Client.publish(self.Active_Triggers[id]["MQTT Target"], payload=str(Payload), qos=0, retain=False)
-        # Log event
-        Log("Debug", "gBridge Trigger", str(self.Active_Triggers[id]['Name']), "gBridge -> Dobby: " + str(Payload))
+#         # Publish Message
+#         MQTT_Client.publish(self.Active_Triggers[id]["MQTT Target"], payload=str(Payload), qos=0, retain=False)
+#         # Log event
+#         Log("Debug", "gBridge Trigger", str(self.Active_Triggers[id]['Name']), "gBridge -> Dobby: " + str(Payload))
         
 
-    def MQTT_Client_Loop(self):
-        # Start MQTT Loop
-        self.MQTT_Client.loop_forever()
+#     # ---------------------------------------- Checker ----------------------------------------
+#     def Checker(self):
+#         # Start eternal loop
+#         while True:
+#             # Wait for MQTT Connections
+#             while self.MQTT_Connected_Dobby == False:
+#                 # Log event
+#                 Log("Debug", "gBridge Trigger", 'MQTT', "Waiting for connection to MQTT brokers to be established")
+#                 # Delete all triggers
+#                 self.Delete_All_Triggers()
+#                 # Dont sent the message again
+#                 while self.MQTT_Connected_Dobby == False:
+#                     time.sleep(1)
 
-    # ---------------------------------------- Checker ----------------------------------------
-    def Checker(self):
-        # Start eternal loop
-        while True:
-            # Wait for MQTT Connections
-            while self.MQTT_Connected_Dobby == False and self.MQTT_Connected_gBridge == False:
-                # Log event
-                Log("Debug", "gBridge Trigger", 'MQTT', "Waiting for connection to MQTT brokers to be established")
-                # Delete all triggers
-                self.Delete_All_Triggers()
-                # Dont sent the message again
-                while self.MQTT_Connected_Dobby == False and self.MQTT_Connected_gBridge == False:
-                    pass
+#             # Open db connection get id, Last Modified
+#             db_Connection = Open_db("Dobby")
+#             db_Curser = db_Connection.cursor()
 
-            # Open db connection get id, Last Modified
-            db_Connection = Open_db("Dobby")
-            db_Curser = db_Connection.cursor()
+#             # Get id and Last Modified to check if gBridge Triggers needs to be started
+#             db_Curser.execute("SELECT id, Last_Modified FROM Dobby.`gBridge_Trigger` WHERE Enabled=1;")
 
-            # Get id and Last Modified to check if gBridge Triggers needs to be started
-            db_Curser.execute("SELECT id, Last_Modified FROM Dobby.`gBridge_Trigger` WHERE Enabled=1;")
-
-            gBridge_Info = db_Curser.fetchall()
+#             gBridge_Info = db_Curser.fetchall()
             
-            # Close db connection
-            Close_db(db_Connection, db_Curser)
+#             # Close db connection
+#             Close_db(db_Connection, db_Curser)
 
-            for i in range(len(gBridge_Info)):
-                id = gBridge_Info[i][0]
-                Last_Modified = gBridge_Info[i][1]
+#             for i in range(len(gBridge_Info)):
+#                 id = gBridge_Info[i][0]
+#                 Last_Modified = gBridge_Info[i][1]
 
-                # Check if the trigger is in the Active_Triggers dict
-                if id in self.Active_Triggers:
+#                 # Check if the trigger is in the Active_Triggers dict
+#                 if id in self.Active_Triggers:
                     
-                    # Check if last modified changed
-                    if self.Active_Triggers[id]["Last_Modified"] != Last_Modified:
-                        # Deleting the trigger now and then i will get readded in next run, little delay between sub and unsub
-                        self.Delete_Trigger(id)
+#                     # Check if last modified changed
+#                     if self.Active_Triggers[id]["Last_Modified"] != Last_Modified:
+#                         # Deleting the trigger now and then i will get readded in next run, little delay between sub and unsub
+#                         self.Delete_Trigger(id)
                         
-                # If not then add to the list and start the trigger
-                else:
-                    # Save trigger info
-                    self.Add_Trigger(id)
-                    # Start the trigger
-                    self.Start_Trigger(id)
+#                 # If not then add to the list and start the trigger
+#                 else:
+#                     # Save trigger info
+#                     self.Add_Trigger(id)
+#                     # Start the trigger
+#                     self.Start_Trigger(id)
 
-            # Sleep till next check
-            time.sleep(self.Refresh_Rate)
+#             # Sleep till next check
+#             time.sleep(self.Refresh_Rate)
 
-            # if self.Checker_Stop is True:
-            #     # Log event
-            #     Log("Info", "gBridge Trigger", 'Checker', "Stopping")
+#             # if self.Checker_Stop is True:
+#             #     # Log event
+#             #     Log("Info", "gBridge Trigger", 'Checker', "Stopping")
 
-            #     # Stop all triggers
-            #     for Key, Value in self.Active_Triggers.items():
-            #         Key = Key
-            #         Log("Debug", "gBridge Trigger", 'Checker', "Removing trigger: " + str(Value['Name']))
-            #         # gBridge_Trigger Restart_Trigger(id)
+#             #     # Stop all triggers
+#             #     for Key, Value in self.Active_Triggers.items():
+#             #         Key = Key
+#             #         Log("Debug", "gBridge Trigger", 'Checker', "Removing trigger: " + str(Value['Name']))
+#             #         # gBridge_Trigger Restart_Trigger(id)
 
-            #     quit()
+#             #     quit()
 
-    def Delete_All_Triggers(self):
-        # Stop all triggers
-        for id, Info in self.Active_Triggers.items():
-            Log("Debug", "gBridge Trigger", 'Checker', "Removing trigger: " + str(Info['Name']))
-            self.Delete_Trigger(id)
+#     def Delete_All_Triggers(self):
+#         # Stop all triggers
+#         for id, Info in self.Active_Triggers.items():
+#             Log("Debug", "gBridge Trigger", 'Checker', "Removing trigger: " + str(Info['Name']))
+#             self.Delete_Trigger(id)
 
 
-    def Add_Trigger(self, id):
+#     def Add_Trigger(self, id):
 
-        # Open db connection
-        db_Connection = Open_db("Dobby")
-        db_Curser = db_Connection.cursor()
+#         # Open db connection
+#         db_Connection = Open_db("Dobby")
+#         db_Curser = db_Connection.cursor()
 
-        # Get Name, gBridge id, MQTT Target, Last_Modified
-        db_Curser.execute("SELECT Name, `gBridge id`, `MQTT Target`, Last_Modified FROM Dobby.`gBridge_Trigger` WHERE id=" + str(id) + ";")
-        gBridge_Info = db_Curser.fetchone()
+#         # Get Name, gBridge id, MQTT Target, Last_Modified
+#         db_Curser.execute("SELECT Name, `gBridge id`, `MQTT Target`, Last_Modified FROM Dobby.`gBridge_Trigger` WHERE id=" + str(id) + ";")
+#         gBridge_Info = db_Curser.fetchone()
         
-        # Close db connection
-        Close_db(db_Connection, db_Curser)
+#         # Close db connection
+#         Close_db(db_Connection, db_Curser)
 
-        self.Active_Triggers[id] = {"Name": gBridge_Info[0], "gBridge id": gBridge_Info[1], "MQTT Target": gBridge_Info[2], "Last_Modified": gBridge_Info[3]}
-
-
-    def Delete_Trigger(self, id):
-        # Stop the trigger before deliting
-        self.Stop_Trigger(id)
-
-        # Remove triggre from Active_Triggers
-        try:
-            del self.Active_Triggers[id]
-        except KeyError:
-            pass
+#         self.Active_Triggers[id] = {"Name": gBridge_Info[0], "gBridge id": gBridge_Info[1], "MQTT Target": gBridge_Info[2], "Last_Modified": gBridge_Info[3]}
 
 
-    def Start_Trigger(self, id):
+#     def Delete_Trigger(self, id):
+#         # Stop the trigger before deliting
+#         self.Stop_Trigger(id)
 
-        # Build source topic from base and gbridge id
-        Source_Topic = self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/#"
+#         # Remove triggre from Active_Triggers
+#         try:
+#             del self.Active_Triggers[id]
+#         except KeyError:
+#             pass
+
+
+#     def Start_Trigger(self, id):
+
+#         # Build source topic from base and gbridge id
+#         Source_Topic = self.MQTT_Base_Topic + self.Active_Triggers[id]["gBridge id"] + "/#"
         
-        # Log Event
-        Log("Info", "gBridge Trigger", str(self.Active_Triggers[id]["Name"]), "Starting")
-        Log("Debug", "gBridge Trigger", str(self.Active_Triggers[id]["Name"]), "Subscribing to: '" + str(Source_Topic) + "'")
-        # Subscribe - gBridge
-        self.MQTT_Client.subscribe(str(Source_Topic))
-        # Register callbacks - gBridge
-        self.MQTT_Client.message_callback_add(str(Source_Topic), self.MQTT_On_Message_Callback)
+#         # Log Event
+#         Log("Info", "gBridge Trigger", str(self.Active_Triggers[id]["Name"]), "Starting")
+#         Log("Debug", "gBridge Trigger", str(self.Active_Triggers[id]["Name"]), "Subscribing to: '" + str(Source_Topic) + "'")
+#         # Subscribe - gBridge
+#         MQTT_Client.subscribe(str(Source_Topic))
+#         # Register callbacks - gBridge
+#         MQTT_Client.message_callback_add(str(Source_Topic), self.MQTT_On_Message_Callback)
 
-        # Generate Subscribe Topic
-        Sub_Topic = str(self.Active_Triggers[id]["MQTT Target"])
-        # Temp and humidity
-        if "Temperature" in self.Active_Triggers[id]["MQTT Target"]:
-            # Do nothing to target topic
-            pass
-        elif "Humidity" in self.Active_Triggers[id]["MQTT Target"]:
-            # Do nothing to target topic
-            pass
-        # Dont add state if alread there
-        elif Sub_Topic.endswith("/State"):
-            pass
-        # Anything else
-        # Remember to add "/State" to get the devices state and not create a message loop
-        else:
-            Sub_Topic = Sub_Topic + "/State"
+#         # Generate Subscribe Topic
+#         Sub_Topic = str(self.Active_Triggers[id]["MQTT Target"])
+#         # Temp and humidity
+#         if "Temperature" in self.Active_Triggers[id]["MQTT Target"]:
+#             # Do nothing to target topic
+#             pass
+#         elif "Humidity" in self.Active_Triggers[id]["MQTT Target"]:
+#             # Do nothing to target topic
+#             pass
+#         # Dont add state if alread there
+#         elif Sub_Topic.endswith("/State"):
+#             pass
+#         # Anything else
+#         # Remember to add "/State" to get the devices state and not create a message loop
+#         else:
+#             Sub_Topic = Sub_Topic + "/State"
 
-        # Add topic to topic dict - Dobby
-        MQTT_Add_Sub_Topic(Sub_Topic, 'gBridge Trigger', id)
-        # Subscribe - Dobby
-        MQTT_Client.subscribe(Sub_Topic)
-        # Register callbacks - Dobby
-        MQTT_Client.message_callback_add(Sub_Topic, MQTT_On_Message_Callback)
+#         # Add topic to topic dict - Dobby
+#         MQTT_Add_Sub_Topic(Sub_Topic, 'gBridge Trigger', id)
+#         # Subscribe - Dobby
+#         MQTT_Client.subscribe(Sub_Topic)
+#         # Register callbacks - Dobby
+#         MQTT_Client.message_callback_add(Sub_Topic, MQTT_On_Message_Callback)
 
 
-    def Stop_Trigger(self, id):
-        # Build source topic from base and gbridge id
-        Source_Topic = self.MQTT_Base_Topic + self.Active_Triggers[id][1] + "/#"
+#     def Stop_Trigger(self, id):
+#         # Build source topic from base and gbridge id
+#         Source_Topic = self.MQTT_Base_Topic + self.Active_Triggers[id][1] + "/#"
 
-         # Log Event
-        Log("Debug", "gBridge Trigger", str(id), "Stopping")
-        Log("Debug", "gBridge Trigger", str(id), "Unsubscribing from: '" + str(Source_Topic) + "'")
+#          # Log Event
+#         Log("Debug", "gBridge Trigger", str(id), "Stopping")
+#         Log("Debug", "gBridge Trigger", str(id), "Unsubscribing from: '" + str(Source_Topic) + "'")
 
-        # Unsubscribe and remove callback
-        self.MQTT_Client.unsubscribe(Source_Topic)
-        self.MQTT_Client.message_callback_remove(Source_Topic)
+#         # Unsubscribe and remove callback
+#         MQTT_Client.unsubscribe(Source_Topic)
+#         MQTT_Client.message_callback_remove(Source_Topic)
 
-        # Unsubscribe and remove callback - local
-        MQTT_Del_Sub_Topic(str(self.Active_Triggers[id]["MQTT Target"]), 'Mail Trigger', id)
+#         # Unsubscribe and remove callback - local
+#         MQTT_Del_Sub_Topic(str(self.Active_Triggers[id]["MQTT Target"]), 'Mail Trigger', id)
 
 
 
@@ -2196,8 +2130,8 @@ def MQTT_On_Message(Topic, Payload, Retained):
                 elif Function[0] == "Action Trigger":
                     Action_Trigger.On_Message(Function[1], Topic, Payload)
 
-                elif Function[0] == "gBridge Trigger":
-                    MQTT_Client_gBridge.Trigger_Local(Function[1], Topic, Payload)
+                # elif Function[0] == "gBridge Trigger":
+                #     MQTT_Client_gBridge.Trigger_Local(Function[1], Topic, Payload)
 
                 elif Function[0] == "Timeouts":
                     Timeouts.On_Message(Function[1])
@@ -2244,7 +2178,7 @@ def MQTT_On_Connect(MQTT_Client, userdata, flags, rc):
         MQTT_Client.message_callback_add(Topic, MQTT_On_Message_Callback)
 
     # Tell gBridge that we connected
-    MQTT_Client_gBridge.Local_MQTT_On_Connect()
+    # MQTT_Client_gBridge.Local_MQTT_On_Connect()
     
     # MQTT KeepAlive
     # FIX - CHANGE KEEPALIVE TIMER SOURCE IN DB
@@ -2256,7 +2190,7 @@ def MQTT_On_Connect(MQTT_Client, userdata, flags, rc):
 def MQTT_On_Disconnect(MQTT_Client, userdata, rc):
     Log("Warning", "Dobby", "MQTT", "Disconnected from broker : " + str(Dobby_Config['MQTT_Broker']))
     # Tell gBridge that we disconnected
-    MQTT_Client_gBridge.Local_MQTT_On_Disconnect()
+    # MQTT_Client_gBridge.Local_MQTT_On_Disconnect()
 
 
 def MQTT_On_Log(MQTT_Client, userdata, level, buf):
@@ -3646,7 +3580,7 @@ class Dobby_Backup:
 # ---------------------------------------- Init ----------------------------------------
 Dobby_init()
 
-MQTT_Client_gBridge = gBridge_Trigger()
+# MQTT_Client_gBridge = gBridge_Trigger()
 
 MQTT_init()
 

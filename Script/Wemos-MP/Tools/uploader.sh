@@ -1,8 +1,29 @@
 #!/bin/bash
 
+start=`date +%s`
+
 # get current dir so we can go back there when done
 Back_To_Dir=$PWD
-Port=/dev/ttyUSB0
+Port="None"
+
+if [ -e "/dev/ttyUSB0" ];
+    then
+        Port=/dev/ttyUSB0
+fi
+
+if [ -e "/dev/ttyUSB1" ];
+    then
+        Port=/dev/ttyUSB1
+fi
+
+if [ "$Port" = "None" ];
+    then
+        echo "Unable to find port"
+        exit
+fi
+
+echo "Port set to: $Port"
+echo ""
 
 if [ "$1" = "-ou" ];
     then
@@ -17,8 +38,6 @@ if [ "$1" = "-ou" ];
             echo "   D1 mini"
             esptool.py --port $Port --baud 460800 write_flash --flash_size=detect 0 ~/micropython/ports/esp8266/build-GENERIC/firmware-combined.bin
         fi
-        echo "upload /main.py"
-        ampy -p $Port put /media/Dobby/Script/Wemos-MP/bin/main.py
         ~/piusb0.sh
         exit
 fi
@@ -33,22 +52,17 @@ if [ "$1" = "-erase" ];
         exit
 fi
 
-
-if [ "$1" = "-om" ];
+if [ "$1" = "--nocopy" ];
     then
-        echo 
-        echo "Only uploading /main.py"
-        ampy -p $Port put /media/Dobby/Script/Wemos-MP/bin/main.py
-        echo "Starting Serial"
-        ~/piusb0.sh
-        exit
+        echo "NOT copying modules"
+    else
+        echo "Copying Shared modules"
+        # copy modules
+        cp -v -R "$(dirname "$(realpath "$0")")"/../bin/shared/modules ~/micropython/ports/esp8266/
+        echo "Copying modules"
+        # copy modules
+        cp -v -R "$(dirname "$(realpath "$0")")"/../bin/esp8266/modules ~/micropython/ports/esp8266/
 fi
-
-
-
-echo Copying modules
-# copy modules
-cp -v -R "$(dirname "$(realpath "$0")")"/../bin/modules ~/micropython/ports/esp8266/
 
 
 # change dir to micropyhton
@@ -95,11 +109,11 @@ fi
 # back to the dir we came from
 cd $Back_To_Dir
 
-# check is user told us to upload main.py
-if [ "$1" = "-m" ];
-    then
-        ampy -p $Port put /media/Dobby/Script/Wemos-MP/bin/main.py
-fi
+
+end=`date +%s`
+runtime=$((end-start))
+
+echo "Upload time: "$runtime
 
 # Open serial connection
 echo start serial
