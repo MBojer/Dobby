@@ -1,3 +1,6 @@
+uos.remove('lib/dobby/dimmer.py')
+
+
 config save switch {"LightSwitch":{"Pin":"D1","For":250,"PullUp":true,"Message":{"On":{"Topic":"/OnTarget","Payload":"Switch ON"},"Off":{"Topic":"/OffState","Payload":"Switch ON"}},"Relay":{"Name":"Pump","State":"toggle"}}}
 
 

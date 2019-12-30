@@ -343,7 +343,7 @@ Device
     "Rate": "1337m"
   }
 
-// Buzzer
+// Indicator
 // * Optional
 {
   "Main": {

@@ -30,6 +30,13 @@ def setup():
     uos.VfsFat.mkfs(bdev)
     vfs = uos.VfsFat(bdev)
     uos.mount(vfs, '/')
+
+    # Make dobby config dir
+    uos.mkdir('conf')
+    # make lib dir
+    uos.mkdir('lib')
+    uos.mkdir('lib/dobby')
+
     with open("boot.py", "w") as f:
         f.write("""\
 # This file is executed on every boot (including wake-boot from deepsleep)
@@ -38,6 +45,4 @@ def setup():
 #import webrepl
 #webrepl.start()
 """)
-    # Make dobby config dir
-    uos.mkdir('conf')
     return vfs

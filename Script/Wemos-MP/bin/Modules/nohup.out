@@ -1,0 +1,136 @@
+192.168.8.114 - - [30/Dec/2019 10:22:02] "GET /esp32/ HTTP/1.1" 200 -
+192.168.8.114 - - [30/Dec/2019 10:22:17] "GET / HTTP/1.1" 200 -
+192.168.8.114 - - [30/Dec/2019 10:22:18] "GET /nohup.out HTTP/1.1" 200 -
+192.168.8.114 - - [30/Dec/2019 10:28:57] "GET /esp32/dimmer.mpy HTTP/1.1" 200 -
+192.168.8.116 - - [30/Dec/2019 10:33:16] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 10:33:16] "GET /espesp32/dimmer.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 10:33:16] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 10:33:16] "GET /Shared/dimmer.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 10:36:20] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 10:36:20] "GET /espesp32/dimmer.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 10:36:20] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 10:36:20] "GET /Shared/dimmer.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 10:38:46] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 10:38:46] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 10:38:46] "GET /Shared/dimmer.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 10:40:07] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:06:18] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:09:54] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.114 - - [30/Dec/2019 11:10:56] "GET /esp32/ HTTP/1.1" 200 -
+192.168.8.116 - - [30/Dec/2019 11:11:17] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:12:09] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:12:21] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:14:09] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:22:38] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:31:51] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:40:47] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:41:27] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:54:29] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:54:41] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:54:54] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:55:09] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:55:22] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:55:35] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:55:48] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:56:01] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:56:17] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:56:30] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:56:43] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:56:56] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:57:08] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:57:24] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:57:37] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:57:50] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:58:02] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:58:19] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:58:32] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:58:44] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:58:56] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:59:09] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 11:59:24] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:02:17] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:02:31] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:02:46] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:03:01] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:03:15] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:03:26] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:03:38] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:03:50] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:04:02] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:04:16] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:04:28] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:04:41] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:04:53] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:05:04] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:05:22] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:05:36] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:05:53] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:06:08] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 12:06:24] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 15:53:36] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 16:03:18] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 16:07:47] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 16:14:58] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 16:15:35] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 16:16:39] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 16:17:38] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 16:18:04] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 16:19:06] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 16:20:18] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 16:20:18] "GET /esp32/het.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 16:20:18] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 16:20:18] "GET /Shared/het.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 16:20:30] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 16:28:58] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 16:29:20] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 16:43:40] "GET /esp32/dimmer.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 16:46:41] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 16:46:41] "GET /esp32/ds18b20.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 16:46:41] "GET /Shared/ds18b20.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 17:13:29] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 17:13:29] "GET /esp32/indicator.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 17:13:29] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 17:13:29] "GET /Shared/indicator.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 17:21:58] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 17:21:58] "GET /esp32/indicator.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 17:21:59] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 17:21:59] "GET /Shared/indicator.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 17:22:33] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 17:22:33] "GET /esp32/indicator.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 17:22:33] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 17:22:33] "GET /Shared/indicator.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 17:27:37] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 17:27:37] "GET /esp32/indicator.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 17:27:37] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 17:27:37] "GET /Shared/indicator.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 17:30:59] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 17:30:59] "GET /esp32/indicator.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 17:30:59] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 17:30:59] "GET /Shared/indicator.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 17:49:24] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 17:49:24] "GET /esp32/ds18b20.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 17:49:24] "GET /Shared/ds18b20.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 17:55:35] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 17:55:35] "GET /esp32/ds18b20.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 17:55:35] "GET /Shared/ds18b20.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 18:08:28] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 18:08:28] "GET /esp32/ds18b20.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 18:08:28] "GET /Shared/ds18b20.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 18:31:44] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 18:31:44] "GET /esp32/ds18b20.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 18:31:44] "GET /Shared/ds18b20.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 18:36:14] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 18:36:14] "GET /esp32/ds18b20.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 18:36:14] "GET /Shared/ds18b20.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 18:39:09] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 18:39:09] "GET /esp32/ds18b20.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 18:39:10] "GET /Shared/ds18b20.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 18:57:47] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 18:57:47] "GET /esp32/ds18b20.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 18:57:47] "GET /Shared/ds18b20.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 19:03:41] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 19:03:41] "GET /esp32/ds18b20.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 19:03:41] "GET /Shared/ds18b20.mpy HTTP/1.0" 200 -
+192.168.8.116 - - [30/Dec/2019 19:19:18] code 404, message File not found
+192.168.8.116 - - [30/Dec/2019 19:19:18] "GET /esp32/ds18b20.mpy HTTP/1.0" 404 -
+192.168.8.116 - - [30/Dec/2019 19:19:18] "GET /Shared/ds18b20.mpy HTTP/1.0" 200 -

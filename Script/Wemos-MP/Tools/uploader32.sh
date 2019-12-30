@@ -52,26 +52,27 @@ fi
 
 
 
-if [ "$1" = "--power" ];
-    then
-        echo "Removing old Dobby modules"
-        rm -v -Rf ~/micropython/ports/esp32/modules/dobby
+# if [ "$1" = "--power" ];
+#     then
+#         echo "Removing old Dobby modules"
+#         rm -v -Rf ~/micropython/ports/esp32/modules/dobby
 
-        echo "Copying Power modules"
-        cp -v -R "$(dirname "$(realpath "$0")")"/../bin/Special/Power/modules ~/micropython/ports/esp32/
+#         echo "Copying Power modules"
+#         cp -v -R "$(dirname "$(realpath "$0")")"/../bin/Special/Power/modules ~/micropython/ports/esp32/
 
-elif [ "$1" = "--nocopy" ];
+if [ "$1" = "--nocopy" ];
     then
         echo "NOT copying modules"
     else
         echo "Removing old Dobby modules"
-        rm -v -Rf ~/micropython/ports/esp32/modules/dobby
-        echo "Copying Shared modules"
+        rm -v -Rf ~/micropython/ports/esp32/modules/
+        
         # copy modules
-        cp -v -R "$(dirname "$(realpath "$0")")"/../bin/shared/modules ~/micropython/ports/esp32/
+        echo "Copying modules"
+        cp -v -r "$(dirname "$(realpath "$0")")"/../bin/System/modules ~/micropython/ports/esp32/
+        # copy modules
         echo "Copying esp32 modules"
-        # copy modules
-        cp -v -R "$(dirname "$(realpath "$0")")"/../bin/esp32/modules ~/micropython/ports/esp32/
+        cp -v -r "$(dirname "$(realpath "$0")")"/../bin/esp32/modules ~/micropython/ports/esp32/
 fi
 
 

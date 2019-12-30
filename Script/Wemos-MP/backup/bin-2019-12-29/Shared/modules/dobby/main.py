@@ -68,10 +68,14 @@ class Run:
         # ESP32
         else:
             self.ESP_Type = 32
-            # import and Start webrepl if esp32
-            import webrepl
-            webrepl.start()
-            self.Log(0, "System/webrepl", "Starting")
+            # # import and Start webrepl if esp32
+            # import webrepl
+            # webrepl.start()
+            # self.Log(0, "System/webrepl", "Starting")
+
+            # Import ntp time
+            import ntptime
+
 
         # List of push messages that failed to send
         # we retry when online again
@@ -539,6 +543,13 @@ class Run:
             # Log free memory
             self.Log(1, "Commands", "Free memory: " + str(gc.mem_free()))
             return
+
+        # ++++++++++++++++++++++++++++++++++++++++ File system ++++++++++++++++++++++++++++++++++++++++
+        # Free space
+        elif Payload.lower() == 'free space':
+            # Log free memory
+            self.Log(1, "Commands", "Free space: " + str(os.statvfs("/")))
+            return
         
         # ++++++++++++++++++++++++++++++++++++++++ Push ++++++++++++++++++++++++++++++++++++++++
         # Sends a push message to id specified
@@ -688,6 +699,12 @@ class Run:
             self.wlan0_Published_IP = True
             if self.Indicator != None:
                 self.Indicator.Remove("WiFi")
+
+            # set time if possible
+            try:
+                ntptime.settime()
+            except:
+                pass    
         
         # Check if we are connected
         if self.MQTT_State == True:
@@ -1005,7 +1022,7 @@ class Run:
                 # On for = "0.5s"
                 # delay = "1s"
                 # Add ticks to name so we dont overwrite last error
-                self.Indicator.Add("Log-" + Log_String + "-" + str(utime.ticks_ms), Level, "0.5s", "1s")
+                self.Indicator.Add("Log-" + Level_String + "-" + str(utime.ticks_ms), Level, "0.5s", "1s")
 
         # Build topic string
         Topic = self.Config.get('System_Header', '/Unconfigured') + "/" + self.Config.get('Hostname', 'ChangeMe') + "/Log/" + Level_String + "/" + Topic

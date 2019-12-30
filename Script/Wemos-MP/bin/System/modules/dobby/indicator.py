@@ -74,7 +74,7 @@ class Init:
             self.Pin = Config['Pin']
 
             # How long to wait after one Indicator before starting the next
-            self.Pause = "3s"
+            self.Pause = "1.5s"
 
             # List to hold Indicators we get when already Active
             self.Indicator_Queue = []
@@ -126,7 +126,7 @@ class Init:
         # -------------------------------------------------------------------------------------------------------
         def Add(self, Name, Left, On_For, Delay, Repeat=False):
             # dont add duplicates just make sure the timer is running if duplicate
-            if Name not in self.Active:
+            if Name not in self.Active.keys():
                 # Creat dict to hold info in self.Active
                 self.Active[Name] = {}
                 # Append to self.Active_Order so we know when to run the indication
@@ -143,7 +143,7 @@ class Init:
                     self.Active[Name]['Reset_To'] = Left
 
                 # Log event
-                self.Dobby.Log(0, 'Indicator/' + self.Name, "Added Indicator " + str(Name) + "- Number of: " + str(Left) + " On for: " + str(On_For) + " Delay between: " + str(Delay) + " Repeat: " + str(Repeat))
+                self.Dobby.Log(0, 'Indicator/' + self.Name, "Added Indicator " + str(Name) + " - Number of: " + str(Left) + " On for: " + str(On_For) + " Delay between: " + str(Delay) + " Repeat: " + str(Repeat))
 
             # Check if the timer if running if not start it
             if self.Timer.Running == False:
@@ -192,10 +192,15 @@ class Init:
             # meant to be triggered when Indicator is compleate
             self.Pin.off()
 
-            # Check if repeat it true            
-            if self.Active[self.Active_Order[0]]['Repeat'] == True:
+            if self.Active == {}:
+                return
+
+            # Check if repeat is not false if so its the number we need to reset Left to
+            elif self.Active[self.Active_Order[0]]['Repeat'] != False:
                 # add to back to self.Active_Order
-                self.Active_Order.append(self.Active[self.Active_Order[0]]['Name'])
+                self.Active_Order.append(self.Active_Order[0])
+                # Reset Left, number is in ['Repeat']
+                self.Active[self.Active_Order[0]]['Left'] = self.Active[self.Active_Order[0]]['Reset_To']
 
             # Repeat is false so remove from active and active order
             else:
@@ -234,8 +239,8 @@ class Init:
                 # Subtract one from Left
                 self.Active[self.Active_Order[0]]['Left'] = self.Active[self.Active_Order[0]]['Left'] - 1
 
-                # check if we got to 0
-                if self.Active[self.Active_Order[0]]['Left'] == 0:
+                # check if we got to 0 or less
+                if self.Active[self.Active_Order[0]]['Left'] <= 0:
                     # Start timer setting Callback to end since we got to last indication
                     # end will start next if needed
                     self.Timer.Start(Callback=self.End, Timeout_ms=self.Active[self.Active_Order[0]]['On_For'])
@@ -264,7 +269,7 @@ class Init:
                     Left = Payload[1]
                     On_For = Payload[2]
                     Delay = Payload[3]
-                except IndexError:
+                except IndexError:  
                     self.Dobby.Log(2, 'Indicator/' + self.Name, "Invalud Indicator info provided")
                     return
 

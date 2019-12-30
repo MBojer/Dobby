@@ -31,7 +31,6 @@ class Init:
 
         self.Unconfigured = []
 
-
         # Now we need to creat a ds18b20 instance for each pin
         for Pin_Name in DS18B20_Config['Pins']:
             # Lets reserve the pin
@@ -139,7 +138,8 @@ class Init:
                     Return_String = Return_String + " '" + id_str + "'"
 
                 # list what ids we found so we can spot of we got a new id we have not configured
-                self.Dobby.Log(0, "DS18B20", "Connected devices:" + Return_String)
+                # Log as Info se we can see if we lost one during boot
+                self.Dobby.Log(1, "DS18B20", "Connected devices: " + Return_String)
 
         # Unable to configre any pins
         # so fail module load
@@ -279,7 +279,50 @@ class Init:
             ## it will be reset after a sucessfull read 
             self.Error_Count = 0
 
+            # Round
+            # Only use when publishing, readings is stored without rounding
+            self.Round = Config.get("Round", None)
+            # If round is not a int then will default to None
+            if type(self.Round) != int:
+                # Log event
+                self.Dobby.Log(1, "DS18B20/" + self.Name, "Rounding disabeled invalid config: " + str(self.Round))
+                # Reset round
+                self.Round = None
+            else:
+                # Log event
+                self.Dobby.Log(0, "DS18B20/" + self.Name, "Rounding to: " + str(self.Round) + " didgets")
+            
+            
+            # //////////////////////////////////////// Indicator \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+            self.Indicator = {}
+            if Config.get("Indicator", None) != None:
+                # List of config entries to check for
+                Check_List = ['Name', 'Times', 'On_For', 'Delay', 'Repeat']
+                
+                # For loop over entries in Indicator if any
+                for Entry in Config['Indicator']:
+                    # Check config entries
+                    try:
+                        self.Dobby.Config_Check("DS18B20/" + self.Name + "/Indicator/" + str(Entry), Check_List, Config['Indicator'][Entry])
+                    # Pass on errors
+                    # Error logging done by Config_Check
+                    except self.Dobby.Module_Error:
+                        pass
+                    # If all ok save config to variables
+                    else:
+                        # Save settings
+                        self.Indicator[Entry] = Config['Indicator'][Entry]
+                        # Create log string
+                        Info = 'Trigger Indicator ' + Entry + ' set to'
+                        Info = Info + ' Name:' + str(self.Indicator[Entry]['Name'])
+                        Info = Info + ' Times:' + str(self.Indicator[Entry]['Times'])
+                        Info = Info + ' On_For:' + str(self.Indicator[Entry]['On_For'])
+                        Info = Info + ' Delay:' + str(self.Indicator[Entry]['Delay'])
+                        Info = Info + ' Repeat:' + str(self.Indicator[Entry]['Repeat'])
+                        # log event
+                        self.Dobby.Log(0, "DS18B20/" + self.Name, Info)
 
+            
             # //////////////////////////////////////// MQTT Message \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
             self.MQTT_Message = {}
             if Config.get("Message", None) != None:
@@ -396,11 +439,17 @@ class Init:
         
         # -------------------------------------------------------------------------------------------------------
         def Publish_State(self):
+            # Check if we need to round
+            if self.Round != None:
+                Publish_Temp = round(self.Temperature, self.Round)
+            else:
+                Publish_Temp = self.Temperature
+                
             # Publishes Temperature to DS18B20/<Name>/Temperature/State
             self.Dobby.Log_Peripheral(
                 [
                     self.Dobby.Peripherals_Topic("DS18B20", End=self.Name + '/Temperature', State=True),
-                    self.Temperature
+                    Publish_Temp
                 ]
             )
 
@@ -431,6 +480,29 @@ class Init:
             self.Temperature = Temperature
 
             # After saving the Temperature lets see if we need to take any achtion
+            # Indicator
+            for Key in self.Indicator:
+                # We need to skip the 'Active' key
+                if Key == 'Active':
+                    continue
+                # Run action check to see if we need to continue
+                # remember to pass key since will check it against self.Temperature
+                if self.Action_Check(Key, self.Indicator) == True:
+                    try:
+                        # Need to indicate
+                        # Remove old indicator if present
+                        self.Dobby.Modules['indicator'].Peripherals[self.Indicator[Key]['Name']].Remove("DS18B20/" + self.Name)
+                        # Add new indicator
+                        self.Dobby.Modules['indicator'].Peripherals[self.Indicator[Key]['Name']].Add(
+                            "DS18B20/" + self.Name,
+                            self.Indicator[Key]['Times'],
+                            self.Indicator[Key]['On_For'],
+                            self.Indicator[Key]['Delay'],
+                            self.Indicator[Key]['Repeat']
+                        )
+                    except KeyError:
+                        pass
+
             # MQTT_Message
             for Key in self.MQTT_Message:
                 # We need to skip the 'Active' key

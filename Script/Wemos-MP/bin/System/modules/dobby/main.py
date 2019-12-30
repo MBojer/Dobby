@@ -6,7 +6,7 @@ import ujson
 import utime
 # import uping
 import sys
-import os
+import uos
 import network
 import gc
 import umqtt.simple as MQTT
@@ -15,6 +15,9 @@ import urequests
 
 import dobby.config as DobbyConfig
 import dobby.pinmonitor as DobbyPinMonitor
+
+# Import ntp time
+import ntptime
 
 
 # -------------------------------------------------------------------------------------------------------
@@ -47,6 +50,9 @@ class Run:
         # Holds loaded System Modules like WirePusher if enabeled
         self.Sys_Modules = {}
 
+        # If var contains a url it will be downloaded when connected to wifi
+        self.Get_Modules = []
+
         # Log relies on this to check if we need to blink on errors
         # So needs to be set before log is used the first time
         self.Indicator = None
@@ -68,10 +74,12 @@ class Run:
         # ESP32
         else:
             self.ESP_Type = 32
-            # import and Start webrepl if esp32
-            import webrepl
-            webrepl.start()
-            self.Log(0, "System/webrepl", "Starting")
+            # # import and Start webrepl if esp32
+            # import webrepl
+            # webrepl.start()
+            # self.Log(0, "System/webrepl", "Starting")
+
+        
 
         # List of push messages that failed to send
         # we retry when online again
@@ -125,13 +133,13 @@ class Run:
             self.Log(0, 'WiFi', 'Config ok')
 
         # Var to indicate of we have published the ip we got when wifi connected
-        self.wlan0_Published_IP = False
+        self.Published_Boot = False
 
         # ++++++++++++++++++++++++++++++++++++++++ MQTT ++++++++++++++++++++++++++++++++++++++++
         # Remember to add something raondom after the hostname so the borker see a new connecton
         # Check if we got a user and pass for mqtt
         # Generate Unique Post Hostname
-        Post_Hostname = str(os.urandom(1)[0] %1000)
+        Post_Hostname = str(uos.urandom(1)[0] %1000)
         # Log event
         self.Log(0, 'MQTT', 'Using hostname: ' + self.Config['Hostname'] + "-" + Post_Hostname)
         # Stores messages so we can act on them in MQTT Loop
@@ -149,17 +157,15 @@ class Run:
         # Set last will
         self.MQTT_Client.set_last_will(self.Config['System_Header'] + "/" + self.Config['Hostname'] + "/Log/Will", "Disconnected")
         
-
         # try to connect to mqtt
         self.MQTT_Connect()
-
 
         # ++++++++++++++++++++++++++++++++++++++++ Setup peripherals ++++++++++++++++++++++++++++++++++++++++
         # ++++++++++++++++++++++++++++++++++++++++ Setup peripherals ++++++++++++++++++++++++++++++++++++++++
         # ++++++++++++++++++++++++++++++++++++++++ Setup peripherals ++++++++++++++++++++++++++++++++++++++++
         # Loop over config names in /conf and import matching modules
         ## Get config names
-        Config_List = os.listdir('/conf')
+        Config_List = uos.listdir('/conf')
         # Remove device.json since we dont want to use that again
         Config_List.remove('device.json')
         # Move relay to the front of the list if present
@@ -173,10 +179,25 @@ class Run:
             ## If we removed relay.json add it back at the beginning of the list
             else:
                 Config_List.insert(0, Entry)
+
+        # Get list of modules
+        Lib_List = uos.listdir('/lib/dobby')
+
+        # Add default system modules so we dont try to download them
+        Lib_List.append("indicator.mpy")
         
         ## Loop over names in config
         for Name in Config_List:
-            
+
+            # Check if module exists
+            if Name.replace('.json', '.mpy') not in Lib_List:
+                # Log evnet
+                self.Log(1, "System", "Trying to download module: " + str(Name.replace('.json', '')))
+                # Try to download module
+                if self.Download_Module(Name.replace('.json', '')) != True:
+                    # continue so we do not try to load the module
+                    continue
+
             # Import the config
             ## False = Config not found or error during import
             ## If not false the imported Module will be returned
@@ -184,39 +205,54 @@ class Run:
             Config = DobbyConfig.Load(Config_Name=Name, Delete_On_Error=False)
             Error = None
 
-
             # Load config is False if no config is found
             if Config is not False:
-                # Try to import dobbydutton
                 Module_Name = str('dobby.' + Name.replace('.json', ''))
                 try:
+                    # Try to import
                     Module = __import__(Module_Name.replace(".", '/'))
-                except (AttributeError, TypeError, SyntaxError, ImportError, KeyError) as e:
+                    # Store objevt in self.Modules
+                    # Pass config and get perifical object
+                    # Remember to pass Dobby aka self so we can log in Button and use dobby variables
+                    self.Modules[Name.replace('.json', '')] = Module.Init(self, Config)
+                    
+                except (AttributeError, TypeError, SyntaxError, KeyError) as e:
                     Error = str(e)
-                except MemoryError as e:
+                # Incompatible mpy file
+                except ValueError:
+                    # remove module
+                    uos.remove('/lib/dobby/' + Name.replace('.json', '.mpy'))
+                    # Log event
+                    Error = "Removed Module: " + Name.replace('.json', '') + " due to incompatibility"
+                # Missing module, try to download
+                except ImportError:
+                    Error = "Missing module: " + Module_Name + " trying to download it from: " + str(self.MQTT_Client.server) + " when WiFi is connected"
+                except MemoryError:
                     Error = 'Not enough free memory. Free memory: ' + str(gc.mem_free())
+                except self.Module_Error as e:
+                    Error = str(e)
+
+                # No errors on import in creation of module object
+                else:
+                    # Log event
+                    self.Log(0, "System", "Module loaded: " + str(Module_Name))
+
                 finally:
                     # Check if Module import ok
-                    if Error is None:
-                        # Log event
-                        self.Log(0, "System", "Module loaded: " + str(Module_Name))
-                        # Pass config and get perifical object
-                        # Remember to pass Dobby aka self so we can log in Button and use dobby variables
+                    if Error != None:
+                        # remove module from self.Modules if added
                         try:
-                            self.Modules[Name.replace('.json', '')] = Module.Init(self, Config)
-                        except self.Module_Error as e:
-                            Error = str(e)
+                            del self.Modules[Name.replace('.json', '')]
+                        except:
+                            pass
+                        # Dont remove config on "Missing module" we are trying to download it when we get wlan0 up½
+                        if Error.startswith("Missing module: ") != True:
                             # Log event
                             self.Log(4, "System", "Unable to load module: " + str(Module_Name) + " - Error: " + Error)
                             # Remove config file
-                            os.remove("/conf/" + Name)
+                            uos.remove("/conf/" + Name)
+                            # Log removal of config file
                             self.Log(1, "System", "Removed config file: /conf/" + Name)
-                    else:
-                        # Log event
-                        self.Log(4, "System", "Unable to load module: " + str(Module_Name) + " - Error: " + Error)
-                        # Remove config file
-                        os.remove("/conf/" + Name)
-                        self.Log(1, "System", "Removed config file: /conf/" + Name)
             else:
                 self.Log(0, 'System', "Invalid config: /conf/" + Name + "'")
 
@@ -241,7 +277,7 @@ class Run:
 
             # add wifi infication if disconnected
             if self.wlan0.isconnected() == False:
-                self.Indicator.Add("WiFi", 4, "0.5s", "0.75s")
+                self.Indicator.Add("WiFi", 4, "0.5s", "0.75s", True)
 
         else:
             # Log we could not enable indicator led
@@ -255,6 +291,18 @@ class Run:
 
 
     # ++++++++++++++++++++++++++++++++++++++++++++++++++ MISC ++++++++++++++++++++++++++++++++++++++++++++++++++
+    # ---------------------------------------------------------- Config check ---------------------------------------------    
+    def Reboot(self, By):
+        # Log event
+        self.Log(1, "System", "Rebooting - Triggered by: " + str(By))
+        # Clear mqtt queue
+        self.Log_Queue_Empyhy()
+        # Little break to let system send
+        utime.sleep_ms(750)
+        # reboot
+        machine.reset()
+        
+    
     # ---------------------------------------------------------- Config check ---------------------------------------------    
     def Config_Check(self, Owner, Check_List, Config_Dict):
         #  Check if we got the needed config
@@ -271,6 +319,51 @@ class Run:
             # Since we already logged a blank error is fine
             # Raise error so who ever triggered this knows we failed
             raise self.Module_Error
+
+    # ---------------------------------------------------------- Download Module ---------------------------------------------    
+    def Download_Module(self, Name):
+
+        # Check if we are connected to WiFi
+        if self.wlan0.isconnected() == False:
+            # If not add to modules queue aka Get_Modules
+            if Name not in self.Get_Modules:
+                self.Get_Modules.append(Name)
+                self.Log(1, "System", "Module added to queue: " + str(Name))
+            
+            # return false when we add to queue
+            return False
+
+        # List of url base paths to try
+        Try_List = [str(uos.uname().sysname), "Shared"]
+
+        for Base_Path in Try_List:
+            # Build URL
+            URL = "http://" + self.MQTT_Client.server + ":8000/" + Base_Path + "/" + Name + ".mpy"
+            # Try to get module
+            Module = urequests.get(URL)
+            # Check for status code 200 to see if we got the file
+            if Module.status_code == 200:
+                try:
+                    # Save and overwrite module if existsw
+                    with open('/lib/dobby/' + str(Name) + '.mpy', 'w') as f:
+                        # write module to file
+                        f.write(Module.content)
+                except:
+                    # Log error
+                    self.Log(3, "System", "Unable to save module: " + Module_Name)
+                    # return false since we were unable to save the module to fs
+                    return False
+                else:
+                    # Log event
+                    self.Log(1, "System", "Module downloaded: " + str(Name) + " URL: " + URL)
+                    # Return true when we saved the module
+                    return True
+
+        # If we get to here we did not get a module when trying to download it
+        self.Log(3, "System", "Unable to download module: " + str(Name))
+        # return false on error
+        return False
+    
 
     # ---------------------------------------------------------- ms to time ---------------------------------------------    
     def ms_To_Time(self, ms):
@@ -485,13 +578,37 @@ class Run:
         # ++++++++++++++++++++++++++++++++++++++++ Reboot ++++++++++++++++++++++++++++++++++++++++
         # Reboots the device
         if Payload.lower() == 'reboot':
-            # Log event
-            self.Log(1, "System", "Rebooting - Triggered by MQTT Commands")
-            # Disconnect from MQTT
-            self.MQTT_Client.disconnect()
-            # reboot
-            machine.reset()
-            return
+            # Run self.Reboot is will do the rest
+            self.Reboot("MQTT Commands")
+
+        # ++++++++++++++++++++++++++++++++++++++++ module download ++++++++++++++++++++++++++++++++++++++++
+        # downloads a module from Dobby aka mqtt broker
+        # overwrites existing module if present
+        elif Payload.lower().startswith('module download ') == True:
+            # Get module name
+            try:
+                Module_Name = Payload.split("module download ")[1]
+            except:
+                self.Log(1, "System", "Invalid module name specified")
+            else:
+                # Try to download module
+                self.Download_Module(Module_Name)
+        
+        # ++++++++++++++++++++++++++++++++++++++++ Update delete ++++++++++++++++++++++++++++++++++++++++
+        # deletes a module from lib/dobby/
+        elif Payload.lower().startswith('module delete ') == True:
+            try:
+                # Get module name
+                Module_Name = Payload.split("module delete ")[1]
+                # Try to delete module
+                uos.remove('/lib/dobby/' + Module_Name + ".mpy")
+            except:
+                # Log error
+                self.Log(1, "System", "Unable to delete module: " + Module_Name)
+            else:
+                # Log event
+                self.Log(1, "System", "Module deleted: " + Module_Name)
+            
 
         # ++++++++++++++++++++++++++++++++++++++++ Hostname ++++++++++++++++++++++++++++++++++++++++
         # Publishes hostname used on Wifi
@@ -539,6 +656,13 @@ class Run:
             # Log free memory
             self.Log(1, "Commands", "Free memory: " + str(gc.mem_free()))
             return
+
+        # ++++++++++++++++++++++++++++++++++++++++ File system ++++++++++++++++++++++++++++++++++++++++
+        # Free space
+        elif Payload.lower() == 'free space':
+            # Log free memory
+            self.Log(1, "Commands", "Free space: " + str(uos.statvfs("/")))
+            return
         
         # ++++++++++++++++++++++++++++++++++++++++ Push ++++++++++++++++++++++++++++++++++++++++
         # Sends a push message to id specified
@@ -554,7 +678,7 @@ class Run:
         # ++++++++++++++++++++++++++++++++++++++++ Config ++++++++++++++++++++++++++++++++++++++++
         elif Payload.lower() == 'config list':
             # publishes a list of all config files
-            dir_String = os.listdir('/conf')
+            dir_String = uos.listdir('/conf')
             # Var to hold string we are returning
             Return_String = ' '
             # Convert list to string
@@ -616,7 +740,7 @@ class Run:
             # Get config file name
             Config_Name = Payload.replace("config remove ", "")
             try:
-                os.remove("/conf/" + Config_Name.replace(".json", "") + ".json")
+                uos.remove("/conf/" + Config_Name.replace(".json", "") + ".json")
             except OSError:
                 self.Log(1, 'System', "Config not found: " + Config_Name)
                 return
@@ -674,21 +798,46 @@ class Run:
 
 
     # -------------------------------------------------------------------------------------------------------
+    def MQTT_First_Connect(self):
+
+        # Will check if we publishe the ip here since we dont run a loop for wifi
+        if self.Published_Boot == False:
+            # Log ip
+            self.Log(0, 'WiFi', 'Got IP: ' + str(self.wlan0.ifconfig()[0]))
+            # Mark we did so
+            self.Published_Boot = True
+            # Remove wifi indicator if present
+            if self.Indicator != None:
+                self.Indicator.Remove("WiFi")
+
+            # set time if possible
+            try:
+                ntptime.settime()
+            except:
+                pass
+
+            # Download Modules
+            Reboot_Needed = False
+            for Entry in self.Get_Modules:
+                # If self.Download_Module returns true we need to reboot
+                if self.Download_Module(Entry) == True:
+                    Reboot_Needed = True
+            # We need to reboot if we downloaded a module
+            if Reboot_Needed == True:
+                # Self.Reboot handles logging and mqtt disconnect
+                self.Reboot("System module change")
+
+
+    # -------------------------------------------------------------------------------------------------------
     def MQTT_Connect(self):
 
         # Check if Wifi is up
         if self.wlan0.isconnected() == False:
             return
-        
-        # Will check if we publishe the ip here since we dont run a loop for wifi
-        if self.wlan0_Published_IP == False:
-            # Log ip
-            self.Log(0, 'WiFi', 'Got IP: ' + str(self.wlan0.ifconfig()[0]))
-            # Mark we did so
-            self.wlan0_Published_IP = True
-            if self.Indicator != None:
-                self.Indicator.Remove("WiFi")
-        
+
+        # Check if its first time we got connected
+        self.MQTT_First_Connect()
+
         # Check if we are connected
         if self.MQTT_State == True:
             return
@@ -705,10 +854,8 @@ class Run:
         try:
             self.MQTT_Client.connect()
         except OSError as e:
-            # Get Error number
-            Error = int(str(e).split(" ")[1].replace("]", ""))
             # Check if it matches the current state, aka nothing changed
-            if self.MQTT_State != Error:
+            if self.MQTT_State != e:
                 # No change since last connection attempt
                 ## Warning since initial connection attempt failed
                 if self.MQTT_State == 'init':
@@ -737,7 +884,7 @@ class Run:
                 # Check if Indicator is enabeled
                 if self.Indicator != None:
                     # Turn on MQTT blink
-                    self.Indicator.Add('MQTT', 2, "0.5s", "0.75s")
+                    self.Indicator.Add('MQTT', 2, "0.5s", "0.75s", True)
 
                 # Set self.MQTT_State = Error so we can check if it changed later in life
                 self.MQTT_State = Error
@@ -1005,7 +1152,7 @@ class Run:
                 # On for = "0.5s"
                 # delay = "1s"
                 # Add ticks to name so we dont overwrite last error
-                self.Indicator.Add("Log-" + Log_String + "-" + str(utime.ticks_ms), Level, "0.5s", "1s")
+                self.Indicator.Add("Log-" + Level_String + "-" + str(utime.ticks_ms()), Level, "0.5s", "0.5s")
 
         # Build topic string
         Topic = self.Config.get('System_Header', '/Unconfigured') + "/" + self.Config.get('Hostname', 'ChangeMe') + "/Log/" + Level_String + "/" + Topic
@@ -1166,7 +1313,7 @@ class Run:
                     # If the message was send then remove it from the queue
                     self.Push_Queue.pop(0)
 
-            # If we are running on a ESP32 then we need to time.sleep_ms(12)
-            # to allow webrepl to run
-            if self.ESP_Type == 32:
-                utime.sleep_ms(12)
+            # # If we are running on a ESP32 then we need to time.sleep_ms(12)
+            # # to allow webrepl to run
+            # if self.ESP_Type == 32:
+            #     utime.sleep_ms(12)

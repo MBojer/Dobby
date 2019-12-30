@@ -35,7 +35,6 @@ def setup():
     uos.mkdir('conf')
     # make lib dir
     uos.mkdir('lib')
-    uos.mkdir('lib/dobby')
 
     with open("boot.py", "w") as f:
         f.write("""\
