@@ -1,0 +1,31 @@
+{
+    "Main": {
+        "Pin": "A0",
+        "Min_Volt": 0.5,
+        "Max_Volt": 4.5,
+        "Max_Pressure": 6.89476,
+        "R3": 150000,
+        "Round": 2,
+        "Publish": {
+        "State": "5s"
+        },
+        "Message": {
+        "0-0.9": {
+            "Topic": "/TargetTopic",
+            "Payload": "Low Pressure"
+        },
+        "1-2.2": {
+            "Topic": "/TargetTopic",
+            "Payload": "Normal Pressure"
+        },
+        "2.3-3": {
+            "Topic": "/TargetTopic",
+            "Payload": "Normal Pressure"
+        },
+        "3.1-7": {
+            "Topic": "/TargetTopic",
+            "Payload": "Critical Pressure"
+        }
+        }
+    }
+}

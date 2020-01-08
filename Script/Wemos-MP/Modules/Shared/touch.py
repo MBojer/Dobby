@@ -1,9 +1,14 @@
-#!/usr/bin/python3
+#!/usr/bin/python
+
+## Version
+### First didget = Software type 1-Production 2-Beta 3-Alpha
+### Secound and third didget = Major version number
+### Fourth to sixth = Minor version number
+Version = 300006
 
 import machine
 import utime
 import ujson
-
 
 class Init:
 
@@ -93,7 +98,7 @@ class Init:
             
             # Save trigger at if given
             # default to 50
-            self.Trigger_At = Config.get('Trigger_At', 50)
+            self.Trigger_At = Config.get('Trigger At', 50)
             # Reset to default if we didnt get int
             if type(self.Trigger_At) != int:
                 self.Trigger_At = 50
@@ -101,8 +106,19 @@ class Init:
             # Log event
             self.Dobby.Log(0, "Touch/" + self.Name, "Trigger at set to " + str(self.Trigger_At))
             
-            self.NoAction = 750
+            self.Block_Action = 750
             self.Last_Action = utime.ticks_ms()
+
+            # Used if hold is configured
+            self.Hold = {}
+            
+            # # Store hold timers if set
+            # # if not default to specified values
+            
+            # self.Hold_After = Config.get('Hold After', 500)
+            # self.Hold_Delay = Config.get('Hold Delay', 150)
+            # self.Hold_Pressed = None
+            # self.Hold_Up = True
 
             # MQTT Message
             self.MQTT_Message = {}
@@ -182,6 +198,13 @@ class Init:
                     if Failure == False:
                         # Save settings
                         self.Dimmer[Entry.lower()] = Config['Dimmer'][Entry]
+            
+                        if Entry.lower() == 'hold':
+                            # Log event
+                            self.Dobby.Log(0, "Touch/" + self.Name, "Hold enabeled")
+                            # Enable hold
+                            self.Hold_Enable()
+            
                         # log event
                         self.Dobby.Log(
                             0,
@@ -202,12 +225,75 @@ class Init:
                     # Sleep for 10 ms
                     utime.sleep_ms(10)
 
+            # Log event
+            self.Dobby.Log(0, "Touch/" + self.Name, "High set to: " + str(self.High))
+            
+            # List to be used for averaging the
+            self.Readings = []
+
             # State of Touch - On/OFF aka True/False
             self.State = self.Get_State()
 
             # Log event
             self.Dobby.Log(0, "Touch/" + self.Name, "Initialization complete")
 
+
+
+        # -------------------------------------------------------------------------------------------------------
+        def Hold_Stop(self):
+            # flip math
+            if self.Hold['math'] == '+':
+                self.Hold['math'] = '-'
+            else:
+                self.Hold['math'] = '+'
+            # Stop the timer if running
+            self.Hold['timer'].Stop()
+            # Mark hold as not active
+            self.Hold['Active'] = False
+            # Set logged to false so we log hold message again
+            self.Hold["Logged"] = False
+
+
+        # -------------------------------------------------------------------------------------------------------
+        def Hold_Check(self):
+
+            # Store current state in variable
+            Current_State = self.Get_State()
+
+            # Check if we are on
+            if Current_State == 'on':
+                # Set state to hold, Set_State will then handle adding the + or -
+                self.Set_State('hold')
+                # Restart the timer
+                self.Hold['timer'].Start(Timeout_ms=self.Hold['Delay'])        
+
+            
+
+        # -------------------------------------------------------------------------------------------------------
+        def Hold_Enable(self):
+            # Set hold values
+            self.Hold['Active'] = False
+            self.Hold['After'] = 500
+            self.Hold['Delay'] = 150
+            self.Hold['Pressed at'] = None
+            self.Hold['math'] = '+'
+            self.Hold["Logged"] = False
+
+            # Check if the dobby.timer module is loaded
+            self.Dobby.Timer_Init()
+            # Add a timer
+            # 1 = Referance Name
+            # 2 = Timeout
+            # 3 = Callback
+            # 4 = Argument
+            # 5 = Disable logging for this timer since it will be triggered a lot
+            # Note Fade is active by creating <state> key with referance to timer in Fade dict
+            self.Hold['timer'] = self.Dobby.Sys_Modules['timer'].Add(
+                "Touch-" + self.Name + "-Hold",
+                self.Hold['After'],
+                self.Hold_Check,
+                Logging=False
+            )
 
 
         # -------------------------------------------------------------------------------------------------------
@@ -247,14 +333,31 @@ class Init:
             Return_dict['Raw'] = self.Pin.read()
             Return_dict['State'] = self.State
             Return_dict['Trigger At'] = self.Trigger_At
+            Return_dict['High'] = self.High
                 
             return ujson.dumps(Return_dict)
          
 
         # -------------------------------------------------------------------------------------------------------
         def Get_State(self):
+
+            # Get current state
+            Current_State = self.Pin.read()
+            # Change high if current reading larger than high
+            self.High = max(self.High, Current_State)
+
+            # If list larger or equal to 3 then remove one
+            if len(self.Readings) >= 3:
+                # Remove oldes entry in list aka first
+                self.Readings.pop()
+            # Add latest reading to the list
+            self.Readings.append(Current_State)
+            # Get averaging of list
+            Current_State = sum(self.Readings) / len(self.Readings)
+
             # Returns the current state of the Touch in 0 = off 1 = on            
-            if self.High - self.Pin.read() > self.Trigger_At:
+            # if self.High - Current_State > self.Trigger_At:
+            if Current_State < self.Trigger_At:
                 return "on"
             else:
                 return "off"
@@ -263,14 +366,30 @@ class Init:
         # -------------------------------------------------------------------------------------------------------
         def Set_State(self, State):
 
-            # Log time for state change
-            self.Last_Action = utime.ticks_ms()
-
             # Build Topic
             Topic = self.Dobby.Peripherals_Topic("Touch", End=self.Name, State=True)
 
-            # Log Touch was pressed
-            self.Dobby.Log_Peripheral([Topic, State], True)
+            # Hold is not active to log all events
+            if self.Hold == {}:
+                # Log Touch was pressed
+                self.Dobby.Log_Peripheral([Topic, State], True)
+            
+            # Hold is configured
+            # check if we are sending the first Hold message is so send it ig not well ...
+            else:
+                # Check if we got hold state
+                if State.lower() == 'hold':
+                    # Check if we already logged hold state
+                    if self.Hold["Logged"] == False:
+                        # Log Touch was pressed
+                        self.Dobby.Log_Peripheral([Topic, State], True)
+                        # Mark that we loggeds 'hold'
+                        self.Hold["Logged"] = True
+                
+                else:
+                    # Log Touch was pressed
+                    self.Dobby.Log_Peripheral([Topic, State], True)
+
 
             # Take action as per specified
             ## Message
@@ -294,27 +413,66 @@ class Init:
                 # Trigger the local Dimmer with the provided settings
                 # We need a try here in case on or off is not set
                 try:
-                    self.Dobby.Modules['dimmer'].Peripherals[self.Dimmer[State]['Name']].Set_Percent(self.Dimmer[State]['State'])
+                    if State.lower() == 'hold':
+                        New_State = self.Hold['math'] + str(self.Dimmer[State.lower()]['State'])
+                    else:
+                        New_State = self.Dimmer[State.lower()]['State']
+                    
+                    self.Dobby.Modules['dimmer'].Peripherals[self.Dimmer[State.lower()]['Name']].Set_Percent(New_State)
                 except KeyError:
                     pass
 
             # Save the current state to self.State
             self.State = State
 
+            # Not last action so we block loop for ms = self.Block_Action
+            self.Last_Action = utime.ticks_ms()
+
 
         # -------------------------------------------------------------------------------------------------------
         def Loop(self):
+            # if on check if hold is set
+            # if not trigger on asap and block for NoAction
+            
             # If Touch is disabled do nothing
             if self.OK == False:
                 return
 
-            # Store current state in variable
-            Current_State = self.Get_State()
-
-            if utime.ticks_diff(utime.ticks_ms(), self.Last_Action) < self.NoAction:
+            elif utime.ticks_diff(utime.ticks_ms(), self.Last_Action) < self.Block_Action:
                 return
 
-            # Check if state changed
-            if Current_State != self.State:
-                # state changed so will pass new state to set state
-                self.Set_State(Current_State)
+            if self.Hold == {}:
+                # Store current state in variable
+                Current_State = self.Get_State()
+
+                # Check if state changed
+                if Current_State != self.State:
+                    # state changed so will pass new state to set state
+                    self.Set_State(Current_State)
+            
+            # Hold is active
+            else:
+                # Store current state in variable
+                Current_State = self.Get_State()
+
+                if Current_State == 'off' and self.Hold['Active'] == True:
+                    # Only change state if hold for less then self.Hold['After']
+                    if utime.ticks_diff(utime.ticks_ms(), self.Hold['Pressed at']) < self.Hold['After']:
+                        # Trigger on since we did not hold long enough to reash After timeout
+                        self.Set_State('on')
+
+                    # Always stop when off
+                    self.Hold_Stop()
+
+                # If the timer is not running start it
+                elif Current_State == 'on' and self.Hold['Active'] == False:
+                    # Note time when pressed
+                    self.Hold['Pressed at'] = utime.ticks_ms()
+                    # Always start the timer with Hold['After'] as timeout
+                    self.Hold['timer'].Start(Timeout_ms=self.Hold['After'])
+                    # Mark hold as active
+                    self.Hold['Active'] = True
+
+                elif Current_State != self.State and self.Hold['Active'] == False:
+                    self.Set_State('off')
+

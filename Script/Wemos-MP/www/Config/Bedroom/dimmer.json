@@ -1,0 +1,18 @@
+{
+  "Main": {
+    "MaxOn": "1h",
+    "Pin": "D1",
+    "Fade": {
+      "Delay": 25,
+      "Jump": 1
+    }
+  },
+  "Bathroom": {
+    "MaxOn": "20m",
+    "Pin": "D2",
+    "Fade": {
+      "Delay": 25,
+      "Jump": 1
+    }
+  }
+}

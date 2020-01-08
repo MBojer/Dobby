@@ -1,9 +1,8 @@
 import uos
-import network
 from flashbdev import bdev
 
 def check_bootsec():
-    buf = bytearray(bdev.SEC_SIZE)
+    buf = bytearray(bdev.ioctl(5, 0)) # 5 is SEC_SIZE
     bdev.readblocks(0, buf)
     empty = True
     for b in buf:
@@ -18,12 +17,11 @@ def fs_corrupted():
     import time
     while 1:
         print("""\
-The FAT filesystem starting at sector %d with size %d sectors appears to
-be corrupted. If you had important data there, you may want to make a flash
-snapshot to try to recover it. Otherwise, perform factory reprogramming
-of MicroPython firmware (completely erase flash, followed by firmware
-programming).
-""" % (bdev.START_SEC, bdev.blocks))
+FAT filesystem appears to be corrupted. If you had important data there, you
+may want to make a flash snapshot to try to recover it. Otherwise, perform
+factory reprogramming of MicroPython firmware (completely erase flash, followed
+by firmware programming).
+""")
         time.sleep(3)
 
 def setup():
@@ -34,9 +32,9 @@ def setup():
     uos.mount(vfs, '/')
 
     # Make dobby config dir
-    uos.mkdir('conf')
+    uos.mkdir('/conf')
     # make lib dir
-    uos.mkdir('lib')
+    uos.mkdir('/lib')
 
     with open("boot.py", "w") as f:
         f.write("""\

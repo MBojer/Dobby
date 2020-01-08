@@ -1,0 +1,11 @@
+{
+  "Pump": {
+    "Pin": "D4",
+    "Flip": true,
+    "Init": "On",
+    "Auto": {
+      "State": "on",
+      "Time": "10s"
+    }
+  }
+}

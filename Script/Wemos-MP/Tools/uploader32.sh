@@ -22,8 +22,8 @@ if [ "$Port" = "None" ];
         exit
 fi
 
-echo "Port set to: $Port"
 echo ""
+echo "Port set to: $Port"
 
 if [ "$1" = "--upload" ];
     then
@@ -47,6 +47,22 @@ if [ "$1" = "-e" ];
         echo "Erassing flash before uploading firmware"
         esptool.py -p $Port erase_flash
         echo "   Done"
+        exit
+fi
+
+if [ "$1" = "-f" ];
+    then
+        echo 
+        echo "Uploading $2 to /lib"
+        echo "   Creating $2.mpy"
+        ~/micropython/mpy-cross/mpy-cross $2.py
+        echo "   Uploading $2.mpy"
+        ampy -p $Port put $2.mpy '/lib/'$2'.mpy'
+        echo "   Removing $2.mpy"
+        rm $2.mpy
+        echo "   Starting Serial"
+        ~/piusb0.sh
+        exit
 fi
 
 
@@ -64,15 +80,12 @@ if [ "$1" = "--nocopy" ];
     then
         echo "NOT copying modules"
     else
-        echo "Removing old Dobby modules"
-        rm -v -Rf ~/micropython/ports/esp32/modules/
-        
         # copy modules
         echo "Copying modules"
-        cp -v -r "$(dirname "$(realpath "$0")")"/../bin/System/modules ~/micropython/ports/esp32/
+        cp -v -r "$(dirname "$(realpath "$0")")"/../os/Shared/*.py ~/micropython/ports/esp32/modules
         # copy modules
         echo "Copying esp32 modules"
-        cp -v -r "$(dirname "$(realpath "$0")")"/../bin/esp32/modules ~/micropython/ports/esp32/
+        cp -v -r "$(dirname "$(realpath "$0")")"/../os/esp32/*.py ~/micropython/ports/esp32/modules
 fi
 
 
@@ -107,7 +120,7 @@ fi
 echo 
 echo "Uploading firmware:"
 
-esptool.py --chip esp32 --port $Port --baud 460800 write_flash -z 0x1000 build-GENERIC/firmware.bin 
+esptool.py --chip esp32 --port $Port --baud 460800 write_flash -z 0x1000 $FILE 
 
 
 # back to the dir we came from

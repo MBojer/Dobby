@@ -1,0 +1,10 @@
+{
+  "Bedroom": {
+    "Publish": {
+      "State": "1m"
+    },
+    "Type": 22,
+    "Pin": "D7",
+    "Rate": "15s"
+  }
+}

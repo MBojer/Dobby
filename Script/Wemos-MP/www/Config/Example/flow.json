@@ -1,0 +1,18 @@
+{
+    "ColdWater": {
+        "Pin": "D7",
+        "TicksLiter": 520,
+        "Publish_L": 1,
+        "Message": {
+            "0-29": {
+            "Topic": "/TargetTopic",
+            "Payload": "Tank Low"
+            },
+            "30-100": {
+            "Topic": "/TargetTopic",
+            "Payload": "Tank Full"
+            }
+        },
+    }
+}
+  

@@ -134,3 +134,98 @@
 192.168.8.116 - - [30/Dec/2019 19:19:18] code 404, message File not found
 192.168.8.116 - - [30/Dec/2019 19:19:18] "GET /esp32/ds18b20.mpy HTTP/1.0" 404 -
 192.168.8.116 - - [30/Dec/2019 19:19:18] "GET /Shared/ds18b20.mpy HTTP/1.0" 200 -
+192.168.8.114 - - [30/Dec/2019 21:51:42] "GET / HTTP/1.1" 200 -
+192.168.8.114 - - [30/Dec/2019 21:51:42] code 404, message File not found
+192.168.8.114 - - [30/Dec/2019 21:51:42] "GET /favicon.ico HTTP/1.1" 404 -
+192.168.8.114 - - [30/Dec/2019 23:40:33] "GET / HTTP/1.1" 200 -
+192.168.8.100 - - [31/Dec/2019 13:30:35] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 13:30:35] "GET /esp32/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 13:30:36] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 13:30:36] "GET /Shared/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 13:30:42] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 13:30:42] "GET /esp32/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 13:30:42] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 13:30:42] "GET /Shared/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 13:30:47] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 13:30:47] "GET /esp32/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 13:30:47] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 13:30:47] "GET /Shared/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 13:31:56] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 13:31:56] "GET /esp32/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 13:31:57] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 13:31:57] "GET /Shared/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:04:46] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:04:46] "GET /esp32/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:04:46] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:04:46] "GET /Shared/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:09:00] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:09:00] "GET /esp32/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:09:00] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:09:00] "GET /Shared/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:10:25] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:10:25] "GET /esp32/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:10:25] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:10:25] "GET /Shared/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:25:05] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:25:05] "GET /esp32/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:25:05] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:25:05] "GET /Shared/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:28:03] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:28:03] "GET /esp32/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:28:03] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:28:03] "GET /Shared/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:29:54] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:29:54] "GET /esp32/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:29:54] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:29:54] "GET /Shared/network.json.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:34:01] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:34:01] "GET /esp32/main.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:34:01] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:34:01] "GET /Shared/main.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:34:02] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:34:02] "GET /esp32/timer.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:34:02] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:34:02] "GET /Shared/timer.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:34:02] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:34:02] "GET /esp32/indicator.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:34:02] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:34:02] "GET /Shared/indicator.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:34:02] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:34:02] "GET /esp32/pinmonitor.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:34:02] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:34:02] "GET /Shared/pinmonitor.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:24] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:24] "GET /esp32/main.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:24] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:24] "GET /Shared/main.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:24] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:24] "GET /esp32/timer.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:24] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:24] "GET /Shared/timer.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:25] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:25] "GET /esp32/indicator.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:25] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:25] "GET /Shared/indicator.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:25] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:25] "GET /esp32/pinmonitor.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:25] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:25] "GET /Shared/pinmonitor.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:42] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:42] "GET /esp32/main.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:42] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:42] "GET /Shared/main.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:42] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:42] "GET /esp32/timer.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:42] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:42] "GET /Shared/timer.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:42] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:42] "GET /esp32/indicator.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:42] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:42] "GET /Shared/indicator.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:42] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:42] "GET /esp32/pinmonitor.mpy HTTP/1.0" 404 -
+192.168.8.100 - - [31/Dec/2019 14:37:43] code 404, message File not found
+192.168.8.100 - - [31/Dec/2019 14:37:43] "GET /Shared/pinmonitor.mpy HTTP/1.0" 404 -
+192.168.8.114 - - [31/Dec/2019 14:40:13] "GET / HTTP/1.1" 200 -
+192.168.8.114 - - [31/Dec/2019 14:40:17] "GET /esp32/ HTTP/1.1" 200 -
+192.168.8.114 - - [31/Dec/2019 14:40:20] "GET /Shared/ HTTP/1.1" 200 -

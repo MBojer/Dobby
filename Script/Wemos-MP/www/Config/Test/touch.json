@@ -1,0 +1,16 @@
+{
+  "Door": {
+    "Pin": "IO32",
+    "Trigger At": 400,
+    "Dimmer": {
+      "On": {
+        "Name": "Main",
+        "State": 75
+      },
+      "Hold": {
+        "Name": "Main",
+        "State": 1
+      }
+    }  
+  }  
+}  

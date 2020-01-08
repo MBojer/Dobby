@@ -1,0 +1,13 @@
+{
+  "Main": {
+    "Pin": "D1",
+    "MaxOn": "30s",
+    "Fade": {
+      "Jump": 1,
+      "Delay": 25
+    }
+  },
+  "Mood": {
+    "Pin": "D2"
+  }
+}

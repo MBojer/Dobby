@@ -1,0 +1,11 @@
+{
+  "Main": {
+    "Pin": "D4",
+    "Type": 22,
+    "Rate": "25s",
+    "Round": 1,
+    "Publish": {
+      "State": "1m"
+    }
+  }
+}

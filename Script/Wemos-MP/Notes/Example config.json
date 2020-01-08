@@ -1,3 +1,5 @@
+{"Hostname":"Test","WiFi SSID":"NoInternetHere","WiFi Password":"NoPassword1!","MQTT Broker":"192.168.8.2"}
+
 Device
   Optional
     gBridgeTopic:

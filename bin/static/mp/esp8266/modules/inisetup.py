@@ -2,13 +2,6 @@ import uos
 import network
 from flashbdev import bdev
 
-def wifi():
-    pass
-    # import ubinascii
-    # ap_if = network.WLAN(network.AP_IF)
-    # essid = b"MicroPython-%s" % ubinascii.hexlify(ap_if.config("mac")[-3:])
-    # ap_if.config(essid=essid, authmode=network.AUTH_WPA_WPA2_PSK, password=b"micropythoN")
-
 def check_bootsec():
     buf = bytearray(bdev.SEC_SIZE)
     bdev.readblocks(0, buf)
@@ -36,7 +29,6 @@ programming).
 def setup():
     check_bootsec()
     print("Performing initial setup")
-    # wifi()
     uos.VfsFat.mkfs(bdev)
     vfs = uos.VfsFat(bdev)
     uos.mount(vfs, '/')
@@ -48,15 +40,33 @@ def setup():
 
     with open("boot.py", "w") as f:
         f.write("""\
-# This file is executed on every boot (including wake-boot from deepsleep)
-#import esp
-#esp.osdebug(None)
-import uos, machine
-#uos.dupterm(None, 1) # disable REPL on UART(0)
-import gc
-#import webrepl
-#webrepl.start()
-gc.collect()
+# Print to clear serial on boot
+print("")
+print("")
+import esp
+# Disable os debugging
+esp.osdebug(None)
+# Nothing to see here
+""")
+
+    with open("main.py", "w") as f:
+        f.write("""\
+# Import base system to get wifi up and download modules if needed
+import base
+# run base
+base.Run()
+# If we get to here something went wrong so lets reboot
+print()
+print()
+print()
+print()
+print()
+print("End of loop rebooting - we should not get to here")
+print()
+print()
+print()
+print()
+print()
 """)
 
     return vfs

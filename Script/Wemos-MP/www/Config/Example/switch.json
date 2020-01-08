@@ -1,0 +1,31 @@
+{
+  "FloatSwitch": {
+    "Pin": "D1",
+    "PullUp": true,
+    "Flip": true,
+    "For": {
+      "On": 250,
+      "Off": 1500
+    },
+    "Message": {
+      "On": {
+        "Topic": "/OnTarget",
+        "Payload": "Switch ON"
+      },
+      "Off": {
+        "Topic": "/OffState",
+        "Payload": "Switch Off"
+      }
+    },
+    "Relay": {
+      "On": {
+        "Name": "Pump",
+        "State": "On"
+      },
+      "Off": {
+        "Name": "Pump",
+        "State": "Off"
+      }
+    }
+  }
+}

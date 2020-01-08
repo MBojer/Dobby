@@ -1,0 +1,56 @@
+{
+    "Pins": {
+      "D7": "5s"
+    },
+    "Stove Out": {
+      "id": "0x4d02189245748528",
+      "Round": 1,
+      "Publish": {
+        "State": "15s"
+      },
+      "Indicator": {
+          "0-29.9": {
+            "Name": "AlarmBuzzer",
+            "Times": 3,
+            "On_For": "0.5s",
+            "Delay": "0.5s",
+            "Repeat": false
+          },
+          "30-75": {
+            "Name": "AlarmBuzzer",
+            "Times": 10,
+            "On_For": "0.25s",
+            "Delay": "0.01s",
+            "Repeat": true
+          }
+        }
+    },
+    "Rads In": {
+      "id": "0xf8020d9245ef7b28",
+      "Round": 1,
+      "Publish": {
+        "State": "15s"
+      }
+    },
+    "Rads Out": {
+      "id": "0x16021392457ab428",
+      "Round": 1,
+      "Publish": {
+        "State": "15s"
+      }
+    },
+    "Cylender In": {
+      "id": "0xbd020e92452ec028",
+      "Round": 1,
+      "Publish": {
+        "State": "15s"
+      }
+    },
+    "Cylender Out": {
+      "id": "0x1c02199245ddec28",
+      "Round": 1,
+      "Publish": {
+        "State": "15s"
+      }
+    }
+  } 

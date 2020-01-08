@@ -1,0 +1,28 @@
+{
+  "Left": {
+    "Pin": "D5",
+    "Dimmer": {
+      "On": {
+        "Name": "Main",
+        "State": 5
+      },
+      "Off": {
+        "Name": "Main",
+        "State": 0
+      }
+    }
+  },
+  "Right": {
+    "Pin": "D6",
+    "Dimmer": {
+      "On": {
+        "Name": "Main",
+        "State": 75
+      },
+      "Off": {
+        "Name": "Main",
+        "State": 0
+      }
+    }
+  }
+}

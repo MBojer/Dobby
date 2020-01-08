@@ -1,3 +1,11 @@
+#!/usr/bin/python
+
+## Version
+### First didget = Software type 1-Production 2-Beta 3-Alpha
+### Secound and third didget = Major version number
+### Fourth to sixth = Minor version number
+Version = 300000
+
 import machine
 import ujson
 
