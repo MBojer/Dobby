@@ -123,11 +123,10 @@ class Init:
                 "Voltmeter-" + self.Name + "-Read",
                 self.Rate,
                 self.Read,
-                Logging=False
+                Logging=False,
+                Start=True,
+                Repeat=True
             )
-
-            # Start the timer
-            self.Read_Timer.Start()
 
 
         # -------------------------------------------------------------------------------------------------------
@@ -138,9 +137,6 @@ class Init:
 
             # Convert to Voltage
             self.Voltage = Raw * (self.Max_Bridge_Volt / self.ADC_Max)
-
-            # Start the timer
-            self.Read_Timer.Start()
 
 
         # -------------------------------------------------------------------------------------------------------

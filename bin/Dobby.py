@@ -31,7 +31,7 @@ import io
 import socket
 
 # MySQL
-import MySQLdb
+import pymysql
 
 # Threding
 import threading

@@ -1,0 +1,18 @@
+{
+  "BowLights": {
+    "Pin": "D2",
+    "Init": "off",
+    "Auto": {
+      "State": "off",
+      "Time": "5m"
+    }
+  },
+  "Pump": {
+    "Pin": "D1",
+    "Init": "off",
+    "Auto": {
+      "State": "off",
+      "Time": "1.5m"
+    }
+  }
+}

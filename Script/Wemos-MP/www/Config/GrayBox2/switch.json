@@ -1,0 +1,21 @@
+{
+  "FloatSwitch": {
+    "Pin": "D7",
+    "Flip": true,
+    "PullUp": true,
+    "For": {
+      "On": "0.25s",
+      "Off": "5s"
+    },
+    "Relay": {
+      "On": {
+        "Name": "Pump",
+        "State": "On"
+      },
+      "Off": {
+        "Name": "Pump",
+        "State": "Off"
+      }
+    }
+  }
+}

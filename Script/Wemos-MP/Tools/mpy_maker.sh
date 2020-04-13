@@ -1,29 +1,60 @@
 #!/bin/bash
 
-start=`date +%s`
 
-Module_Path=~/Wemos-MP/Modules/
+Check_File () {
+    Module_Name=$1
+    # Remove .py from name
+    Module_Name=${Module_Name/.py/""}
+
+    # Make hash file
+    File_Hash=`cat "$Module_Name.py" | /usr/bin/md5sum | cut -f1 -d" "`
+    # Read current hash
+    Stored_Hash=$(<"../../www/Modules/$Device/${Module_Name}.md5")
+    
+    if [ "$Stored_Hash" = "$File_Hash" ];
+        then
+            echo "   no changes to: $Module_Name"
+        else
+            # Not change
+            Change=1
+            # Create mpy file
+            ~/micropython/mpy-cross/mpy-cross "$Module_Name.py"
+
+            # Check if make went ok aka we have the file below
+            FILE="${Module_Name}.mpy"
+            if test -f "$FILE";
+                then
+                    # Log event
+                    echo "   generated new mpy and hash for: ${Module_Name}"
+                else
+                    echo
+                    echo "   unable to create mpy file for: ${Module_Name}"
+                    exit
+            fi
+
+            # Move to www
+            mv "${Module_Name}.mpy" ../../www/Modules/$Device/
+            # chmod
+            chmod 775 ../../www/Modules/$Device/
+            # delete old has file
+            rm "../../www/Modules/$Device/${Module_Name}.md5"
+            # write to file
+            echo $File_Hash >> "../../www/Modules/$Device/${Module_Name}.md5"
+            # chmod
+            chmod 775 "../../www/Modules/$Device/${Module_Name}.md5"
+    fi
+
+}
+
+Change=0
+
+start=`date +%s`
 
 # get current dir so we can go back there when done
 Back_To_Dir=$PWD
-Port="None"
 
-if [ -e "/dev/ttyUSB0" ];
-    then
-        Port=/dev/ttyUSB0
-
-elif [ -e "/dev/ttyUSB1" ];
-    then
-        Port=/dev/ttyUSB1
-
-elif [ "$Port" = "None" ];
-    then
-        echo "Unable to find port"
-        exit
-fi
-
-echo ""
-echo "Port set to: $Port"
+# Change dir to modules
+Module_Path=~/Wemos-MP/Modules/
 
 Device="None"
 
@@ -48,14 +79,7 @@ cd $Module_Path/Shared
 # Dir list
 Module_List=(*)
 for Module_Name in "${Module_List[@]}"; do
-    # Remove .py from name
-    Module_Name=${Module_Name/.py/""}
-    # Log event
-    echo "   ${Module_Name}"
-    # Create mpy file
-    ~/micropython/mpy-cross/mpy-cross "$Module_Name.py"
-    # Move to www
-    mv "${Module_Name}.mpy" ../../www/Modules/$Device/
+    Check_File $Module_Name
 done
 
 
@@ -66,15 +90,37 @@ cd $Module_Path/$Device
 # Dir list
 Module_List=(*)
 for Module_Name in "${Module_List[@]}"; do
-    # Remove .py from name
-    Module_Name=${Module_Name/.py/""}
-    # Log event
-    echo "   ${Module_Name}"
-    # Create mpy file
-    ~/micropython/mpy-cross/mpy-cross "$Module_Name.py"
-    # Move to www
-    mv "${Module_Name}.mpy" ../../www/Modules/$Device/
+    Check_File $Module_Name
 done
+
+# Create index.json
+cd ../../www/Modules/$Device/
+Module_List=(*)
+json_String="["
+for Module_Name in "${Module_List[@]}"; do
+    if [[ $Module_Name == *".mpy"* ]]; 
+        then
+            # Remove .py from name
+            Module_Name=${Module_Name/.mpy/""}
+            json_String=$json_String',"'$Module_Name'"'
+    fi
+done
+
+
+if [ "$Change" = 1 ];
+    then
+        # write index.json
+        echo "writing index.json"
+        # remove old index.json
+        rm index.json
+        # Fix string
+        json_String=${json_String/[,/"["}
+        json_String=$json_String"]"
+        # write to file
+        echo $json_String >> "index.json"
+        # chmod
+        chmod 775 "index.json"
+fi
 
 # back to the dir we came from
 cd $Back_To_Dir
@@ -82,6 +128,8 @@ cd $Back_To_Dir
 end=`date +%s`
 runtime=$((end-start))
 
+echo 
 echo "Run time: "$runtime"s"
 
 echo "Done"
+exit

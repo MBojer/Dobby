@@ -1,12 +1,12 @@
 {
-  "Dimmer-Hob": {
+  "Hob": {
     "Pin": "D2",
     "Fade": {
       "Delay": 25,
       "Jump": 1
     }
   },
-  "Dimmer-Sink": {
+  "Sink": {
     "Pin": "D1",
     "Fade": {
       "Delay": 25,

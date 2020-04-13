@@ -133,7 +133,7 @@ class Init:
                         self.Name + "-Publish-" + Key,
                         Rate,
                         self._Publish,
-                        Key
+                        Argument=Key
                     )
 
                     # Start the timer

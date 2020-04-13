@@ -1,0 +1,13 @@
+{
+    "Interval": "10s",
+    "5m": {
+        "Message": {
+            "Topic": "/TargetTopic",
+            "Payload": "Tank Low"
+        },
+        "Relay": {
+            "Name": "Contactor",
+            "State": "On"
+        }
+    }
+}

@@ -1,0 +1,8 @@
+{
+  "KitchenLights": {
+    "Dimmer": [
+      "Hob",
+      "Sink"
+    ]
+  }
+}

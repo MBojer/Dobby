@@ -6,7 +6,7 @@ import ujson
 ### First didget = Software type 1-Production 2-Beta 3-Alpha
 ### Secound and third didget = Major version number
 ### Fourth to sixth = Minor version number
-Version = 300003
+Version = 300005
 
 class Init:
 
@@ -30,11 +30,14 @@ class Init:
             if self.Peripherals[Name].OK is False:
                 # Issue with Dimmer detected disabling it
                 self.Dobby.Log(2, "Dimmer/" + Name, "Issue during setup, disabling the Dimmer")
+                # Delete the DHT from Peripherals
+                del self.Peripherals[Name]
+            # Only subscribe of Peripheral was ok
             else:
                 # Subscribe to Dimmer topic if at least one Dimmer was ok
-                self.Dobby.MQTT_Subscribe(self.Dobby.Peripherals_Topic("Dimmer", End="+"))
+                self.Dobby.MQTT_Subscribe(self.Dobby.Peripherals_Topic("Dimmer", End=Name))
                 # On/Off Topics
-                self.Dobby.MQTT_Subscribe(self.Dobby.Peripherals_Topic("Dimmer", End="+/OnOff"))
+                self.Dobby.MQTT_Subscribe(self.Dobby.Peripherals_Topic("Dimmer", End=Name + "/OnOff"))
 
             
         self.Dobby.Log(0, "Dimmer", "Initialization complete")
@@ -129,8 +132,8 @@ class Init:
                 "Dimmer-" + self.Name + "-Fade",
                 self.Fade['Delay'],
                 self.Fade_Jump,
-                False,
-                False
+                Argument=False,
+                Logging=False
             )
 
 
@@ -169,9 +172,6 @@ class Init:
             # Mark Dimmer as ok aka enable it
             self.OK = True
 
-            # Since the dimmer is ok we can now creat the ALL topic
-            
-
             # Log event
             self.Dobby.Log(0, "Dimmer/" + self.Name, "Initialization complete")
 
@@ -193,7 +193,6 @@ class Init:
                 return self.Percent
             else:
                 return self.Pin.duty()
-
 
         # -------------------------------------------------------------------------------------------------------
         def Fade_Jump(self, Target):
@@ -239,7 +238,49 @@ class Init:
                 # not at target do not log state
                 self.Set_State(New_Percent, False)
                 # Start the timer again and pass original target
-                self.Fade['timer'].Start(Target)
+                self.Fade['timer'].Argument = Target
+                self.Fade['timer'].Start()
+
+
+        # -------------------------------------------------------------------------------------------------------
+        def Is_Number(self, Value, Round=True, Percent=False):
+            # if Round is true a int will be returned
+            # if Percent is true false will be returned if value not between -100 and 100
+            # Raises value error if not valid number
+
+            # Well if we get 0 then lets return 0 shall we
+            if str(Value) in ['0', '0.0']:
+                return 0
+
+            try:
+                if "." in str(Value):
+                    # Check if we need to round the value and return a int
+                    if Round == True:
+                        Value = round(float(Value))
+                    # not rounding returning float
+                    else:
+                        Value = float(Value)
+                else:
+                    # return int if possible
+                    Value = int(Value)
+            except ValueError:
+                # raise ValueError since string
+                raise self.Error("Is_Numer: Invalid value provided: " + str(Value))
+            
+            # Check percent value if reqested
+            else:
+                # is percent
+                if Percent is True:
+                    # Check if number between -100 and 100
+                    if -100 <= Value <= 100:
+                        # Return value if ok
+                        return Value
+                    else:
+                        # if not raise ValueError
+                        raise self.Error("Is_Numer: Number: " + str(Value) + " not between -100% and 100%")
+                # if we are not checking for percent return the value
+                return Value
+
 
 
         # -------------------------------------------------------------------------------------------------------
@@ -249,26 +290,33 @@ class Init:
 
             Set_Value = True
 
+            Do_Math = False
+
             # Check if we got a step aka New_Percent starts with + pr -
             if str(New_Percent).startswith('+') == True or str(New_Percent).startswith('-') == True:
-                # Eval will run the math in the string form New_Percent
-                New_Percent = eval(str(self.Percent) + New_Percent)
-
-            # Set New_Percent is smaller than 0 set to 0 if larger than 100 set to 100
-            if int(New_Percent) < 0:
-                New_Percent = 0
-                Set_Value = False
-            elif int(New_Percent) > 100:
-                New_Percent = 100
-                Set_Value = False
+                Do_Math = True
 
             # Check if state is a percent value
             # Dobby.Is_Number will raise a Value error if not valued procent
             try:
-                New_Percent = self.Dobby.Is_Number(New_Percent, Round=True, Percent=True)
-            except ValueError:
+                New_Percent = int(self.Is_Number(New_Percent, Round=True, Percent=True))
+            except self.Dobby.Error:
+                # Log error
+                self.Dobby.Log(2, "Dimmer/" + self.Name, "Invalid value provided: " + str(New_Percent))
                 # return True so we dont trigger unknown command            
                 return True
+
+            if Do_Math == True:
+                # Eval will run the math in the string form New_Percent
+                New_Percent = eval(str(self.Percent) + str(New_Percent))
+
+            # Set New_Percent is smaller than 0 set to 0 if larger than 100 set to 100
+            if New_Percent < 0:
+                New_Percent = 0
+                Set_Value = False
+            elif New_Percent > 100:
+                New_Percent = 100
+                Set_Value = False
 
             # Check if % we got == self.Percent
             # if so trun the dimmer off
@@ -285,7 +333,8 @@ class Init:
             # Check if Fade is enabeled
             if self.Fade != None:
                 # Start the timer and pass Target aka New_Percent
-                self.Fade['timer'].Start(New_Percent)
+                self.Fade['timer'].Argument = New_Percent
+                self.Fade['timer'].Start()
             
             # Fade not active change state
             else:
@@ -311,7 +360,9 @@ class Init:
                     self.MaxOn.Stop()
                 # Start timer
                 else:
-                    self.MaxOn.Start(Callback=self.Set_Percent, Argument=0)
+                    self.MaxOn.Callback = self.Set_Percent
+                    self.MaxOn.Argument = 0
+                    self.MaxOn.Start()
             
             # Check if we need to log the event
             if Log_Event == True:
@@ -329,6 +380,7 @@ class Init:
             # At this sage we know self.name is valid
             
             # check if we got OnOff sub topic
+            # Remember Sub_Topic gets set to lower in base
             if Sub_Topic == 'onoff':
                 # Now check we the command is 0 aka OFF or 1 ON
                 # Compare in string so we cache both string and int
@@ -338,20 +390,24 @@ class Init:
                     if self.Percent == 0:
                         Command = self.Last_Percent
                     else:
-                        # if we are already on then do nothing aka return
+                        # if we are already on then do nothing and return
                         return
                 
                 elif str(Command) == '0':
-                    # Set command to self.Last_Percent
                     # only if self.Percent != 0 aka already on
                     if self.Percent != 0:
+                        # Set command to self.Last_Percent
+                        self.Last_Percent = self.Percent
                         Command = 0
                     else:
                         # if we are already off then do nothing aka return
                         return
 
+                # If we havent returned we need to trigger Set_Percent and pass command
+                self.Set_Percent(Command)
+
             # After altering command then check commands as normal
-            if Command == "?":
+            elif Command == "?":
                 self.Dobby.Log_Peripheral(
                     [
                         self.Dobby.Peripherals_Topic("Dimmer", End=self.Name, State=True),

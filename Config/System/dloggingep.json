@@ -1,0 +1,41 @@
+{
+    "Main": {
+      "Enabled": true,
+      "Serial Port": "/dev/ttyXRUSB0",
+      "Log Rate": "1m",
+      "PV Volt - 0x3100": false,
+      "PV Amp - 0x3101": false,
+      "PV Watt - 0x3102": false,
+      "Battery Volt - 0x3104": [
+        "log",
+        "publish"
+      ],
+      "Battery Amp - 0x3105": false,
+      "Battery Watt - 0x3106": [
+        "log",
+        "publish"
+      ],
+      "Generated Watt Year - 0x3310": false,
+      "Generated Watt Month - 0x330E": false,
+      "Generated Watt Today - 0x330C": [
+        "log",
+        "publish"
+      ],
+      "Load Watt Year - 0x3308": false,
+      "Load Watt Month - 0x3306": false,
+      "Load Watt Today - 0x3304": false,
+      "Battery Min Volt Today - 0x3303": false,
+      "Battery Max Volt Today - 0x3302": false,
+      "PV Min Volt Today - 0x3301": false,
+      "PV Max Volt Today - 0x3300": false,
+      "Charger Status - 0x3201": false,
+      "Battery Status - 0x3200": false,
+      "Remote Sensor Temperature - 0x311B": false,
+      "Battery SOC - 0x311A": false,
+      "Heatsink Temperature - 0x3112": false,
+      "Device Temperature - 0x3111": false,
+      "Battery Temperature - 0x3110": false,
+      "Load Watt - 0x310E": false,
+      "Load Apm - 0x310D": false
+    }
+  }

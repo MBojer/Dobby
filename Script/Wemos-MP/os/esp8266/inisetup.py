@@ -43,18 +43,32 @@ def setup():
 # Print to clear serial on boot
 print("")
 print("")
-import esp
 # Disable os debugging
+import esp
 esp.osdebug(None)
-# Nothing to see here
 """)
 
     with open("main.py", "w") as f:
         f.write("""\
+# Import and run loader to check modules
+import loader
+# Run loader
+Loader = loader.Run()
+# get log queue from loader
+Log_Queue = Loader.Log_Queue
+# Delete the Loader and loader to free memory
+del Loader
+del loader
+
 # Import base system to get wifi up and download modules if needed
 import base
-# run base
-base.Run()
+# run base with loader.Run() as arguments, it will return a loader log to be published when connected
+Base = base.Run(Log_Queue)
+# delete the log queue
+del Log_Queue
+# Run base loop
+Base.Loop()
+
 # If we get to here something went wrong so lets reboot
 print()
 print()

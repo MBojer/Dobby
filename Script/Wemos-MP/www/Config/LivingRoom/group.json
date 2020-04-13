@@ -1,0 +1,8 @@
+{
+  "LivingRoomLights": {
+    "Dimmer": [
+      "Main",
+      "Mood"
+    ]
+  }
+}

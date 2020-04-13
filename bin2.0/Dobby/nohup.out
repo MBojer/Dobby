@@ -1,0 +1,3107 @@
+/usr/local/lib/python3.5/dist-packages/pymysql/cursors.py:170: Warning: (1265, "Data truncated for column 'Message' at row 1")
+  result = self._query(query)
+Exception in thread Thread-6288:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6331:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6343:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6344:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6347:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6371:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6410:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6417:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6465:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6502:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6540:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6585:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6586:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6587:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6598:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6599:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6637:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6648:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6664:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6716:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-7470:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-7487:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-11926:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-17766:
+Traceback (most recent call last):
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 71, in Run
+    db_Cursor.execute(Command)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/cursors.py", line 170, in execute
+    result = self._query(query)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/cursors.py", line 328, in _query
+    conn.query(q)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 517, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 732, in _read_query_result
+    result.read()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 1075, in read
+    first_packet = self.connection._read_packet()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 684, in _read_packet
+    packet.check_error()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/protocol.py", line 220, in check_error
+    err.raise_mysql_exception(self._data)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/err.py", line 109, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.ProgrammingError: (1146, "Table 'Dobby_Logging_Device.Stove2' doesn't exist")
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 60, in Save_Message
+    self.ddb.Run("INSERT INTO `" + Device_Name + "` (`Level`, `Owner`, `Message`) VALUES ('" + Log_Level + "', '" + Owner + "', '" + Payload + "');", Connection=db_Connection)
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 75, in Run
+    raise self.Error("Missing table")
+ddb.Init.Error: Missing table
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 63, in Save_Message
+    self.ddb.Run("CREATE TABLE `" + Device_Name + "` (`id` int(11) NOT NULL AUTO_INCREMENT, `Level` varchar(8) NOT NULL, `Owner` varchar(95) NOT NULL, `Message` varchar(90) NOT NULL, `DateTime` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`id`), UNIQUE KEY `id_UNIQUE` (`id`)) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;", Connection=db_Connection)
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 71, in Run
+    db_Cursor.execute(Command)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/cursors.py", line 170, in execute
+    result = self._query(query)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/cursors.py", line 328, in _query
+    conn.query(q)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 517, in query
+    self._affected_rows = self._read_query_result(unbuffered=unbuffered)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 732, in _read_query_result
+    result.read()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 1075, in read
+    first_packet = self.connection._read_packet()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 684, in _read_packet
+    packet.check_error()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/protocol.py", line 220, in check_error
+    err.raise_mysql_exception(self._data)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/err.py", line 109, in raise_mysql_exception
+    raise errorclass(errno, errval)
+pymysql.err.InternalError: (1050, "Table 'Stove2' already exists")
+
+Exception in thread Thread-17859:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-17878:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-17913:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-17932:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-35749:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-35757:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-35758:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-44653:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-48122:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-50077:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-56511:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-61675:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-82372:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-90106:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-91865:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-93740:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-100794:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-112371:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-114108:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-133654:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-133655:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-140702:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-140703:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-141458:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-142311:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-142573:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-142574:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-144525:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-145254:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-146912:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-148557:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-149288:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-150857:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-157747:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-162813:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-172210:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-177326:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-185051:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-185765:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-188988:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-188989:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-191102:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-191491:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-195430:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-204495:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-204509:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-211324:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-220922:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-225047:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-231735:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-232682:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-234606:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-234607:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-238886:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-244219:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-248693:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-252616:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-252621:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-252762:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-258104:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-261557:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-262746:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-262747:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-262748:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-264679:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-268208:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-276966:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-279152:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-280142:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-287051:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-294170:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-303900:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-303913:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-307875:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-307876:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-308688:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-310136:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-316085:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-322886:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-324840:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-324904:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-324905:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-324906:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-324924:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-325005:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-325006:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-325049:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-325115:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-325141:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-325160:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-325186:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-325213:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-325239:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-325301:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+Exception in thread Thread-251:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-10099:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-17053:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-17071:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-19472:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-19563:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-19573:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-24749:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-26693:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-27724:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-27735:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-27757:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-27990:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-30785:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-30801:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-30890:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-30953:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-37743:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-39441:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-40611:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-40705:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+Exception in thread Thread-15:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-55:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-860:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-867:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-870:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-1575:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-1580:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-1586:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-2367:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-2368:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-2369:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-3110:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-3111:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-3112:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-4089:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-4090:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-4091:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-4785:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-4786:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-4787:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-5544:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-5545:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-5546:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6292:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6293:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-6294:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-8930:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-9615:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-9616:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-9617:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-11445:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-11446:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-11447:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-13401:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-13402:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-13403:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-15307:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-15308:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-15309:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-17189:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-17194:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-17195:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-19069:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-19070:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-19071:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-20966:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-20967:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-20968:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-22934:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-22935:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-22938:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-24823:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-24824:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-24827:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-26787:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-26792:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-26793:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-29152:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-29155:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-29156:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-31026:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-31027:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-31028:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-32929:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-32930:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-32931:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-34844:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-34845:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-34846:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-36717:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-36718:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-36719:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-38594:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-38595:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-38596:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-40497:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-40498:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-40499:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-43984:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-43985:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-43986:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-45253:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-45254:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-45255:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-45903:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-45904:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-45905:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-47795:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-47796:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-47799:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-48455:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-49710:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-49711:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-49713:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-50768:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-51650:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-51651:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-51654:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-53533:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-53534:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-53535:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-54239:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-54646:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-55412:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-55413:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+STARTING LOOP
+STARTING LOOP
+STARTING LOOP
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '75'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '100'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '25'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '50'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '0'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'D7':  '0x8d0000071cb78128'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'Pump' State: 'Off'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'Pump' State: 'On'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '75'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '100'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '25'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '0'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '50'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'D7':  '0x8d0000071cb78128'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'Pump' State: 'Off'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'Pump' State: 'On'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '75'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '25'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '100'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '50'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '0'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'D7':  '0x8d0000071cb78128'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'Pump' State: 'On'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'Pump' State: 'Off'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '75'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '100'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '50'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '0'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '25'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'D7':  '0x8d0000071cb78128'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'Pump' State: 'Off'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'Pump' State: 'On'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '75'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '100'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '25'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '50'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '0'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'D7':  '0x8d0000071cb78128'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'Pump' State: 'Off'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'Pump' State: 'On'')' at line 1")
+FIX THIS: Run error: (1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near '' Payload: '75'')' at line 1")
+Exception in thread Thread-55414:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-57295:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-57296:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-57299:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-59168:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-59169:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-59172:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-61050:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-61051:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-61056:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-62966:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-62967:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-62972:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-64856:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-64859:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-64864:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-66794:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-66795:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-66800:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread Thread-69208:
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 50, in Save_Message
+    Owner = Owner[3]
+IndexError: list index out of range
+
+Exception in thread DobbyEPLoggerChecker:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 571, in connect
+    sock.connect(self.unix_socket)
+FileNotFoundError: [Errno 2] No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingep.py", line 134, in Checker
+    db_Connection = self.ddb.Connect(self.Log_db, Create_If_Missing=True)
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 36, in Connect
+    unix_socket='/var/run/mysqld/mysqld.sock'
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/__init__.py", line 94, in Connect
+    return Connection(*args, **kwargs)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 325, in __init__
+    self.connect()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 630, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 2] No such file or directory)")
+
+Exception in thread Thread-69289:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 571, in connect
+    sock.connect(self.unix_socket)
+FileNotFoundError: [Errno 2] No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingmqtt.py", line 73, in Save_Message
+    db_Connection = self.ddb.Connect("Dobby_Logging_MQTT")
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 36, in Connect
+    unix_socket='/var/run/mysqld/mysqld.sock'
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/__init__.py", line 94, in Connect
+    return Connection(*args, **kwargs)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 325, in __init__
+    self.connect()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 630, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 2] No such file or directory)")
+
+Exception in thread Thread-69288:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 571, in connect
+    sock.connect(self.unix_socket)
+FileNotFoundError: [Errno 2] No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingmqtt.py", line 73, in Save_Message
+    db_Connection = self.ddb.Connect("Dobby_Logging_MQTT")
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 36, in Connect
+    unix_socket='/var/run/mysqld/mysqld.sock'
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/__init__.py", line 94, in Connect
+    return Connection(*args, **kwargs)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 325, in __init__
+    self.connect()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 630, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 2] No such file or directory)")
+
+Exception in thread Thread-69290:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 571, in connect
+    sock.connect(self.unix_socket)
+FileNotFoundError: [Errno 2] No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 54, in Save_Message
+    db_Connection = self.ddb.Connect(self.Log_db)
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 36, in Connect
+    unix_socket='/var/run/mysqld/mysqld.sock'
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/__init__.py", line 94, in Connect
+    return Connection(*args, **kwargs)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 325, in __init__
+    self.connect()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 630, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 2] No such file or directory)")
+
+Exception in thread Thread-69291:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 571, in connect
+    sock.connect(self.unix_socket)
+FileNotFoundError: [Errno 2] No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 54, in Save_Message
+    db_Connection = self.ddb.Connect(self.Log_db)
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 36, in Connect
+    unix_socket='/var/run/mysqld/mysqld.sock'
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/__init__.py", line 94, in Connect
+    return Connection(*args, **kwargs)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 325, in __init__
+    self.connect()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 630, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 2] No such file or directory)")
+
+Exception in thread Thread-69293:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 571, in connect
+    sock.connect(self.unix_socket)
+FileNotFoundError: [Errno 2] No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingmqtt.py", line 73, in Save_Message
+    db_Connection = self.ddb.Connect("Dobby_Logging_MQTT")
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 36, in Connect
+    unix_socket='/var/run/mysqld/mysqld.sock'
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/__init__.py", line 94, in Connect
+    return Connection(*args, **kwargs)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 325, in __init__
+    self.connect()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 630, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 2] No such file or directory)")
+
+Exception in thread Thread-69292:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 571, in connect
+    sock.connect(self.unix_socket)
+FileNotFoundError: [Errno 2] No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingmqtt.py", line 73, in Save_Message
+    db_Connection = self.ddb.Connect("Dobby_Logging_MQTT")
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 36, in Connect
+    unix_socket='/var/run/mysqld/mysqld.sock'
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/__init__.py", line 94, in Connect
+    return Connection(*args, **kwargs)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 325, in __init__
+    self.connect()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 630, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 2] No such file or directory)")
+
+Exception in thread Thread-69294:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 571, in connect
+    sock.connect(self.unix_socket)
+FileNotFoundError: [Errno 2] No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingmqtt.py", line 73, in Save_Message
+    db_Connection = self.ddb.Connect("Dobby_Logging_MQTT")
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 36, in Connect
+    unix_socket='/var/run/mysqld/mysqld.sock'
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/__init__.py", line 94, in Connect
+    return Connection(*args, **kwargs)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 325, in __init__
+    self.connect()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 630, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 2] No such file or directory)")
+
+Exception in thread Thread-69295:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 571, in connect
+    sock.connect(self.unix_socket)
+FileNotFoundError: [Errno 2] No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingmqtt.py", line 73, in Save_Message
+    db_Connection = self.ddb.Connect("Dobby_Logging_MQTT")
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 36, in Connect
+    unix_socket='/var/run/mysqld/mysqld.sock'
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/__init__.py", line 94, in Connect
+    return Connection(*args, **kwargs)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 325, in __init__
+    self.connect()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 630, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 2] No such file or directory)")
+
+Exception in thread Thread-69296:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 571, in connect
+    sock.connect(self.unix_socket)
+FileNotFoundError: [Errno 2] No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 54, in Save_Message
+    db_Connection = self.ddb.Connect(self.Log_db)
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 36, in Connect
+    unix_socket='/var/run/mysqld/mysqld.sock'
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/__init__.py", line 94, in Connect
+    return Connection(*args, **kwargs)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 325, in __init__
+    self.connect()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 630, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 2] No such file or directory)")
+
+Exception in thread Thread-69297:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 571, in connect
+    sock.connect(self.unix_socket)
+FileNotFoundError: [Errno 2] No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingdevice.py", line 54, in Save_Message
+    db_Connection = self.ddb.Connect(self.Log_db)
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 36, in Connect
+    unix_socket='/var/run/mysqld/mysqld.sock'
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/__init__.py", line 94, in Connect
+    return Connection(*args, **kwargs)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 325, in __init__
+    self.connect()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 630, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 2] No such file or directory)")
+
+Exception in thread Thread-69298:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 571, in connect
+    sock.connect(self.unix_socket)
+FileNotFoundError: [Errno 2] No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingmqtt.py", line 73, in Save_Message
+    db_Connection = self.ddb.Connect("Dobby_Logging_MQTT")
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 36, in Connect
+    unix_socket='/var/run/mysqld/mysqld.sock'
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/__init__.py", line 94, in Connect
+    return Connection(*args, **kwargs)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 325, in __init__
+    self.connect()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 630, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 2] No such file or directory)")
+
+Exception in thread Thread-69299:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 571, in connect
+    sock.connect(self.unix_socket)
+FileNotFoundError: [Errno 2] No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingmqtt.py", line 73, in Save_Message
+    db_Connection = self.ddb.Connect("Dobby_Logging_MQTT")
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 36, in Connect
+    unix_socket='/var/run/mysqld/mysqld.sock'
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/__init__.py", line 94, in Connect
+    return Connection(*args, **kwargs)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 325, in __init__
+    self.connect()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 630, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 2] No such file or directory)")
+
+Exception in thread Thread-69300:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 571, in connect
+    sock.connect(self.unix_socket)
+FileNotFoundError: [Errno 2] No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingmqtt.py", line 73, in Save_Message
+    db_Connection = self.ddb.Connect("Dobby_Logging_MQTT")
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 36, in Connect
+    unix_socket='/var/run/mysqld/mysqld.sock'
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/__init__.py", line 94, in Connect
+    return Connection(*args, **kwargs)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 325, in __init__
+    self.connect()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 630, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 2] No such file or directory)")
+
+Exception in thread Thread-69301:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 571, in connect
+    sock.connect(self.unix_socket)
+FileNotFoundError: [Errno 2] No such file or directory
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.5/threading.py", line 914, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.5/threading.py", line 862, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/ssd/Dobby/bin2.0/Dobby/dloggingmqtt.py", line 73, in Save_Message
+    db_Connection = self.ddb.Connect("Dobby_Logging_MQTT")
+  File "/media/ssd/Dobby/bin2.0/Dobby/ddb.py", line 36, in Connect
+    unix_socket='/var/run/mysqld/mysqld.sock'
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/__init__.py", line 94, in Connect
+    return Connection(*args, **kwargs)
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 325, in __init__
+    self.connect()
+  File "/usr/local/lib/python3.5/dist-packages/pymysql/connections.py", line 630, in connect
+    raise exc
+pymysql.err.OperationalError: (2003, "Can't connect to MySQL server on 'localhost' ([Errno 2] No such file or directory)")

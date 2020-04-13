@@ -4,7 +4,7 @@
 ### First didget = Software type 1-Production 2-Beta 3-Alpha
 ### Secound and third didget = Major version number
 ### Fourth to sixth = Minor version number
-Version = 300006
+Version = 300007
 
 import machine
 import utime
@@ -27,13 +27,12 @@ class Init:
             Name = str(Name)
             # Add the Touch to the Touch dict
             self.Peripherals[Name] = self.Touch(self.Dobby, Name, Config)
+            # Subscribe to Touch topic if at least one Touch was ok
+            self.Dobby.MQTT_Subscribe(self.Dobby.Peripherals_Topic("Touch", End=Name))
             # Check if the Touch is ok
             if self.Peripherals[Name].OK is False:
                 # Issue with Touch detected disabling it
                 self.Dobby.Log(2, "Touch/" + Name, "Issue during setup, disabling the Touch")
-            else:
-                # Subscribe to Touch topic if at least one Touch was ok
-                self.Dobby.MQTT_Subscribe(self.Dobby.Peripherals_Topic("Touch", End="+"))
             
         self.Dobby.Log(0, "Touch", "Initialization complete")
 
@@ -265,7 +264,8 @@ class Init:
                 # Set state to hold, Set_State will then handle adding the + or -
                 self.Set_State('hold')
                 # Restart the timer
-                self.Hold['timer'].Start(Timeout_ms=self.Hold['Delay'])        
+                self.Hold['timer'].Set_Timeout(self.Hold['Delay'])        
+                self.Hold['timer'].Start()        
 
             
 
@@ -330,7 +330,9 @@ class Init:
         def Get_json(self, Reset=False):
 
             Return_dict = {}
-            Return_dict['Raw'] = self.Pin.read()
+            # Last entry in self.Readings ok as current reading
+            Return_dict['Raw'] = self.Readings[len(self.Readings) - 1]
+            Return_dict['Avarage'] = sum(self.Readings) / len(self.Readings)
             Return_dict['State'] = self.State
             Return_dict['Trigger At'] = self.Trigger_At
             Return_dict['High'] = self.High
@@ -469,7 +471,8 @@ class Init:
                     # Note time when pressed
                     self.Hold['Pressed at'] = utime.ticks_ms()
                     # Always start the timer with Hold['After'] as timeout
-                    self.Hold['timer'].Start(Timeout_ms=self.Hold['After'])
+                    self.Hold['timer'].Set_Timeout(self.Hold['After'])
+                    self.Hold['timer'].Start()
                     # Mark hold as active
                     self.Hold['Active'] = True
 

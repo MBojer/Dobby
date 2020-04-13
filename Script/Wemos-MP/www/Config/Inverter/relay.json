@@ -1,0 +1,6 @@
+{
+  "Inverter": {
+    "Pin": "D8",
+    "Init": "On"
+  }
+}

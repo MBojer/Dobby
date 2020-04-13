@@ -1,0 +1,6 @@
+{
+  "Contactor Power": {
+    "Pin": "D7",
+    "Init": "Off"
+  }
+}

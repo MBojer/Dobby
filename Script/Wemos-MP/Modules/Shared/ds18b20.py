@@ -178,31 +178,40 @@ class Init:
     # -------------------------------------------------------------------------------------------------------
     def Read_Sensor(self, Pin_Name):
 
+        Delete_Sensor = False
+
         # Tells the sensors to read values, now wait 1.5s before getting them from the sensor
         try:
             self.Sensor_Pins[Pin_Name]['Sensor'].convert_temp()
         except onewire.OneWireError as e:
-            # Add to error count
-            self.Sensor_Pins[Pin_Name]['Error'] = self.Sensor_Pins[Pin_Name]['Error'] + 1
-            # Log event
-            self.Shared.Log(0, "DS18B20/" + Pin_Name, "Unable to read pin. Error count: " + str(self.Sensor_Pins[Pin_Name]['Error']))
-
-            # check if we reached max error counter aka 10
-            if self.Sensor_Pins[Pin_Name]['Error'] >= 10:
-                # Log event
-                self.Shared.Log(0, "DS18B20/" + Pin_Name, "Disabling pin. Max error count reached")
-                # remove the sensor from self.Sensor_Pins so we stop scanning it
-                del self.Sensor_Pins[Pin_Name]
-                # return here so we dont trigger an KeyError below
-                # return also prevents the timer for starting
-                return
-
+            Delete_Sensor = str(e)
+        except KeyError as e:
+            return
         else:
             # Reset error count on sucessfull read
             self.Sensor_Pins[Pin_Name]['Error'] = 0
+        
+        finally:
+            if Delete_Sensor != False:
+                # Add to error count
+                self.Sensor_Pins[Pin_Name]['Error'] = self.Sensor_Pins[Pin_Name]['Error'] + 1
+                # Log event
+                self.Shared.Log(0, "DS18B20/" + Pin_Name, "Unable to read pin. Error count: " + str(self.Sensor_Pins[Pin_Name]['Error']))
+
+                # check if we reached max error counter aka 10
+                if self.Sensor_Pins[Pin_Name]['Error'] >= 10:
+                    # Log event
+                    self.Shared.Log(0, "DS18B20/" + Pin_Name, "Disabling pin. Max error count reached")
+                    # remove the sensor from self.Sensor_Pins so we stop scanning it
+                    del self.Sensor_Pins[Pin_Name]
+                    # return here so we dont trigger an KeyError below
+                    # return also prevents the timer for starting
+                    return
+
 
         # restart the timer and change callback to Pass_Temperature
-        self.Read_Timers[Pin_Name].Start(Callback=self.Pass_Temperature)
+        self.Read_Timers[Pin_Name].Callback = self.Pass_Temperature
+        self.Read_Timers[Pin_Name].Start()
 
 
     # -------------------------------------------------------------------------------------------------------
@@ -239,7 +248,8 @@ class Init:
                     self.Unconfigured.append(Key)
 
         # restart the timer and change callback to Read_Sensor
-        self.Read_Timers[Pin_Name].Start(Callback=self.Read_Sensor)
+        self.Read_Timers[Pin_Name].Callback = self.Read_Sensor
+        self.Read_Timers[Pin_Name].Start()
 
 
 

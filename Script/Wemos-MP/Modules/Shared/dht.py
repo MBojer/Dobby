@@ -4,7 +4,7 @@
 ### First didget = Software type 1-Production 2-Beta 3-Alpha
 ### Secound and third didget = Major version number
 ### Fourth to sixth = Minor version number
-Version = 300000
+Version = 300001
 
 import dht
 import machine
@@ -33,10 +33,6 @@ class Init:
                 self.Dobby.Log(2, "DHT/" + Name, "Issue during setup, disabling the DHT")
                 # Delete the DHT from Peripherals
                 del self.Peripherals[Name]
-            # DHT ok
-            else:
-                # Subscribe to topic
-                self.Dobby.MQTT_Subscribe(self.Dobby.Peripherals_Topic("DHT", End="+"))
         
         # Log event
         self.Dobby.Log(0, "DHT", "Initialization complete")
@@ -106,42 +102,32 @@ class Init:
             # self.Sensors[self.Name]['Publish'] contains the RunningVarage object if enabled
             if Publish is not None:
                 # Create a dict to hold the timers
-                self.Publish_Timer = {}
+                self.Publish_Timers = {}
                 # Run for loop over entries in Publish
                 for Key, Value in Publish.items():
                     # Check if the dobby.timer module is loaded
                     self.Dobby.Timer_Init()
                     # Convert text time string aka 10s to ms int
-                    Rate = self.Dobby.Sys_Modules['Timer'].Time_To_ms(Value)
+                    Rate = self.Dobby.Sys_Modules['timer'].Time_To_ms(Value)
                     # Add a timer
                     # 1 = Referance Name
                     # 2 = Timeout
                     # 3 = Callback
                     # 4 = Argument
-                    self.Publish_Timer[Key] = self.Dobby.Sys_Modules['Timer'].Add(
-                        self.Name + "-Publish-" + Key,
+                    self.Publish_Timers[Key] = self.Dobby.Sys_Modules['timer'].Add(
+                        "DHT-" + self.Name + "-Publish-" + Key,
                         Rate,
                         self._Publish,
-                        Key
+                        Argument=Key,
+                        Start=True,
+                        Repeat=True
                     )
-
-                    # Start the timer
-                    self.Publish_Timer[Key].Start()
                     
                     # Log event
                     self.Dobby.Log(0, "DHT/" + self.Name + "/Publish", Key + " interval set to: " + Value)
 
-                # # State in Publish config
-                # if Publish.get('State' , None) != None:
-
-                # # json in Publish config
-                # if Publish.get('State' , None) != None:
-                
-
-
-            # Publish
-            # State
-            # json
+            # Subscribe to topic
+            self.Dobby.MQTT_Subscribe(self.Dobby.Peripherals_Topic("DHT", End=Name))
 
             # Mark DHT Sensor as ok
             ## if its not it will get disabled after 10 failed reads
@@ -194,6 +180,9 @@ class Init:
                     self.Dobby.Log(2, "DHT/" + str(self.Name), "Max error count reached disabling sensor - Error count: " + str(self.Error_Count))
                     # disable the sensor
                     self.OK = False
+                    for Key in self.Publish_Timers:
+                        # Stop the timers
+                        self.Publish_Timers[Key].Stop()
 
                 # return when we get an error
                 return False
@@ -244,10 +233,6 @@ class Init:
             elif Triggered_By == "State":
                 # Trigger callback
                 self.Publish_State()
-                
-            # Restat timer
-            if self.OK == True:
-                self.Publish_Timer[Triggered_By].Start()
 
 
         # -------------------------------------------------------------------------------------------------------

@@ -1,0 +1,13 @@
+{
+    "Interval": "1m",
+    "5m": {
+        "Message": {
+            "Topic": "/Boat/Plugs/Source",
+            "Payload": "Generator"
+        },
+        "Relay": {
+            "Name": "Contactor Power",
+            "State": "On"
+        }
+    }
+}

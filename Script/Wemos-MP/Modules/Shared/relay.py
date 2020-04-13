@@ -134,8 +134,10 @@ class Init:
                 self.Auto[Config['Auto']['State'].lower()] = self.Dobby.Sys_Modules['timer'].Add(
                     self.Name + "-Auto-" + Config['Auto']['State'],
                     Config['Auto']['Time'],
-                    self.Set_State,
-                    Config['Auto']['State'].lower()
+                    self.Set_State_Auto,
+                    Start=False,
+                    Repeat=False,
+                    Argument=Config['Auto']['State'].lower()
                 )
                 # Log event
                 self.Dobby.Log(0, "Relay/" + self.Name, Config['Auto']['State'] + " Auto set to: " + str(Config['Auto']['Time']) + " ms")
@@ -220,6 +222,39 @@ class Init:
                 Retained=True
             )
 
+        
+
+        # -------------------------------------------------------------------------------------------------------
+        def OnOff_To_Bool(self, OnOff_String, Flip=False):
+            # Returns None on error
+            # Not's values if Flip=True
+            # On = True
+            # Off = False
+            if OnOff_String.lower() == "on":
+                if Flip == True:
+                    return False
+                else:
+                    return True
+            elif OnOff_String.lower() == "off":
+                if Flip == True:
+                    return True
+                else:
+                    return False
+
+            else:
+                return None        
+
+
+        
+        
+        # -------------------------------------------------------------------------------------------------------
+        def Set_State_Auto(self, New_State):
+            # run Set state
+            self.Set_State(New_State)
+            # Stop timer
+            self.Auto[New_State.lower()].Stop()
+        
+        
         # -------------------------------------------------------------------------------------------------------
         def Set_State(self, New_State):
             # Changes state of relay.
@@ -271,7 +306,7 @@ class Init:
             
             # Change Relay state
             # Remember to pass Flip regardless if true of false
-            self.Pin.value(self.Dobby.OnOff_To_Bool('on', self.Flip))
+            self.Pin.value(self.OnOff_To_Bool('on', self.Flip))
 
             # Check if auto is enabled remember to use off for on
             if self.Auto.get('off', None) != None:
@@ -288,7 +323,7 @@ class Init:
 
             # Change Relay state
             # Remember to pass Flip regardless if true of false
-            self.Pin.value(self.Dobby.OnOff_To_Bool('off', self.Flip))
+            self.Pin.value(self.OnOff_To_Bool('off', self.Flip))
 
             # Check if auto is enabled remember to use off for on
             if self.Auto.get('on', None) != None:

@@ -1,0 +1,13 @@
+{
+  "Lights": {
+    "Dimmer": [
+      "Main",
+      "Mood",
+      "Work",
+      "Hest"
+    ],
+    "Relay": [
+      "Main"
+    ]
+  }
+}
