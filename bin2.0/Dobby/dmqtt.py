@@ -24,9 +24,9 @@ class Init:
         # Referance to Dobby.Log
         self.Log = Dobby.Log
 
-        self.Broker = self.ddb.Run('SELECT Value FROM Dobby_Config.Main WHERE Name="MQTT Broker";')
-        Username = self.ddb.Run('SELECT Value FROM Dobby_Config.Main WHERE Name="MQTT Username";')
-        Password = self.ddb.Run('SELECT Value FROM Dobby_Config.Main WHERE Name="MQTT Password";')
+        # self.Dobby.Config["MQTT Broker"] = self.ddb.Run('SELECT Value FROM Dobby_Config.Main WHERE Name="MQTT Broker";')
+        # Username = self.ddb.Run('SELECT Value FROM Dobby_Config.Main WHERE Name="MQTT Username";')
+        # Password = self.ddb.Run('SELECT Value FROM Dobby_Config.Main WHERE Name="MQTT Password";')
         
         # Create the client
         self.Client = MQTT.Client(client_id="Dobby-" + str(os.urandom(1)[0] %1000), clean_session=True)        
@@ -35,12 +35,12 @@ class Init:
         self.Client.on_connect = self.On_Connect
 
         # Check if password is configured
-        if Password != None:
+        if self.Dobby.Config.get('Password', None) != None:
             # If password is not set will get None and thats ok :-)
-            self.Client.username_pw_set(Username, password=Password)
+            self.Client.username_pw_set(self.Dobby.Config["Username"], password=self.Dobby.Config["Password"])
 
         # connect
-        self.Client.connect_async(self.Broker, port=1883, keepalive=60, bind_address="")
+        self.Client.connect_async(self.Dobby.Config["MQTT Broker"], port=1883, keepalive=60, bind_address="")
         # Start loop
         self.Client.loop_start()
 
@@ -51,7 +51,7 @@ class Init:
         # with callback as value
         # Add commands
         self.Subscribe_To = {
-                self.Dobby.System_Header + "/Dobby/Commands": self.Commands,
+                self.Dobby.Config['System Header'] + "/Dobby/Commands": self.Commands,
             }
 
 
@@ -62,10 +62,10 @@ class Init:
             self.Connected = False
             if rc != 0:
                 # Log event
-                self.Log.Error("MQTT", "Unexpect disconnect from broker: " + str(self.Broker) + " Error: " + str(rc))
+                self.Log.Error("MQTT", "Unexpect disconnect from broker: " + str(self.Dobby.Config["MQTT Broker"]) + " Error: " + str(rc))
             else:
                 # Log event
-                self.Log.Debug("MQTT", "Disconnect from broker: " + str(self.Broker) + " Error: " + str(rc) + " - " + Error_Text)
+                self.Log.Debug("MQTT", "Disconnect from broker: " + str(self.Dobby.Config["MQTT Broker"]) + " Error: " + str(rc))
         
         
     # -------------------------------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ class Init:
         # NOT connected to broker
         if rc != 0:
             # Log event
-            self.Log.Error("MQTT", "Unable to connect to broker: " + str(self.Broker) + " Error: " + str(rc) + " - " + Error_Text)
+            self.Log.Error("MQTT", "Unable to connect to broker: " + str(self.Dobby.Config["MQTT Broker"]) + " Error: " + str(rc) + " - " + Error_Text)
             # Note we are NOT connected
             self.Connected = False
 
@@ -98,7 +98,7 @@ class Init:
             # Note that we are connected
             self.Connected = True
             # Log event
-            self.Log.Info("MQTT", "Connect to broker: " + str(self.Broker))
+            self.Log.Info("MQTT", "Connect to broker: " + str(self.Dobby.Config["MQTT Broker"]))
             # Subscribe to topics
             for Topic, Callback in self.Subscribe_To.items():
                 # Log event
@@ -139,7 +139,7 @@ class Init:
 
     # -------------------------------------------------------------------------------------------------------
     def Build_Topic(self, Owner):
-        Topic = self.Dobby.System_Header + "/Dobby" + Owner
+        Topic = self.Dobby.Config['System Header'] + "/Dobby" + Owner
 
 
     # -------------------------------------------------------------------------------------------------------

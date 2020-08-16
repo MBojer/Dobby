@@ -2,6 +2,5 @@
     "MQTT Username": "DasBoot",
     "MQTT Password": "NoSinking",
     "System Header": "/Boat",
-    "Log Level": 1,
-    "gBridge Topic": "gBridge/u18/"
+    "Log Level": 1
 }

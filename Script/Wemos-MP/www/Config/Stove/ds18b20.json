@@ -1,0 +1,22 @@
+{
+    "Pins": {
+      "D7": "5s"
+    },
+    "Stove": {
+      "id": "0x8d0000071cb78128",
+      "Round": 1,
+      "Publish": {
+        "State": "15s"
+    },
+    "Relay": {
+      "0-35": {
+        "Name": "Pump",
+        "State": "Off"
+      },
+      "35-150": {
+        "Name": "Pump",
+        "State": "On"
+      }
+    }
+  }
+} 

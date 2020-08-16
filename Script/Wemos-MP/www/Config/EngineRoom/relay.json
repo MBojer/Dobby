@@ -1,0 +1,20 @@
+{
+  "Lights": {
+    "Pin": "D6",
+    "Init": "Off",
+    "Flip": true,
+    "Auto": {
+      "State": "Off",
+      "Time": "2h"
+    }
+  },
+  "GasolinePump": {
+    "Pin": "D7",
+    "Init": "Off",
+    "Flip": true,
+    "Auto": {
+      "State": "Off",
+      "Time": "2m"
+    }
+  }
+}

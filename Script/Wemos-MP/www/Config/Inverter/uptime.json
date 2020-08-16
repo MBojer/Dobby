@@ -1,0 +1,13 @@
+{
+    "Interval": "30s",
+    "1s": {
+        "Message": {
+            "Topic": "/Boat/Power/Plugs/Source",
+            "Payload": "Inverter-300w"
+        },
+        "Relay": {
+            "Name": "Inverter",
+            "State": "On"
+        }
+    }
+}

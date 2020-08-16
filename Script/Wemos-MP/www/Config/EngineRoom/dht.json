@@ -1,0 +1,10 @@
+{
+  "Main": {
+    "Publish": {
+      "State": "30s"
+    },
+    "Type": 22,
+    "Pin": "D4",
+    "Rate": "15s"
+  }
+}

@@ -21,7 +21,7 @@ class Init:
         # all messages below this level will NOT be logged, except for if verbose is active
         self.Level = 1
         # Name of db we are logging to
-        self.Log_db = self.ddb.Run('SELECT Value FROM Dobby_Config.Logging WHERE Name="Target";')
+        self.Log_db = "Dobby_Logging"
         # Log event
         self.Info("Logging", "Loaded version: " + str(self.Version))
 

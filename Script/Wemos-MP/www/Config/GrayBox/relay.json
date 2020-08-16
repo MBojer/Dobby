@@ -4,7 +4,7 @@
     "Init": "off",
     "Auto": {
       "State": "off",
-      "Time": "5m"
+      "Time": "2h"
     }
   },
   "Pump": {

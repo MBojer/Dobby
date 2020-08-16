@@ -1,6 +1,18 @@
 {
-  "Contactor Power": {
+  "BowLights": {
     "Pin": "D7",
-    "Init": "Off"
+    "Init": "off",
+    "Auto": {
+      "State": "off",
+      "Time": "2h"
+    }
+  },
+  "Pump": {
+    "Pin": "D8",
+    "Init": "off",
+    "Auto": {
+      "State": "off",
+      "Time": "1.5m"
+    }
   }
 }

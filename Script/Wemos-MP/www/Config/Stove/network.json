@@ -1,0 +1,6 @@
+{
+    "Hostname": "Stove",
+    "WiFi SSID": "NoInternetHere",
+    "WiFi Password": "NoPassword1!",
+    "MQTT Broker": "10.0.0.2"
+  }

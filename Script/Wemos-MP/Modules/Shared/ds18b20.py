@@ -368,20 +368,35 @@ class Init:
 
             # //////////////////////////////////////// Relay \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
             self.Relay = {}
+
+            print("MARKER RELAY BEFORE")
+            
+            
             if Config.get("Relay", None) != None:
+            
+            
+                print("MARKER RELAY", Config)
+            
+            
+            
                 # For loop over On/Off to check for both messages
                 for Entry in Config['Relay']:
                     # Bool value to check if we are missing config
                     Failure = False
-                    # Check if we got both Topic and Payload
+                    # Check if we got both Name and State
+                    
+                    
+                    print("MARKER ENTRY", Entry)
+                    
+                    
                     for Check in ['Name', 'State']:
                         if Failure == True:
                             continue
-                        # Missing topic or payload
+                        # Missing Name or State
                         if Config['Relay'][Entry].get(Check, None) == None:
                             # Log event
                             self.Shared.Log(2, "DS18B20/" + self.Name, "Trigger Relay " + Entry + ": Missing " + Check + " - Disabling the '" + Entry + "' message")
-                            # break since one is missing and we need both topic and payload
+                            # break since one is missing and we need both Name and State
                             Failure = True
 
                     # Check if we failed to get the needed settings

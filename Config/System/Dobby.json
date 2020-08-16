@@ -1,0 +1,5 @@
+{
+  "Device Logging": false,
+  "MQTT Broker": "10.0.0.2",
+  "System Header": "/Boat"
+}

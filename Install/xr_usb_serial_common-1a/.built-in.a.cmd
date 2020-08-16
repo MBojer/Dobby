@@ -1,0 +1,1 @@
+cmd_/media/ssd/Dobby/Install/xr_usb_serial_common-1a/built-in.a := rm -f /media/ssd/Dobby/Install/xr_usb_serial_common-1a/built-in.a; ar cDPrST /media/ssd/Dobby/Install/xr_usb_serial_common-1a/built-in.a 

@@ -1,0 +1,16 @@
+{
+  "Hob": {
+    "Pin": "LED",
+    "Fade": {
+      "Delay": 25,
+      "Jump": 1
+    }
+  },
+  "Sink": {
+    "Pin": "D1",
+    "Fade": {
+      "Delay": 25,
+      "Jump": 1
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+    "ColdWater": {
+        "Pin": "D2",
+        "Ticks_Liter": 520,
+        "Publish_L": 1,
+        "Message": {
+            "0-29": {
+            "Topic": "/Boat/WaterTank/Level",
+            "Payload": "Tank Low"
+            },
+            "30-100": {
+            "Topic": "/Boat/WaterTank/Level",
+            "Payload": "Tank Full"
+            }
+        },
+    }
+}

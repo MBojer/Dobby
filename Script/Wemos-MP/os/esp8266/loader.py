@@ -130,22 +130,23 @@ class Run:
             # if we get an error it should already be logged
             # pass to Sys_Modules_Check, it will exit to repl on missing sys module
             self.Sys_Modules_Check()
+        else:
+            # Place below code in a try statement so we can cache self.Error
+            # that way we dont try to download anything else if we fail on one
+            try:
+                # not we need to get config from server if missig
+                # or check if local matches server config
+                self.Get_Configs()
+
+                # after config check we need to check if we got the right modules
+                # and if the modules we got is up to date
+                self.Module_Get()
+            except self.Error as e:
+                self.Log(3, "System", str(e))
             
         # delete waitforwifi since we are done with it
         del waitforwifi
 
-        # Place below code in a try statement so we can cache self.Error
-        # that way we dont try to download anything else if we fail on one
-        try:
-            # not we need to get config from server if missig
-            # or check if local matches server config
-            self.Get_Configs()
-
-            # after config check we need to check if we got the right modules
-            # and if the modules we got is up to date
-            self.Module_Get()
-        except self.Error as e:
-            self.Log(3, "System", str(e))
 
     # -------------------------------------------------- Download Module --------------------------------------------------
     def Module_Download(self, Name, Module_json):
@@ -239,7 +240,7 @@ class Run:
         try:
             Module_json = urequests.get("http://" + self.Server + ":" + self.Server_Port + "/Modules/" + uos.uname().sysname + "/index.json")
             Module_json = Module_json.json()
-        except:
+        except KeyboardInterrupt:
             # Log error
             self.Log(3, "System/Module", 'Unable to get index.json from server: ' + self.Server)
             
@@ -357,12 +358,17 @@ class Run:
         # Get file names from apacesh list dir
         Matches = []
         # Loop over lines in reply to find lines with config files in them
-        for Line in Server_Config_List.split('\n'):
+        for Line in Server_Config_List.split('href="'):
             # if we got .json in the line we got a config file
             if '.json' in Line:
                 # take whats between href=" and .json aka file without .json
-                Line = Line[Line.index('href="') + 6: Line.index('.json')]
-                Matches.append(Line)
+                try:
+                    Line = Line.split(".json")[0]
+                except:
+                    pass
+                else:
+                    Matches.append(Line)
+        
         Server_Config_List = Matches
         del Matches
 

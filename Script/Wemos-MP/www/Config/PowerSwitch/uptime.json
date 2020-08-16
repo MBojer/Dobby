@@ -1,5 +1,5 @@
 {
-    "Interval": "1m",
+    "Interval": "10s",
     "5m": {
         "Message": {
             "Topic": "/Boat/Plugs/Source",

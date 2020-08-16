@@ -1,0 +1,13 @@
+{
+  "Fridge": {
+    "Pin": "D3",
+    "Type": 22,
+    "Average": 50,
+    "Rate": "15s",
+    "Round": 2,
+    "Publish": {
+      "State": "30s",
+      "json": "5m"
+    }
+  }
+}

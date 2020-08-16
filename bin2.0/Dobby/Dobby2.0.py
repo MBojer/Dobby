@@ -10,6 +10,9 @@ import dlogging as Log
 import ddb
 import dmqtt
 
+# Script version
+Version = 0.01
+
 # Execution options
 # Instantiate the parser
 parser = argparse.ArgumentParser(description='Serving the master')
@@ -30,6 +33,7 @@ if Dobby_Arugments.get('verbose', False) is True:
     Verbose = True
 else:
     Verbose = False
+
 # Version
 if Dobby_Arugments.get('version', False) is True:
     print("Dobby script version: " + str(Version))
@@ -50,7 +54,7 @@ class Main:
     # -------------------------------------------------------------------------------------------------------
     def __init__(self, Verbose):
 
-        self.Version = 300000
+        self.Version = Version
 
         # Init ddb aka database interface
         # Needs to be up before we init log
@@ -59,8 +63,33 @@ class Main:
         # Init logging
         self.Log = Log.Init(self, Verbose)
 
-        # Added in front of mqtt topics
-        self.System_Header = self.ddb.Run('SELECT Value FROM Dobby_Config.Main WHERE Name="System Header";')
+        # Createa a dict to hold the config
+        self.Config = dict()
+
+        # Load Dobby config
+        try:
+            with open("../../Config/System/Dobby.json", 'r') as f:
+                Config = json.load(f)
+
+        except json.decoder.JSONDecodeError as e:
+            self.Log.Fatal("System", "Json error in Dobby.json, unable to start. Quitting...")
+            quit()
+
+        # Config loaded and prased
+        else:
+            self.Config = Config
+
+        # List to hold missing config entries
+        Missing = list()
+        # Loop over needed list
+        for Check in ['System Header', 'MQTT Broker']:
+            if Check not in self.Config:
+                Missing.append(Check)
+
+        # Check if we got needed config
+        if Missing != list():
+            self.Log.Fatal("System", "Missing config entries: " + str(Missing) + " in Dobby.json, unable to start. Quitting...")
+            quit()
 
         # MQTT
         self.MQTT = dmqtt.Init(self)
@@ -72,7 +101,7 @@ class Main:
         self.System_Modules = {}
 
         # True if we are logging device messages
-        if self.ddb.Run('SELECT Value FROM Dobby_Config.`Logging Device` WHERE Name="Enable";').lower() == 'true':
+        if self.Config.get('Device Logging', False) == True:
             self.Log.Info("System", "Loading: Logging Device")
             # Import dloggingdevice so we can init it
             import dloggingdevice
@@ -92,8 +121,12 @@ class Main:
         # init modules based on config files
         for Config_Name in os.listdir('../../Config/System'):
 
-            # strip .jsonc
+            # strip .json
             Config_Name = Config_Name.replace('.json', '')
+
+            # Skip if config is Dobby.json
+            if Config_Name == "Dobby":
+                continue
             
             # Load config
             try:

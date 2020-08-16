@@ -91,7 +91,7 @@ class Run:
             elif User_Entry.lower() == "set":
 
                 # List of options user can change
-                Config_Options = ['Hostname', 'WiFi SSID', 'WiFi Password', 'MQTT Broker']
+                Config_Options = ['Hostname', 'WiFi SSID', 'WiFi Password', 'MQTT Broker', 'Log Level']
 
                 # print list with number in front
                 for i in range(len(Config_Options)):
@@ -130,7 +130,7 @@ class Run:
             # prints the current config
             elif User_Entry.lower() == "show":
                 print("Current config:")
-                for Key in ['Hostname', 'WiFi SSID', 'WiFi Password', 'MQTT Broker']:
+                for Key in ['Hostname', 'WiFi SSID', 'WiFi Password', 'MQTT Broker', 'Log Level']:
                     print("   " + Key + ": " + Config.get(Key, "Not configured"))
 
 

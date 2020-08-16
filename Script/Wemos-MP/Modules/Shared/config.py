@@ -33,7 +33,11 @@ def Download(Name, Owner):
         raise Error("Server not responding")
     else:
         # Check for status code 200 to see if we got the file
-        if Server_Config.status_code == 200:
+        if Server_Config.status_code == 400:
+            print("MARKER CODE400")
+            print(URL)
+
+        elif Server_Config.status_code == 200:
             # Convert Server_Config to dict
             Server_Config = Server_Config.json()
             # Var to hold local config

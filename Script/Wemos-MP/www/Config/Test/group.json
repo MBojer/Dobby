@@ -1,0 +1,11 @@
+{
+  "AllOff": {
+    "Relay": [
+      "BowLights"
+    ],
+    "Dimmer": [
+      "Hob",
+      "Sink"
+    ]
+  }
+}

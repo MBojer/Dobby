@@ -149,7 +149,7 @@ class Init:
                     # Not pritty but it works
                     if str(type(Modbus_Value)) == "<class 'pymodbus.exceptions.ModbusIOException'>":
                         # Log event
-                        Log("Debug", "EP Logger", "Modbus", "Unable to read: " + Name + " - " + str(Modbus_Value))
+                        self.Log("Debug", "EP Logger", "Modbus", "Unable to read: " + Name + " - " + str(Modbus_Value))
                         continue
 
                     # Battery Status
@@ -350,7 +350,20 @@ class Init:
                     # Check if we need to publish
                     if Dict.get('publish', False) != False:
                         # Build topic
-                        Topic = self.Dobby.System_Header + '/EP/' + str(self.Name) + '/' + str(Name)
+                        Topic = self.Dobby.Config['System Header'] + '/EP/' + str(self.Name) + '/' + str(Name)
+                        # If Modbus_Value is float we round to two didgets
+                        try:
+                            Modbus_Value = float(Modbus_Value)
+                        except:
+                            pass
+                        else:
+                            # if we got a number ending with .0 we return only the whole number
+                            if str(Modbus_Value).endswith(".0"):
+                                Modbus_Value = int(Modbus_Value)
+                            # else we round to two didgets
+                            else:
+                                Modbus_Value = round(Modbus_Value, 2)
+
                         # Publish
                         self.Dobby.MQTT.Publish(Topic, str(Modbus_Value), Retained=True, Build_Topic=False)
                         # Log event
@@ -381,7 +394,7 @@ class Init:
             finally:
                 # Retry if we needed to create the table
                 if Retry == True:
-                    self.Log_Value(Name, Modbus_Value, db_Connection, Retry=True)
+                    self.Log_Value(Name, Value, db_Connection, Retry=True)
 
         # -------------------------------------------------------------------------------------------------------
         def Read_Input(self, Address, Count=1):
@@ -393,7 +406,7 @@ class Init:
             try:
                 Modbus_Value = self.EP_Logger_Client.read_input_registers(Address, Count, unit=1)
             except (pyModbus.ConnectionException):
-                Log("Debug", "EP Logger", self.Name, "Error reading: " + str(Address) + " Count: " + str(Count))
+                self.Log("Debug", "EP Logger", self.Name, "Error reading: " + str(Address) + " Count: " + str(Count))
 
             return Modbus_Value
 
@@ -420,7 +433,7 @@ class Init:
 
             except ValueError:
                 # Raise error
-                raise self.Timer_Error("Invalid time provided: " + str(Time))
+                raise self.Error("Invalid time provided: " + str(Time))
 
         # -------------------------------------------------------------------------------------------------------
         def Time_To_ms(self, Time, Min_Value=None):
