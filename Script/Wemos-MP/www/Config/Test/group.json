@@ -1,4 +1,10 @@
 {
+  "TG": {
+    "Dimmer": [
+      "Hob",
+      "Sink"
+    ]
+  },
   "AllOff": {
     "Relay": [
       "BowLights"

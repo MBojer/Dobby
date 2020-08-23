@@ -9,7 +9,7 @@
   },
   "Bathroom": {
     "MaxOn": "20m",
-    "Pin": "D2",
+    "Pin": "D0",
     "Fade": {
       "Delay": 25,
       "Jump": 1

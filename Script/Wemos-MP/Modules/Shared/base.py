@@ -17,7 +17,7 @@ import esp
 ### First didget = Software type 1-Production 2-Beta 3-Alpha
 ### Secound and third didget = Major version number
 ### Fourth to sixth = Minor version number
-Version = 300018
+Version = 300020
 
 # -------------------------------------------------------------------------------------------------------
 class Run:
@@ -86,11 +86,6 @@ class Run:
         self.Log_Level = Device_Config.get('Log Level', 1)
         # Change system header
         self.System_Header = Device_Config['System Header']
-
-        # If this is set, all subscribe and publishes will be mirrored and topic replaced as folles
-        # <System Header>/<Hostname>/ = <self.gBridge>
-        # We have to load this before mqtt so we know if we need to mirror topics
-        self.gBridge_Topic = Device_Config.get('gBridge Topic', None)
 
         ## Holds all loaded modules
         self.Modules = {}
@@ -584,20 +579,6 @@ class Run:
             # Subscribe
             self.MQTT_Client.subscribe(Topic)
 
-            # Check if self.gBridge is set if so, subscribe to the alterted topic
-            if self.gBridge_Topic != None:
-                # Ignore "Command topic"
-                if Topic != self.Peripherals_Topic("Commands"):
-                    # Change topic to match gbridge
-                    Topic = Topic.replace(
-                        self.System_Header + "/",
-                        self.gBridge_Topic
-                        )
-                    # Log event
-                    self.Log(0, 'MQTT', 'Subscribing to gBridge topic: ' + Topic)
-                    # Subscribe
-                    self.MQTT_Client.subscribe(Topic)
-
         # Not Connected
         else:
             if Topic not in self.MQTT_Subscribe_To:
@@ -682,6 +663,9 @@ class Run:
         except AttributeError as e:
             # Log event
             self.Log(3, "System", "Module: " + str(Module_Name) + " Error: " + str(e))
+        except TypeError as e:
+            # Log event
+            self.Log(3, "System", "Module: " + str(Module_Name) + " Error: " + str(e))
         # KeyError indicates unknown module or Peripheral_Name
         except KeyError as e:
             if Module_Name in str(e):
@@ -745,11 +729,6 @@ class Run:
                 # If we get an error here we assube we are disconnected
                 self.MQTT_State = False
             return False
-        # Publish to gbridge if configured
-        try:
-            self.MQTT_Publish_gBridge(Topic, Payload, Retained)
-        except:
-            pass
 
         return True
 

@@ -4,7 +4,7 @@
 ### First didget = Software type 1-Production 2-Beta 3-Alpha
 ### Secound and third didget = Major version number
 ### Fourth to sixth = Minor version number
-Version = 300002
+Version = 300004
 
 import machine
 import utime
@@ -38,7 +38,7 @@ class Init:
                 # Remeber the + at the end
                 self.Dobby.MQTT_Subscribe(self.Dobby.System_Header + "/Group/"+ Name)
                 # On/Off Topics
-                self.Dobby.MQTT_Subscribe(self.Dobby.System_Header + "/Group/"+ Name + "/OnOff")
+                self.Dobby.MQTT_Subscribe(self.Dobby.System_Header + "/Group/"+ Name + "/json")
             
         self.Dobby.Log(0, "Group", "Initialization complete")
 
@@ -110,4 +110,4 @@ class Init:
                     pass
                 
             # Log state message
-            self.Dobby.Log_Peripheral([self.Dobby.System_Header + "/Group" + self.Name + "/State", Command])
+            self.Dobby.Log_Peripheral([self.Dobby.System_Header + "/Group/" + self.Name + "/State", Command])

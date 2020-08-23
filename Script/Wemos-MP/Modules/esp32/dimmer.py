@@ -6,7 +6,7 @@ import ujson
 ### First didget = Software type 1-Production 2-Beta 3-Alpha
 ### Secound and third didget = Major version number
 ### Fourth to sixth = Minor version number
-Version = 300005
+Version = 300007
 
 class Init:
 
@@ -37,7 +37,7 @@ class Init:
                 # Subscribe to Dimmer topic if at least one Dimmer was ok
                 self.Dobby.MQTT_Subscribe(self.Dobby.Peripherals_Topic("Dimmer", End=Name))
                 # On/Off Topics
-                self.Dobby.MQTT_Subscribe(self.Dobby.Peripherals_Topic("Dimmer", End=Name + "/OnOff"))
+                self.Dobby.MQTT_Subscribe(self.Dobby.Peripherals_Topic("Dimmer", End=Name + "/json"))
 
             
         self.Dobby.Log(0, "Dimmer", "Initialization complete")
@@ -94,8 +94,12 @@ class Init:
             # self.Pin = machine.PWM(machine.Pin(self.Pin), freq=self.Dobby.Config.get('PWM_Frequancy', 1000))
             self.Pin = machine.PWM(machine.Pin(self.Pin), freq=20000)
 
+            # Whether the dimmer is on or off
+            self.On = False
+
             # Stors current value in percent for later referance
-            self.Percent = 0
+            # Start it at 1 so we can set it to 0 when done setting up since dimmer start at 100%
+            self.Percent = 1
             # Stores last percent value, used to turn the light on
             # Dimmer/<Name>/On is triggered and we are off then will set the current percent value this this value
             # the last percent value is saved every time the percent is set to 0
@@ -172,6 +176,10 @@ class Init:
             # Mark Dimmer as ok aka enable it
             self.OK = True
 
+            # Since the dimmer comes on at 100% will set it to 0
+            self.Set_Percent(0)
+           
+
             # Log event
             self.Dobby.Log(0, "Dimmer/" + self.Name, "Initialization complete")
 
@@ -236,7 +244,7 @@ class Init:
             # Not at target yet
             else:
                 # not at target do not log state
-                self.Set_State(New_Percent, False)
+                self.Set_State(New_Percent, False, False)
                 # Start the timer again and pass original target
                 self.Fade['timer'].Argument = Target
                 self.Fade['timer'].Start()
@@ -284,7 +292,7 @@ class Init:
 
 
         # -------------------------------------------------------------------------------------------------------
-        def Set_Percent(self, New_Percent):
+        def Set_Percent(self, New_Percent, MatchValue = True):
             # Sets value to a value givent
             # will trigger fade if activated
 
@@ -318,17 +326,18 @@ class Init:
                 New_Percent = 100
                 Set_Value = False
 
-            # Check if % we got == self.Percent
-            # if so trun the dimmer off
-            # Only do this if we are setting a value and not stepping with + or -
-            if  Set_Value == True:
-                if self.Percent == New_Percent:
-                    # Set New_Percent to 0 so we turn off or fade to 0
-                    New_Percent = 0
+            if MatchValue == True:
+                # Check if % we got == self.Percent
+                # if so trun the dimmer off
+                # Only do this if we are setting a value and not stepping with + or -
+                if Set_Value == True:
+                    if self.Percent == New_Percent:
+                        # Set New_Percent to 0 so we turn off or fade to 0
+                        New_Percent = 0
 
-                # If we are setting to = 0 then note last state
-                if New_Percent == 0:
-                    self.Last_Percent = self.Percent
+                    # If we are setting to = 0 then note last state
+                    if New_Percent == 0:
+                        self.Last_Percent = self.Percent
 
             # Check if Fade is enabeled
             if self.Fade != None:
@@ -345,7 +354,30 @@ class Init:
         
 
         # -------------------------------------------------------------------------------------------------------
-        def Set_State(self, New_Percent, Log_Event=True):
+        def Log_json(self):
+
+            # Create the json dict
+            json_Dict = {}
+            # Add online
+            json_Dict['online'] = True
+            # Add on
+            if self.Percent == 0:
+                json_Dict['on'] = False
+            else:
+                json_Dict['on'] = True
+            # Add brightness
+            if self.Percent == 0:
+                json_Dict['brightness'] = self.Last_Percent
+            else:
+                json_Dict['brightness'] = self.Percent
+
+            # Log peripheral
+            # True = Generate topic and retained
+            self.Dobby.Log_Peripheral([self.Dobby.Peripherals_Topic("Dimmer", End=self.Name + "/json", State=True), ujson.dumps(json_Dict)])
+
+
+        # -------------------------------------------------------------------------------------------------------
+        def Set_State(self, New_Percent, Log_Event=True, Log_json=True):
             # Change state
             self.Pin.duty(self.Percent_To_Frequency(New_Percent))
             
@@ -371,6 +403,15 @@ class Init:
                 self.Dobby.Log_Peripheral([self.Dobby.Peripherals_Topic("Dimmer", End=self.Name, State=True), New_Percent])
                 # No reason to save state since we read it of the pin when needed
                 # Return true since the value was changed
+                
+            
+            # Check if we need to log a json
+            if Log_json == True:
+
+                self.Log_json()
+                # No reason to save state since we read it of the pin when needed
+                # Return true since the value was changed
+                
             return True
 
 
@@ -379,32 +420,33 @@ class Init:
             # Handles messages to dimmer
             # At this sage we know self.name is valid
             
-            # check if we got OnOff sub topic
+            # check if we got json sub topic
             # Remember Sub_Topic gets set to lower in base
-            if Sub_Topic == 'onoff':
-                # Now check we the command is 0 aka OFF or 1 ON
-                # Compare in string so we cache both string and int
-                if str(Command) == '1':
-                    # Set command to self.Last_Percent
-                    # only if self.Percent == 0 aka already off
-                    if self.Percent == 0:
-                        Command = self.Last_Percent
-                    else:
-                        # if we are already on then do nothing and return
-                        return
-                
-                elif str(Command) == '0':
-                    # only if self.Percent != 0 aka already on
-                    if self.Percent != 0:
-                        # Set command to self.Last_Percent
-                        self.Last_Percent = self.Percent
-                        Command = 0
-                    else:
-                        # if we are already off then do nothing aka return
-                        return
+            if Sub_Topic == 'json':
 
-                # If we havent returned we need to trigger Set_Percent and pass command
-                self.Set_Percent(Command)
+                # Try to convert the command to a json
+                try:
+                    Command = ujson.loads(Command)
+                # if fails return
+                except:
+                    self.Dobby.Log(2, "Dimmer/" + self.Name, "Invalid json recived")
+                    return
+                
+                # Check if on is true
+                if Command['on'] == True:
+                    # If on is true we set the percent aka brightness regardless
+                    self.Set_Percent(Command['brightness'], MatchValue=False)
+                
+                # Command['on'] == False
+                else:
+                    # Save self.Percent to self.Last_Percent so we can reffer to if while on is false
+                    self.Last_Percent = Command['brightness']
+                    # Set percent to 0 since on is false
+                    self.Set_Percent(0, MatchValue=False)
+                    # Log the state change regardless if it changes or not
+                    # its done so google sees the change in brightness
+                    self.Log_json()
+
 
             # After altering command then check commands as normal
             elif Command == "?":

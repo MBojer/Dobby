@@ -7,7 +7,7 @@
     }
   },
   "Sink": {
-    "Pin": "D1",
+    "Pin": "D0",
     "Fade": {
       "Delay": 25,
       "Jump": 1
